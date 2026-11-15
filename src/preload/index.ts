@@ -36,6 +36,7 @@ import type {
   UpdateShootingLogInputInfo
 } from '../shared/shooting-logs'
 import type { DashboardSummary } from '../shared/dashboard'
+import type { MilestonesSummary } from '../shared/milestones'
 
 const api = {
   getAppInfo: (): Promise<AppInfo> => ipcRenderer.invoke('app:get-info'),
@@ -107,7 +108,8 @@ const api = {
   updateLoad: (id: string, patch: LoadUpdateInput): Promise<LoadDevelopmentInfo> =>
     ipcRenderer.invoke('loads:update', id, patch),
   deleteLoad: (id: string): Promise<{ ok: true }> => ipcRenderer.invoke('loads:delete', id),
-  getDashboard: (): Promise<DashboardSummary> => ipcRenderer.invoke('dashboard:get')
+  getDashboard: (): Promise<DashboardSummary> => ipcRenderer.invoke('dashboard:get'),
+  getMilestones: (): Promise<MilestonesSummary> => ipcRenderer.invoke('milestones:get')
 }
 
 if (process.contextIsolated) {

@@ -35,6 +35,7 @@ import type {
   UpdateShootingLogInputInfo
 } from '../shared/shooting-logs'
 import type { DashboardSummary } from '../shared/dashboard'
+import type { MilestonesSummary } from '../shared/milestones'
 
 declare global {
   interface Window {
@@ -91,6 +92,7 @@ declare global {
       updateLoad: (id: string, patch: LoadUpdateInput) => Promise<LoadDevelopmentInfo>
       deleteLoad: (id: string) => Promise<{ ok: true }>
       getDashboard: () => Promise<DashboardSummary>
+      getMilestones: () => Promise<MilestonesSummary>
     }
   }
 }
