@@ -59,5 +59,8 @@ Dev-only: `openDatabase({ seedDemo: true })` or `MAIN_VITE_SEED_DEMO=true`. Seed
 ## IPC
 
 - `db:health` → `{ ready, path, cipher, migrationVersion, encrypted }`
+- Parts: `parts:list`, `parts:get`, `parts:create`, `parts:update`, `parts:delete`, `parts:set-status`, `parts:reset-maintenance`
+- Systems: `systems:list`, `systems:get`, `systems:create-custom`, `systems:create-factory`, `systems:update`, `systems:delete`, `systems:count`, `systems:assert-restore-allowed` (create paths license-gated)
+- Profile: `profile:get`, `profile:update` (`trackValue` / `trackAmmo`)
 - Backup channels: see [backup.md](./backup.md)
 - License + gated system create: see [license.md](./license.md)

@@ -4,7 +4,15 @@
 
 import { ipcMain } from 'electron'
 import type { CustomSystemInput, FactorySystemInput } from '../db/types'
-import { createCustomSystem, createFactorySystem, countCompleteSystems } from '../db/systems'
+import {
+  createCustomSystem,
+  createFactorySystem,
+  countCompleteSystems,
+  deleteSystem,
+  getSystem,
+  listSystems,
+  updateSystem
+} from '../db/systems'
 import { requireDatabase } from '../db/connection'
 import { checkCreateCompleteSystem, LicenseLimitError } from '../license/gate'
 import { assertLicenseAllowsSystemCount } from '../license/gate'
@@ -12,6 +20,10 @@ import { getLicenseStatus } from '../license/status'
 
 export function registerSystemsIpc(): void {
   ipcMain.handle('systems:count', () => countCompleteSystems(requireDatabase().db))
+
+  ipcMain.handle('systems:list', () => listSystems(requireDatabase().db))
+
+  ipcMain.handle('systems:get', (_event, id: string) => getSystem(requireDatabase().db, id))
 
   ipcMain.handle('systems:get-license-gate', () => getLicenseStatus())
 
@@ -45,6 +57,22 @@ export function registerSystemsIpc(): void {
       }
       throw error
     }
+  })
+
+  ipcMain.handle(
+    'systems:update',
+    (
+      _event,
+      id: string,
+      patch: Partial<CustomSystemInput & FactorySystemInput> & { buildType?: 'custom' | 'factory' }
+    ) => {
+      return updateSystem(requireDatabase().db, id, patch)
+    }
+  )
+
+  ipcMain.handle('systems:delete', (_event, id: string) => {
+    deleteSystem(requireDatabase().db, id)
+    return { ok: true as const }
   })
 
   /**

@@ -242,6 +242,13 @@ export function getSystem(db: Database.Database, id: string): CompleteSystem | n
   return row ? mapSystem(db, row) : null
 }
 
+export function listSystems(db: Database.Database): CompleteSystem[] {
+  const rows = db
+    .prepare(`SELECT * FROM systems ORDER BY name ASC, created_at ASC`)
+    .all() as SystemRow[]
+  return rows.map((row) => mapSystem(db, row))
+}
+
 export function countCompleteSystems(db: Database.Database): number {
   const row = db.prepare(`SELECT COUNT(*) AS count FROM systems`).get() as { count: number }
   return row.count
