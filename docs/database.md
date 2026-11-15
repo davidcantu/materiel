@@ -52,6 +52,11 @@ Empty DB → apply all pending versions in a transaction.
 
 Dev-only: `openDatabase({ seedDemo: true })` or `MAIN_VITE_SEED_DEMO=true`. Seeds only when parts and systems are empty. No multi-user passwords.
 
+## Backup metadata
+
+`backup_settings` (singleton) and `backup_logs` store policy and history. Helpers: `src/main/db/backup.ts`. Cloud upload behavior: [backup.md](./backup.md). Local-first default interval is **1 hour** (web spec used 24h).
+
 ## IPC
 
 - `db:health` → `{ ready, path, cipher, migrationVersion, encrypted }`
+- Backup channels: see [backup.md](./backup.md)

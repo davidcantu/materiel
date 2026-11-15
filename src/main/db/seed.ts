@@ -177,7 +177,7 @@ export function seedDemoIfEmpty(db: Database.Database): boolean {
     db.prepare(
       `INSERT INTO backup_settings (
         id, auto_backup_enabled, backup_interval_hours, provider, updated_at
-      ) VALUES (1, 1, 24, 'mock', @createdAt)`
+      ) VALUES (1, 1, 1, 'mock', @createdAt)`
     ).run({ createdAt })
 
     db.prepare(

@@ -1,34 +1,44 @@
-import { mockBackupProvider } from './mock'
-import { googleDriveBackupProvider } from './google-drive'
-import { oneDriveBackupProvider } from './onedrive'
+import {
+  DEFAULT_BACKUP_INTERVAL_HOURS,
+  ensureBackupSettings,
+  updateBackupSettings
+} from '../db/backup'
+import { registerBackupIpc } from './ipc'
+import { getBackupProvider, resolveProviderId } from './providers'
 import { registerQuitBackup, startBackupScheduler } from './scheduler'
-import type { BackupProvider, BackupProviderId } from './types'
+import type { BackupProvider } from './types'
 
-export type { BackupProvider, BackupProviderId }
+export type {
+  BackupProvider,
+  BackupProviderId,
+  BackupRunResult,
+  BackupStatus,
+  BackupTrigger,
+  BackupUploadResult
+} from './types'
+export { getBackupProvider, resolveProviderId } from './providers'
+export { triggerBackupNow } from './scheduler'
+export { runBackupOnce } from './run-backup'
 
-function resolveProviderId(): BackupProviderId {
-  const fromEnv = (process.env.MAIN_VITE_BACKUP_PROVIDER ?? 'mock') as BackupProviderId
-  if (fromEnv === 'google-drive' || fromEnv === 'onedrive' || fromEnv === 'mock') {
-    return fromEnv
-  }
-  return 'mock'
-}
-
-export function getBackupProvider(id: BackupProviderId = resolveProviderId()): BackupProvider {
-  switch (id) {
-    case 'google-drive':
-      return googleDriveBackupProvider
-    case 'onedrive':
-      return oneDriveBackupProvider
-    case 'mock':
-    default:
-      return mockBackupProvider
-  }
-}
-
-/** Wire hourly + quit backup hooks (providers remain stubs until OAuth lands). */
+/**
+ * Wire settings, IPC, hourly scheduler, and quit backup.
+ * `npm run dev` defaults to the mock provider.
+ */
 export function initBackupSubsystem(): BackupProvider {
-  const provider = getBackupProvider()
+  const envProvider = resolveProviderId()
+  const settings = ensureBackupSettings({
+    provider: envProvider,
+    intervalHours: DEFAULT_BACKUP_INTERVAL_HOURS
+  })
+
+  // Prefer persisted provider when set; otherwise env (mock in development).
+  const providerId = resolveProviderId(settings.provider, envProvider)
+  if (settings.provider !== providerId) {
+    updateBackupSettings({ provider: providerId })
+  }
+
+  const provider = getBackupProvider(providerId)
+  registerBackupIpc()
   startBackupScheduler(provider)
   registerQuitBackup()
   return provider

@@ -67,8 +67,7 @@ function App(): React.JSX.Element {
         <section className="placeholder" aria-label="Scaffold status">
           <h2>Coming next</h2>
           <ul>
-            <li>Encrypted SQLite schema + migrations</li>
-            <li>Backup OAuth for Google Drive / OneDrive</li>
+            <li>Settings UI for backup / license (IPC ready for backup)</li>
             <li>License key gate on complete builds</li>
             <li>Feature modules from the software spec</li>
           </ul>
