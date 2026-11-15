@@ -47,6 +47,7 @@ Empty DB → apply all pending versions in a transaction.
 
 - **§7.2** — `addShootingLog` / `updateShootingLog` / `deleteShootingLog` adjust Action/Barrel/Suppressor round counts and ammo quantity atomically.
 - **§7.1** — `createFactorySystem` / `synthesizeFactoryParts` / `deleteSystem` synthesize or remove `action-{id}`, `barrel-{id}`, `chassis-{id}` parts.
+- **§7.3** — `moveAmmoToPractice` consolidates a lot into `"Practice Ammo"` for the same caliber (merge or create, then delete source).
 
 ## Demo seed
 
@@ -62,5 +63,8 @@ Dev-only: `openDatabase({ seedDemo: true })` or `MAIN_VITE_SEED_DEMO=true`. Seed
 - Parts: `parts:list`, `parts:get`, `parts:create`, `parts:update`, `parts:delete`, `parts:set-status`, `parts:reset-maintenance`
 - Systems: `systems:list`, `systems:get`, `systems:create-custom`, `systems:create-factory`, `systems:update`, `systems:delete`, `systems:count`, `systems:assert-restore-allowed` (create paths license-gated)
 - Profile: `profile:get`, `profile:update` (`trackValue` / `trackAmmo`)
+- Logs: `logs:list`, `logs:get`, `logs:add`, `logs:update`, `logs:delete`
+- Ammo: `ammo:list`, `ammo:get`, `ammo:create`, `ammo:update`, `ammo:delete`, `ammo:move-to-practice`
+- Loads: `loads:list`, `loads:get`, `loads:create`, `loads:update`, `loads:delete`
 - Backup channels: see [backup.md](./backup.md)
 - License + gated system create: see [license.md](./license.md)

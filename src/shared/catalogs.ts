@@ -1,5 +1,6 @@
 /**
- * Domain reference catalogs — software-spec §8 (subset used by Inventory / Builds forms).
+ * Domain reference catalogs — software-spec §8
+ * (Inventory / Builds / Ammo & Reloading forms).
  */
 
 export const CARTRIDGE_OPTIONS = [
@@ -118,6 +119,61 @@ export const MUZZLE_BRAKE_MANUFACTURERS = [
   'ZRO Delta'
 ] as const
 
+/** §8.6 Reloading manufacturers & standard products */
+export const BULLET_PRODUCTS: Record<string, string[]> = {
+  Berger: [
+    '105gr Hybrid Target',
+    '109gr LRHT',
+    '105gr VLD Target',
+    '135gr LRHT',
+    '133gr Elite Hunter',
+    '153.5gr LRHT',
+    '140gr Hybrid Target',
+    '156gr EOL Elite Hunter'
+  ],
+  Hornady: [
+    '110gr A-Tip',
+    '108gr ELD-M',
+    '109gr ELD-M',
+    '138gr A-Tip',
+    '134gr ELD-M',
+    '153gr A-Tip',
+    '147gr ELD-M'
+  ],
+  Sierra: ['107gr MatchKing', '110gr MatchKing', '115gr DTAC', '131gr MatchKing'],
+  Nosler: ['6mm 105gr RDF', '6mm 115gr RDF']
+}
+
+export const POWDER_PRODUCTS: Record<string, string[]> = {
+  Hodgdon: ['Varget', 'H4350', 'H4831SC', 'H1000', 'Retumbo'],
+  Vihtavuori: ['N150', 'N160', 'N555'],
+  Alliant: ['Reloder 15', 'Reloder 16'],
+  IMR: ['IMR 4166', 'IMR 4451', 'IMR 4955']
+}
+
+export const PRIMER_PRODUCTS: Record<string, string[]> = {
+  CCI: ['#450', '#400'],
+  Federal: ['GM205M', 'GM205', 'GM210M']
+}
+
+export const BRASS_MANUFACTURERS = [
+  'Alpha Munitions',
+  'Federal',
+  'Gunwerks',
+  'Hornady',
+  'Lapua',
+  'Norma Ammunition',
+  'Nosler',
+  'Peterson Cartridge',
+  'Prime',
+  'Sig Sauer',
+  'Starline Brass'
+] as const
+
+export const BULLET_MANUFACTURERS = Object.keys(BULLET_PRODUCTS)
+export const POWDER_MANUFACTURERS = Object.keys(POWDER_PRODUCTS)
+export const PRIMER_MANUFACTURERS = Object.keys(PRIMER_PRODUCTS)
+
 export function manufacturersForPartType(
   type: 'Action' | 'Barrel' | 'Chassis' | 'Optic' | 'Suppressor' | 'Misc',
   muzzleType?: 'Suppressor' | 'Brake'
@@ -132,4 +188,16 @@ export function manufacturersForPartType(
 
 export function modelsForActionManufacturer(manufacturer: string): string[] {
   return ACTION_PRODUCTS[manufacturer] ?? []
+}
+
+export function productsForBulletManufacturer(manufacturer: string): string[] {
+  return BULLET_PRODUCTS[manufacturer] ?? []
+}
+
+export function productsForPowderManufacturer(manufacturer: string): string[] {
+  return POWDER_PRODUCTS[manufacturer] ?? []
+}
+
+export function productsForPrimerManufacturer(manufacturer: string): string[] {
+  return PRIMER_PRODUCTS[manufacturer] ?? []
 }
