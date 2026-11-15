@@ -6,6 +6,7 @@
   "author": "David Cantu",
   "license": "MIT",
   "homepage": "https://github.com/davidcantu/materiel",
+  "desktopName": "Materiel",
   "repository": {
     "type": "git",
     "url": "https://github.com/davidcantu/materiel.git"
@@ -21,6 +22,8 @@
     "dev": "electron-vite dev --mode development",
     "build": "npm run typecheck && electron-vite build",
     "build:test": "npm run typecheck && electron-vite build --mode test && electron-builder --publish never",
+    "build:test:linux": "npm run typecheck && electron-vite build --mode test && electron-builder --publish never --linux AppImage --dir",
+    "smoke:linux": "bash scripts/smoke-packaged-linux.sh",
     "build:prod": "npm run typecheck && electron-vite build --mode production && electron-builder --publish never",
     "postinstall": "electron-builder install-app-deps",
     "build:unpack": "npm run build && electron-builder --dir",
