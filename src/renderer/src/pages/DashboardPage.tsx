@@ -62,7 +62,7 @@ export function DashboardPage({ onNavigateLogs }: DashboardPageProps): React.JSX
       <div className="page">
         <PageHeader
           title="Dashboard"
-          description="Your rifle systems, rounds, and maintenance at a glance."
+          description="Your firearms, rounds, and maintenance at a glance."
         />
         <PageFeedback loading loadingLabel="Loading dashboard…" />
       </div>
@@ -74,7 +74,7 @@ export function DashboardPage({ onNavigateLogs }: DashboardPageProps): React.JSX
       <div className="page">
         <PageHeader
           title="Dashboard"
-          description="Your rifle systems, rounds, and maintenance at a glance."
+          description="Your firearms, rounds, and maintenance at a glance."
           actions={
             <button type="button" className="btn-ghost" onClick={() => void load()}>
               Retry
@@ -100,10 +100,7 @@ export function DashboardPage({ onNavigateLogs }: DashboardPageProps): React.JSX
 
   return (
     <div className="page dashboard-page">
-      <PageHeader
-        title={title}
-        description="Your rifle systems, rounds, and maintenance at a glance."
-      />
+      <PageHeader title={title} description="Your firearms, rounds, and maintenance at a glance." />
 
       <section className="dash-top" aria-label="Key metrics">
         <div className={`kpi-grid${summary.trackValue ? ' kpi-grid-4' : ' kpi-grid-3'}`}>

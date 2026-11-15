@@ -10,7 +10,7 @@ export type StoredLicense = {
   email: string
   key: string
   activatedAt: string
-  /** Local username paired at activation (reinstall recovery hint). */
+  /** Identity paired at activation — the license email (legacy field name). */
   username?: string
 }
 

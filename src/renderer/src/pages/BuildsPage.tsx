@@ -81,7 +81,7 @@ export function BuildsPage({
         code: 'LICENSE_RIFLE_LIMIT',
         message:
           license.blockReason ??
-          `Free tier allows ${license.freeRifleLimit} complete rifles. Activate a license to add more.`,
+          `Free tier allows ${license.freeRifleLimit} complete firearms. Activate a license to add more.`,
         license
       })
       return
@@ -116,7 +116,7 @@ export function BuildsPage({
       throw new Error(result.error.message)
     }
     onLicenseChange()
-    toast.success('Factory rifle created.')
+    toast.success('Factory firearm created.')
     await load()
   }
 
@@ -157,7 +157,7 @@ export function BuildsPage({
     <div className="page">
       <PageHeader
         title="Complete Builds"
-        description="Assemble custom or factory rifles from your inventory."
+        description="Assemble custom or factory firearms from your inventory."
         actions={
           <button type="button" className="btn-primary" onClick={openCreate}>
             + New Build
@@ -167,11 +167,11 @@ export function BuildsPage({
 
       {licenseBanner ? (
         <div className="banner banner-warn" role="alert">
-          <strong>Rifle limit reached</strong>
+          <strong>Firearm limit reached</strong>
           <p>{licenseBanner.message}</p>
           <p className="muted">
             Using {licenseBanner.license.completeRifleCount} of{' '}
-            {licenseBanner.license.freeRifleLimit} free rifles
+            {licenseBanner.license.freeRifleLimit} free firearms
             {licenseBanner.license.mode === 'unlocked' ? ' (dev unlocked)' : ''}.
           </p>
         </div>
@@ -186,8 +186,8 @@ export function BuildsPage({
 
       {!loading && systems.length === 0 ? (
         <EmptyState
-          title="No complete rifles yet"
-          description="Assemble a custom build from inventory parts, or add a factory rifle."
+          title="No complete firearms yet"
+          description="Assemble a custom build from inventory parts, or add a factory firearm."
           actionLabel="Add your first complete build"
           onAction={openCreate}
         />

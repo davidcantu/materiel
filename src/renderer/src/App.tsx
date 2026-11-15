@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { AppInfo } from '../../shared/app-info'
 import type { LicenseStatusInfo } from '../../shared/license'
-import { hasLocalUsername, type ProfileInfo } from '../../shared/profile'
+import { hasLocalIdentity, type ProfileInfo } from '../../shared/profile'
 import { ToastProvider } from './components/Toast'
 import { AmmoPage } from './pages/AmmoPage'
 import { BuildsPage } from './pages/BuildsPage'
@@ -24,7 +24,7 @@ function AppShell(): React.JSX.Element {
 
   const trackAmmo = profile?.trackAmmo ?? true
   const view: NavId = !trackAmmo && active === 'ammo' ? 'dashboard' : active
-  const needsSetup = bootstrapped && !hasLocalUsername(profile)
+  const needsSetup = bootstrapped && !hasLocalIdentity(profile)
 
   const navItems = useMemo<NavItem[]>(
     () => [
@@ -93,7 +93,7 @@ function AppShell(): React.JSX.Element {
         <div className="brand">
           <div className="brand-mark" aria-hidden="true" />
           <div className="brand-title">Materiel</div>
-          <div className="brand-tagline">Precision rifle tracker</div>
+          <div className="brand-tagline">Firearms tracker</div>
         </div>
 
         <nav className="nav" aria-label="Primary">
@@ -122,7 +122,7 @@ function AppShell(): React.JSX.Element {
             Env: <strong>{info?.env ?? '…'}</strong>
           </div>
           <div>
-            User: <strong>{profile?.username || '…'}</strong>
+            User: <strong>{profile?.email || '…'}</strong>
           </div>
           <div>
             License:{' '}

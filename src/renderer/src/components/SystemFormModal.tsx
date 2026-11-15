@@ -277,7 +277,7 @@ export function SystemFormModal({
                 className={`chip${form.mode === 'factory' ? ' active' : ''}`}
                 onClick={() => setField('mode', 'factory')}
               >
-                Factory Rifle
+                Factory firearm
               </button>
             </div>
           </div>

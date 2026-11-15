@@ -16,7 +16,7 @@ export type GetLicenseStatusOptions = LicenseStoreOptions & {
 
 function rifleLimitMessage(count: number): string {
   return (
-    `Free tier allows up to ${FREE_RIFLE_LIMIT} complete rifle systems ` +
+    `Free tier allows up to ${FREE_RIFLE_LIMIT} complete firearms ` +
     `(you have ${count}). Activate a paid license key to add more.`
   )
 }

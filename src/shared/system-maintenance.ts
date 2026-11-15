@@ -1,5 +1,5 @@
 /**
- * Maintenance items scoped to a complete rifle system (known intervals on parts).
+ * Maintenance items scoped to a complete firearm system (known intervals on parts).
  */
 
 import { maintenanceTone } from './dashboard'

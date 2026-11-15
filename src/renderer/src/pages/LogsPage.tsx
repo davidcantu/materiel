@@ -167,7 +167,7 @@ export function LogsPage({ onNavigateBuilds }: LogsPageProps = {}): React.JSX.El
     }
     await load()
 
-    // After a new session, scope due maintenance to that rifle (no system picker).
+    // After a new session, scope due maintenance to that firearm (no system picker).
     if (!editingId) {
       const system = systemsById.get(input.systemId)
       if (system) {
@@ -280,7 +280,7 @@ export function LogsPage({ onNavigateBuilds }: LogsPageProps = {}): React.JSX.El
 
       {!loading && systems.length === 0 ? (
         <EmptyState
-          title="No complete rifles yet"
+          title="No complete firearms yet"
           description="Add a complete build before you can log practice or match sessions."
           actionLabel="Add your first complete build"
           onAction={() => onNavigateBuilds?.()}

@@ -274,7 +274,7 @@ export function LogSessionModal({
     setError(null)
 
     if (!form.systemId) {
-      setError('Select a rifle system.')
+      setError('Select a firearm system.')
       return null
     }
 
@@ -415,7 +415,7 @@ export function LogSessionModal({
         <form id="log-session-form" className="form-grid" onSubmit={handleSubmit}>
           {systems.length === 0 ? (
             <div className="empty-state field-span">
-              <h2>No complete rifles yet</h2>
+              <h2>No complete firearms yet</h2>
               <p>Add your first complete build before logging a session.</p>
               {onNavigateBuilds ? (
                 <button
@@ -441,7 +441,7 @@ export function LogSessionModal({
           ) : null}
 
           <TypeaheadSelect
-            label="Rifle System"
+            label="Firearm system"
             value={form.systemId}
             options={systems.map((system) => ({
               id: system.id,
@@ -453,7 +453,7 @@ export function LogSessionModal({
             onChange={handleSystemChange}
             required
             disabled={systems.length === 0 || confirming}
-            placeholder="Type rifle name…"
+            placeholder="Type system name…"
           />
 
           <TypeaheadSelect

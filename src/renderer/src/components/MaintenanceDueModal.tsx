@@ -36,18 +36,18 @@ export function MaintenanceDueModal({
       <div className="maint-due">
         {afterLog ? (
           <p className="muted">
-            Rounds logged on this rifle. Due items use each part’s known cleaning interval — no
+            Rounds logged on this firearm. Due items use each part’s known cleaning interval — no
             system picker needed.
           </p>
         ) : (
           <p className="muted">
-            Parts on this rifle with known maintenance intervals. Reset clears rounds since last
+            Parts on this firearm with known maintenance intervals. Reset clears rounds since last
             cleaning.
           </p>
         )}
 
         {items.length === 0 ? (
-          <p className="muted">No maintenance-tracked parts with intervals on this rifle.</p>
+          <p className="muted">No maintenance-tracked parts with intervals on this firearm.</p>
         ) : (
           <ul className="alert-list">
             {items.map((item) => (

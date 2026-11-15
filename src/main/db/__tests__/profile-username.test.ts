@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, test } from 'node:test'
-import { hasLocalUsername, isValidUsername } from '../../../shared/profile'
+import { hasLocalIdentity, isValidEmailIdentity } from '../../../shared/profile'
 import { openTestDatabase } from '../connection'
 import { ensureLocalProfile, updateProfile } from '../profile'
 
@@ -22,35 +22,50 @@ function tempDbPath(): string {
   return join(dir, 'test.db')
 }
 
-test('isValidUsername rejects empty and oversized values', () => {
-  assert.equal(isValidUsername(''), false)
-  assert.equal(isValidUsername('a'), false)
-  assert.equal(isValidUsername('ab'), true)
-  assert.equal(isValidUsername('x'.repeat(65)), false)
-  assert.equal(isValidUsername('ok\nname'), false)
+test('isValidEmailIdentity rejects empty and malformed values', () => {
+  assert.equal(isValidEmailIdentity(''), false)
+  assert.equal(isValidEmailIdentity('a'), false)
+  assert.equal(isValidEmailIdentity('ab'), false)
+  assert.equal(isValidEmailIdentity('not-an-email'), false)
+  assert.equal(isValidEmailIdentity('user@local'), false)
+  assert.equal(isValidEmailIdentity('shooter@example.com'), true)
 })
 
-test('first-run profile starts without username', () => {
+test('first-run profile starts without identity; email sets username mirror', () => {
   const db = openTestDatabase(tempDbPath())
   try {
     const profile = ensureLocalProfile(db)
     assert.equal(profile.username, '')
-    assert.equal(hasLocalUsername(profile), false)
+    assert.equal(profile.email, null)
+    assert.equal(hasLocalIdentity(profile), false)
 
-    const updated = updateProfile(db, { username: 'marksman', email: 'm@example.com' })
-    assert.equal(updated.username, 'marksman')
+    const updated = updateProfile(db, { email: 'm@example.com' })
     assert.equal(updated.email, 'm@example.com')
-    assert.equal(hasLocalUsername(updated), true)
+    assert.equal(updated.username, 'm@example.com')
+    assert.equal(hasLocalIdentity(updated), true)
   } finally {
     db.close()
   }
 })
 
-test('updateProfile rejects invalid username', () => {
+test('updateProfile rejects invalid email', () => {
   const db = openTestDatabase(tempDbPath())
   try {
     ensureLocalProfile(db)
-    assert.throws(() => updateProfile(db, { username: 'x' }), /Username must be/)
+    assert.throws(() => updateProfile(db, { email: 'x' }), /valid email/)
+  } finally {
+    db.close()
+  }
+})
+
+test('legacy username patch that looks like email becomes identity', () => {
+  const db = openTestDatabase(tempDbPath())
+  try {
+    ensureLocalProfile(db)
+    const updated = updateProfile(db, { username: 'marksman@example.com' })
+    assert.equal(updated.email, 'marksman@example.com')
+    assert.equal(updated.username, 'marksman@example.com')
+    assert.equal(hasLocalIdentity(updated), true)
   } finally {
     db.close()
   }

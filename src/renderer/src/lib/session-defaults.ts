@@ -1,6 +1,6 @@
 /**
  * In-memory sticky defaults for the current app session (cleared on quit).
- * Last rifle, location, and ammo lot until the user changes them.
+ * Last firearm system, location, and ammo lot until the user changes them.
  */
 
 export type LogSessionDefaults = {
