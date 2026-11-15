@@ -4,9 +4,9 @@ import type { LicenseStatusInfo } from '../../shared/license'
 import type { ProfileInfo } from '../../shared/profile'
 import { AmmoPage } from './pages/AmmoPage'
 import { BuildsPage } from './pages/BuildsPage'
+import { DashboardPage } from './pages/DashboardPage'
 import { InventoryPage } from './pages/InventoryPage'
 import { LogsPage } from './pages/LogsPage'
-import { PlaceholderPage } from './pages/PlaceholderPage'
 import { SettingsPage } from './pages/SettingsPage'
 
 type NavId = 'dashboard' | 'inventory' | 'builds' | 'logs' | 'ammo' | 'settings'
@@ -17,14 +17,14 @@ function App(): React.JSX.Element {
   const [info, setInfo] = useState<AppInfo | null>(null)
   const [license, setLicense] = useState<LicenseStatusInfo | null>(null)
   const [profile, setProfile] = useState<ProfileInfo | null>(null)
-  const [active, setActive] = useState<NavId>('inventory')
+  const [active, setActive] = useState<NavId>('dashboard')
 
   const trackAmmo = profile?.trackAmmo ?? true
-  const view: NavId = !trackAmmo && active === 'ammo' ? 'inventory' : active
+  const view: NavId = !trackAmmo && active === 'ammo' ? 'dashboard' : active
 
   const navItems = useMemo<NavItem[]>(
     () => [
-      { id: 'dashboard', label: 'Dashboard', enabled: false },
+      { id: 'dashboard', label: 'Dashboard', enabled: true },
       { id: 'inventory', label: 'Inventory', enabled: true },
       { id: 'builds', label: 'Complete Builds', enabled: true },
       { id: 'logs', label: 'Shooting Logs', enabled: true },
@@ -109,6 +109,7 @@ function App(): React.JSX.Element {
       </aside>
 
       <main className="main">
+        {view === 'dashboard' ? <DashboardPage onNavigateLogs={() => setActive('logs')} /> : null}
         {view === 'inventory' ? <InventoryPage trackValue={profile?.trackValue ?? true} /> : null}
         {view === 'builds' ? (
           <BuildsPage
@@ -121,12 +122,6 @@ function App(): React.JSX.Element {
         {view === 'ammo' && trackAmmo ? <AmmoPage /> : null}
         {view === 'settings' ? (
           <SettingsPage license={license} profile={profile} onRefresh={() => void refresh()} />
-        ) : null}
-        {view === 'dashboard' ? (
-          <PlaceholderPage
-            title="Dashboard"
-            blurb="Overview and maintenance alerts arrive in a later module."
-          />
         ) : null}
       </main>
     </div>

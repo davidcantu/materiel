@@ -35,6 +35,7 @@ import type {
   ShootingLogInfo,
   UpdateShootingLogInputInfo
 } from '../shared/shooting-logs'
+import type { DashboardSummary } from '../shared/dashboard'
 
 const api = {
   getAppInfo: (): Promise<AppInfo> => ipcRenderer.invoke('app:get-info'),
@@ -105,7 +106,8 @@ const api = {
     ipcRenderer.invoke('loads:create', input),
   updateLoad: (id: string, patch: LoadUpdateInput): Promise<LoadDevelopmentInfo> =>
     ipcRenderer.invoke('loads:update', id, patch),
-  deleteLoad: (id: string): Promise<{ ok: true }> => ipcRenderer.invoke('loads:delete', id)
+  deleteLoad: (id: string): Promise<{ ok: true }> => ipcRenderer.invoke('loads:delete', id),
+  getDashboard: (): Promise<DashboardSummary> => ipcRenderer.invoke('dashboard:get')
 }
 
 if (process.contextIsolated) {
