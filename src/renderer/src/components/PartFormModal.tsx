@@ -12,6 +12,10 @@ import { Modal } from './Modal'
 type PartFormModalProps = {
   trackValue: boolean
   initial?: PartInfo | null
+  /** Prefill type when creating (e.g. inline create from a barrel picker). */
+  defaultType?: PartType
+  /** When true, type chips are disabled (inline create from a typed picker). */
+  lockType?: boolean
   onClose: () => void
   onSave: (input: PartInput) => Promise<void>
 }
@@ -72,11 +76,15 @@ function fromPart(part: PartInfo): FormState {
 export function PartFormModal({
   trackValue,
   initial,
+  defaultType = 'Action',
+  lockType = false,
   onClose,
   onSave
 }: PartFormModalProps): React.JSX.Element {
   const editing = Boolean(initial)
-  const [form, setForm] = useState<FormState>(() => (initial ? fromPart(initial) : blankForm()))
+  const [form, setForm] = useState<FormState>(() =>
+    initial ? fromPart(initial) : blankForm(defaultType)
+  )
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
@@ -155,7 +163,7 @@ export function PartFormModal({
       }
     >
       <form id="part-form" className="form-grid" onSubmit={(e) => void handleSubmit(e)}>
-        <fieldset className="type-picker" disabled={editing}>
+        <fieldset className="type-picker" disabled={editing || lockType}>
           <legend className="field-label">Part Type</legend>
           <div className="chip-row">
             {PART_TYPES.map((type) => (

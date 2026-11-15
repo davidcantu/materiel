@@ -18,6 +18,8 @@ type AmmoFormModalProps = {
   initial?: AmmoInventoryInfo | null
   /** Prefill a new ammo lot from a load recipe (Move to Practice from Load Data). */
   fromLoad?: LoadDevelopmentInfo | null
+  /** Prefill cartridge when creating inline (e.g. from a shooting log). */
+  defaultCaliber?: string | null
   loads: LoadDevelopmentInfo[]
   onClose: () => void
   onSave: (input: AmmoInput) => Promise<void>
@@ -159,6 +161,7 @@ function parseOptionalNumber(value: string): number | null {
 export function AmmoFormModal({
   initial,
   fromLoad: seedLoad = null,
+  defaultCaliber = null,
   loads,
   onClose,
   onSave
@@ -168,7 +171,9 @@ export function AmmoFormModal({
   const [form, setForm] = useState<FormState>(() => {
     if (initial) return fromAmmo(initial)
     if (seedLoad) return fromLoad(seedLoad)
-    return blankForm()
+    const blank = blankForm()
+    if (defaultCaliber?.trim()) blank.caliber = defaultCaliber.trim()
+    return blank
   })
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)

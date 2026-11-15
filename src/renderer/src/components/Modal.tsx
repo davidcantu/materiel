@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react'
+import { isTopModalLayer, popModalLayer, pushModalLayer } from '../lib/modal-stack'
 
 type ModalProps = {
   title: string
@@ -14,12 +15,15 @@ const FOCUSABLE =
 export function Modal({ title, onClose, children, footer, wide }: ModalProps): React.JSX.Element {
   const dialogRef = useRef<HTMLDivElement>(null)
   const previouslyFocused = useRef<HTMLElement | null>(null)
+  const layerRef = useRef(0)
   const titleId = useId()
 
   useEffect(() => {
     previouslyFocused.current = document.activeElement as HTMLElement | null
     const dialog = dialogRef.current
     if (!dialog) return
+
+    layerRef.current = pushModalLayer()
 
     const focusables = (): HTMLElement[] =>
       Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
@@ -34,11 +38,13 @@ export function Modal({ title, onClose, children, footer, wide }: ModalProps): R
 
     function onKeyDown(event: KeyboardEvent): void {
       if (event.key === 'Escape') {
+        if (!isTopModalLayer(layerRef.current)) return
         event.preventDefault()
         onClose()
         return
       }
       if (event.key !== 'Tab' || !dialogRef.current) return
+      if (!isTopModalLayer(layerRef.current)) return
 
       const nodes = focusables()
       if (nodes.length === 0) {
@@ -63,6 +69,7 @@ export function Modal({ title, onClose, children, footer, wide }: ModalProps): R
     document.addEventListener('keydown', onKeyDown)
     return () => {
       document.removeEventListener('keydown', onKeyDown)
+      popModalLayer(layerRef.current)
       previouslyFocused.current?.focus?.()
     }
   }, [onClose])
