@@ -43,6 +43,7 @@ export { registerLicenseIpc } from './ipc'
 import { registerLicenseIpc } from './ipc'
 import { registerSystemsIpc } from '../systems/ipc'
 import { registerPartsIpc } from '../parts/ipc'
+import { registerLogsIpc } from '../logs/ipc'
 import { ensureLicenseState } from './state'
 import { getLicenseStatus } from './status'
 
@@ -56,5 +57,6 @@ export function initLicenseSubsystem(): ReturnType<typeof getLicenseStatus> {
   registerLicenseIpc()
   registerSystemsIpc()
   registerPartsIpc()
+  registerLogsIpc()
   return getLicenseStatus()
 }

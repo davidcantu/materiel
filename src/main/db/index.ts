@@ -53,6 +53,7 @@ export {
   resetPartMaintenance
 } from './parts'
 export type { NewPartInput, UpdatePartInput, ListPartsOptions } from './parts'
+export { listAmmoInventory, getAmmoInventory } from './ammo'
 export { ensureLocalProfile, getProfile, updateProfile } from './profile'
 export type { ProfilePatch } from './profile'
 export { migrate, getAppliedMigrationVersion, MIGRATIONS } from './migrate'

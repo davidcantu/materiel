@@ -1,0 +1,316 @@
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import type { AmmoInventoryInfo } from '../../../shared/ammo'
+import type { PartInfo } from '../../../shared/parts'
+import type {
+  LogsTimeRange,
+  NewShootingLogInputInfo,
+  SessionType,
+  ShootingLogInfo
+} from '../../../shared/shooting-logs'
+import type { CompleteSystemInfo } from '../../../shared/systems'
+import { EmptyState } from '../components/EmptyState'
+import { LogSessionModal } from '../components/LogSessionModal'
+
+function daysAgoIso(days: number): string {
+  const d = new Date()
+  d.setHours(0, 0, 0, 0)
+  d.setDate(d.getDate() - days)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+function formatLogDate(iso: string): string {
+  const date = new Date(`${iso.slice(0, 10)}T12:00:00`)
+  if (Number.isNaN(date.getTime())) return iso.slice(0, 10)
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  })
+}
+
+function cartridgeLabel(log: ShootingLogInfo, ammoById: Map<string, AmmoInventoryInfo>): string {
+  if (log.cartridge?.trim()) return log.cartridge
+  if (log.ammoId) {
+    const ammo = ammoById.get(log.ammoId)
+    if (ammo?.name) return ammo.name
+  }
+  return 'Manual Entry'
+}
+
+export function LogsPage(): React.JSX.Element {
+  const [logs, setLogs] = useState<ShootingLogInfo[]>([])
+  const [systems, setSystems] = useState<CompleteSystemInfo[]>([])
+  const [parts, setParts] = useState<PartInfo[]>([])
+  const [ammo, setAmmo] = useState<AmmoInventoryInfo[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const [systemFilter, setSystemFilter] = useState<string>('All')
+  const [sessionFilter, setSessionFilter] = useState<SessionType | 'All'>('All')
+  const [timeRange, setTimeRange] = useState<LogsTimeRange>('all')
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editing, setEditing] = useState<ShootingLogInfo | null>(null)
+
+  const systemsById = useMemo(() => {
+    const map = new Map<string, CompleteSystemInfo>()
+    for (const system of systems) map.set(system.id, system)
+    return map
+  }, [systems])
+
+  const ammoById = useMemo(() => {
+    const map = new Map<string, AmmoInventoryInfo>()
+    for (const item of ammo) map.set(item.id, item)
+    return map
+  }, [ammo])
+
+  const load = useCallback(async () => {
+    setError(null)
+    try {
+      const [nextLogs, nextSystems, nextParts, nextAmmo] = await Promise.all([
+        window.api.listLogs(),
+        window.api.listSystems(),
+        window.api.listParts(),
+        window.api.listAmmo()
+      ])
+      setLogs(nextLogs)
+      setSystems(nextSystems)
+      setParts(nextParts)
+      setAmmo(nextAmmo)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load shooting logs')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    void Promise.all([
+      window.api.listLogs(),
+      window.api.listSystems(),
+      window.api.listParts(),
+      window.api.listAmmo()
+    ])
+      .then(([nextLogs, nextSystems, nextParts, nextAmmo]) => {
+        if (!cancelled) {
+          setLogs(nextLogs)
+          setSystems(nextSystems)
+          setParts(nextParts)
+          setAmmo(nextAmmo)
+          setLoading(false)
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Failed to load shooting logs')
+          setLoading(false)
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    const minDate =
+      timeRange === 'year' ? daysAgoIso(365) : timeRange === 'month' ? daysAgoIso(30) : null
+
+    return logs.filter((log) => {
+      if (systemFilter !== 'All' && log.systemId !== systemFilter) return false
+      if (sessionFilter !== 'All' && log.sessionType !== sessionFilter) return false
+      if (minDate && log.date.slice(0, 10) < minDate) return false
+
+      if (!q) return true
+      const systemName = systemsById.get(log.systemId)?.name ?? ''
+      const cartridge = cartridgeLabel(log, ammoById)
+      const hay = [systemName, log.location, cartridge, log.notes, log.sessionType]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+      return hay.includes(q)
+    })
+  }, [logs, search, systemFilter, sessionFilter, timeRange, systemsById, ammoById])
+
+  function openCreate(): void {
+    setEditing(null)
+    setModalOpen(true)
+  }
+
+  async function handleSave(input: NewShootingLogInputInfo, editingId?: string): Promise<void> {
+    if (editingId) {
+      await window.api.updateLog({ id: editingId, ...input })
+    } else {
+      await window.api.addLog(input)
+    }
+    await load()
+  }
+
+  async function handleDelete(log: ShootingLogInfo): Promise<void> {
+    const systemName = systemsById.get(log.systemId)?.name ?? 'session'
+    if (!window.confirm(`Delete log for “${systemName}” on ${formatLogDate(log.date)}?`)) {
+      return
+    }
+    try {
+      await window.api.deleteLog(log.id)
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Delete failed')
+    }
+  }
+
+  return (
+    <div className="page">
+      <header className="page-header">
+        <div>
+          <h1>Shooting Logs</h1>
+          <p>Record practice and match sessions; rounds update builds and ammo.</p>
+        </div>
+        <button type="button" className="btn-primary" onClick={openCreate}>
+          + Log Session
+        </button>
+      </header>
+
+      <div className="toolbar">
+        <input
+          className="search-input"
+          placeholder="Search logs..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <div className="toolbar-filters">
+          <label className="filter-select">
+            <span className="field-label">System</span>
+            <select value={systemFilter} onChange={(e) => setSystemFilter(e.target.value)}>
+              <option value="All">All systems</option>
+              {systems.map((system) => (
+                <option key={system.id} value={system.id}>
+                  {system.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="chip-row" role="group" aria-label="Session type filter">
+            {(['All', 'Practice', 'Match'] as const).map((type) => (
+              <button
+                key={type}
+                type="button"
+                className={`chip${sessionFilter === type ? ' active' : ''}`}
+                onClick={() => setSessionFilter(type)}
+              >
+                {type}
+              </button>
+            ))}
+          </div>
+          <div className="chip-row" role="group" aria-label="Time range">
+            {(
+              [
+                { id: 'all', label: 'All' },
+                { id: 'year', label: 'Year' },
+                { id: 'month', label: 'Month' }
+              ] as const
+            ).map((range) => (
+              <button
+                key={range.id}
+                type="button"
+                className={`chip${timeRange === range.id ? ' active' : ''}`}
+                onClick={() => setTimeRange(range.id)}
+              >
+                {range.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {error ? <p className="form-error">{error}</p> : null}
+
+      {loading ? (
+        <p className="muted">Loading logs…</p>
+      ) : logs.length === 0 ? (
+        <EmptyState
+          title="No Shooting Logs"
+          description="Log your first practice or match session to start tracking rounds."
+          actionLabel="Log First Session"
+          onAction={openCreate}
+        />
+      ) : filtered.length === 0 ? (
+        <p className="muted">No shooting logs found for this period.</p>
+      ) : (
+        <div className="table-wrap">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>System</th>
+                <th>Location</th>
+                <th>Rounds</th>
+                <th>Cartridge</th>
+                <th>Velocity</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((log) => {
+                const system = systemsById.get(log.systemId)
+                return (
+                  <tr key={log.id}>
+                    <td>
+                      <div className="cell-title">{formatLogDate(log.date)}</div>
+                      <div className="cell-sub">{log.sessionType}</div>
+                    </td>
+                    <td>{system?.name ?? 'Unknown system'}</td>
+                    <td>{log.location}</td>
+                    <td>
+                      <span className="rounds-badge">{log.roundsFired}</span>
+                    </td>
+                    <td>{cartridgeLabel(log, ammoById)}</td>
+                    <td>{log.velocity != null ? `${log.velocity} fps` : '—'}</td>
+                    <td>
+                      <div className="row-actions">
+                        <button
+                          type="button"
+                          className="btn-ghost btn-sm"
+                          onClick={() => {
+                            setEditing(log)
+                            setModalOpen(true)
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-ghost btn-sm"
+                          onClick={() => void handleDelete(log)}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {modalOpen ? (
+        <LogSessionModal
+          systems={systems}
+          parts={parts}
+          ammo={ammo}
+          initial={editing}
+          onClose={() => {
+            setModalOpen(false)
+            setEditing(null)
+          }}
+          onSave={handleSave}
+        />
+      ) : null}
+    </div>
+  )
+}

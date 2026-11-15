@@ -28,6 +28,12 @@ import type {
   GatedSystemCreateResult,
   RestoreLicenseCheckResult
 } from '../shared/systems'
+import type { AmmoInventoryInfo } from '../shared/ammo'
+import type {
+  NewShootingLogInputInfo,
+  ShootingLogInfo,
+  UpdateShootingLogInputInfo
+} from '../shared/shooting-logs'
 
 const api = {
   getAppInfo: (): Promise<AppInfo> => ipcRenderer.invoke('app:get-info'),
@@ -75,7 +81,15 @@ const api = {
   ): Promise<CompleteSystemInfo> => ipcRenderer.invoke('systems:update', id, patch),
   deleteSystem: (id: string): Promise<{ ok: true }> => ipcRenderer.invoke('systems:delete', id),
   assertRestoreAllowed: (systemCount: number): Promise<RestoreLicenseCheckResult> =>
-    ipcRenderer.invoke('systems:assert-restore-allowed', systemCount)
+    ipcRenderer.invoke('systems:assert-restore-allowed', systemCount),
+  listLogs: (): Promise<ShootingLogInfo[]> => ipcRenderer.invoke('logs:list'),
+  getLog: (id: string): Promise<ShootingLogInfo | null> => ipcRenderer.invoke('logs:get', id),
+  addLog: (input: NewShootingLogInputInfo): Promise<ShootingLogInfo> =>
+    ipcRenderer.invoke('logs:add', input),
+  updateLog: (input: UpdateShootingLogInputInfo): Promise<ShootingLogInfo> =>
+    ipcRenderer.invoke('logs:update', input),
+  deleteLog: (id: string): Promise<{ ok: true }> => ipcRenderer.invoke('logs:delete', id),
+  listAmmo: (): Promise<AmmoInventoryInfo[]> => ipcRenderer.invoke('ammo:list')
 }
 
 if (process.contextIsolated) {
