@@ -1,10 +1,6 @@
-export type LicenseStatusInfo = {
-  tier: 'free' | 'paid'
-  freeRifleLimit: number
-  completeRifleCount: number
-  canCreateRifle: boolean
-  keyPresent: boolean
-}
+import type { LicenseStatusInfo } from './license'
+
+export type { LicenseStatusInfo } from './license'
 
 export type DatabaseHealthInfo = {
   ready: boolean

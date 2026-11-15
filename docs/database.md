@@ -41,7 +41,7 @@ Empty DB → apply all pending versions in a transaction.
 | Load development          | `load_developments`                               |
 | Ammo inventory            | `ammo_inventory`                                  |
 | Backup settings / logs    | `backup_settings`, `backup_logs` (local metadata) |
-| License                   | `license_state` (minimal stub)                    |
+| License                   | `license_state` + `{userData}/license.dat` (see [license.md](./license.md)) |
 
 ## Business-rule helpers
 
@@ -60,3 +60,4 @@ Dev-only: `openDatabase({ seedDemo: true })` or `MAIN_VITE_SEED_DEMO=true`. Seed
 
 - `db:health` → `{ ready, path, cipher, migrationVersion, encrypted }`
 - Backup channels: see [backup.md](./backup.md)
+- License + gated system create: see [license.md](./license.md)
