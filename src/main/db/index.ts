@@ -1,45 +1,84 @@
 /**
- * Encrypted SQLite data layer (stub).
+ * Encrypted SQLite data layer for Materiel.
  *
- * TODO:
- * - Open better-sqlite3-multiple-ciphers with AES-256 passphrase
- * - Run migrations for Parts / Systems / Logs / Ammo / Loads / Settings
- * - Expose transactional helpers for log side-effects (spec §7.2)
+ * - AES-256 at rest via better-sqlite3-multiple-ciphers (SQLCipher cipher)
+ * - Forward migrations from empty DB
+ * - Transactional shooting-log side effects (§7.2)
+ * - Factory rifle part synthesis (§7.1)
+ *
+ * Key supply: see docs/database.md (default = Electron safeStorage).
  */
 
 import { app } from 'electron'
 import { join } from 'path'
+import {
+  closeDatabase as closeConnection,
+  getDatabase as getConnection,
+  getHealth as getConnectionHealth,
+  openDatabase as openConnection,
+  requireDatabase as requireConnection,
+  type DatabaseHandle,
+  type OpenDatabaseOptions as CoreOpenOptions
+} from './connection'
 
-export type DatabaseHandle = {
-  path: string
-  ready: boolean
+export type { DatabaseHandle } from './connection'
+export type { DatabaseHealth } from './types'
+export * from './types'
+export {
+  addShootingLog,
+  updateShootingLog,
+  deleteShootingLog,
+  getShootingLog,
+  listShootingLogs
+} from './shooting-logs'
+export {
+  synthesizeFactoryParts,
+  deleteSynthesizedFactoryParts,
+  factoryPartIds,
+  createCustomSystem,
+  createFactorySystem,
+  updateSystem,
+  deleteSystem,
+  getSystem,
+  countCompleteSystems
+} from './systems'
+export { migrate, getAppliedMigrationVersion, MIGRATIONS } from './migrate'
+export { seedDemoIfEmpty } from './seed'
+export { resolveDatabaseKey, DB_CIPHER } from './key'
+export { openTestDatabase, openEncryptedConnection } from './connection'
+
+export type OpenDatabaseOptions = Omit<CoreOpenOptions, 'path'> & {
+  path?: string
 }
-
-let handle: DatabaseHandle | null = null
 
 export function getDatabasePath(): string {
   return join(app.getPath('userData'), 'materiel.db')
 }
 
-/**
- * Stub initializer — does not open a real connection yet.
- * Follow-up: import Database from 'better-sqlite3-multiple-ciphers'
- * and apply encryption + schema migrations.
- */
-export function initDatabase(): DatabaseHandle {
-  const path = getDatabasePath()
-  // TODO: const Database = require('better-sqlite3-multiple-ciphers')
-  // TODO: const db = new Database(path); db.pragma(`key = '...'`)
-  handle = { path, ready: false }
-  console.info('[db] stub ready; schema migrations not implemented yet:', path)
-  return handle
+export function openDatabase(options: OpenDatabaseOptions = {}): DatabaseHandle {
+  return openConnection({
+    ...options,
+    path: options.path ?? getDatabasePath()
+  })
+}
+
+/** App bootstrap — opens the default userData DB. */
+export function initDatabase(options: OpenDatabaseOptions = {}): DatabaseHandle {
+  return openDatabase(options)
 }
 
 export function getDatabase(): DatabaseHandle | null {
-  return handle
+  return getConnection()
+}
+
+export function requireDatabase(): DatabaseHandle {
+  return requireConnection()
+}
+
+export function getHealth(): ReturnType<typeof getConnectionHealth> {
+  return getConnectionHealth()
 }
 
 export function closeDatabase(): void {
-  // TODO: db.close()
-  handle = null
+  closeConnection()
 }
