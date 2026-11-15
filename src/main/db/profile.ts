@@ -1,12 +1,14 @@
 /**
- * Single local profile row (settings: trackValue, trackAmmo, identity).
+ * Single local profile row (settings: username, trackValue, trackAmmo, identity).
  */
 
 import type Database from 'better-sqlite3-multiple-ciphers'
+import { isValidUsername, normalizeUsername } from '../../shared/profile'
 import type { CompetitionSeries, Profile } from './types'
 
 type ProfileRow = {
   id: string
+  username: string
   first_name: string
   last_name: string
   email: string | null
@@ -23,6 +25,7 @@ type ProfileRow = {
 }
 
 export type ProfilePatch = {
+  username?: string
   firstName?: string
   lastName?: string
   email?: string | null
@@ -54,6 +57,7 @@ function mapProfile(row: ProfileRow): Profile {
 
   return {
     id: row.id,
+    username: row.username ?? '',
     firstName: row.first_name,
     lastName: row.last_name,
     email: row.email,
@@ -81,11 +85,11 @@ export function ensureLocalProfile(db: Database.Database): Profile {
   const createdAt = nowIso()
   db.prepare(
     `INSERT INTO profile (
-      id, first_name, last_name, email, city, state, country,
+      id, username, first_name, last_name, email, city, state, country,
       competition_series, track_value, track_ammo, unlock_pin_set,
       created_at, updated_at
     ) VALUES (
-      @id, '', '', NULL, '', '', '',
+      @id, '', '', '', NULL, '', '', '',
       '[]', 1, 1, 0,
       @createdAt, @createdAt
     )`
@@ -103,8 +107,18 @@ export function updateProfile(db: Database.Database, patch: ProfilePatch): Profi
   const existing = ensureLocalProfile(db)
   const updatedAt = nowIso()
 
+  let nextUsername = existing.username
+  if (patch.username !== undefined) {
+    const normalized = normalizeUsername(patch.username)
+    if (!isValidUsername(normalized)) {
+      throw new Error('Username must be 2–64 characters (no line breaks).')
+    }
+    nextUsername = normalized
+  }
+
   db.prepare(
     `UPDATE profile SET
+      username = @username,
       first_name = @firstName,
       last_name = @lastName,
       email = @email,
@@ -117,6 +131,7 @@ export function updateProfile(db: Database.Database, patch: ProfilePatch): Profi
     WHERE id = @id`
   ).run({
     id: existing.id,
+    username: nextUsername,
     firstName: patch.firstName ?? existing.firstName,
     lastName: patch.lastName ?? existing.lastName,
     email: patch.email !== undefined ? patch.email : existing.email,

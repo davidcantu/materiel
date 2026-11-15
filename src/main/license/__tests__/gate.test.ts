@@ -166,12 +166,16 @@ test('paid activation unlocks beyond free tier', () => {
   assert.equal(before.canCreateRifle, false)
 
   const key = issueLicenseKey('shooter@example.com', SECRET)
-  const result = activateLicense({ email: 'shooter@example.com', key }, storeOpts)
+  const result = activateLicense(
+    { email: 'shooter@example.com', key, username: 'shooter' },
+    storeOpts
+  )
   assert.equal(result.ok, true)
   if (result.ok) {
     assert.equal(result.license.tier, 'paid')
     assert.equal(result.license.canCreateRifle, true)
     assert.equal(result.license.activatedEmail, 'shooter@example.com')
+    assert.equal(result.license.activatedUsername, 'shooter')
     assert.equal(result.license.keyPresent, true)
   }
 
@@ -181,10 +185,41 @@ test('paid activation unlocks beyond free tier', () => {
 test('activate rejects email mismatch', () => {
   const { storeOpts } = setup()
   const key = issueLicenseKey('a@example.com', SECRET)
-  const result = activateLicense({ email: 'b@example.com', key }, storeOpts)
+  const result = activateLicense({ email: 'b@example.com', key, username: 'shooter' }, storeOpts)
   assert.equal(result.ok, false)
   if (!result.ok) {
     assert.equal(result.code, 'LICENSE_EMAIL_MISMATCH')
+  }
+})
+
+test('activate requires username', () => {
+  const { storeOpts } = setup()
+  const key = issueLicenseKey('shooter@example.com', SECRET)
+  const result = activateLicense({ email: 'shooter@example.com', key }, storeOpts)
+  assert.equal(result.ok, false)
+  if (!result.ok) {
+    assert.equal(result.code, 'LICENSE_USERNAME_REQUIRED')
+  }
+})
+
+test('reinstall recovery: username + key restores paid', () => {
+  const { storeOpts } = setup()
+  const key = issueLicenseKey('shooter@example.com', SECRET)
+  const first = activateLicense(
+    { email: 'shooter@example.com', key, username: 'range-day' },
+    storeOpts
+  )
+  assert.equal(first.ok, true)
+  clearLicense(storeOpts)
+
+  const restored = activateLicense(
+    { email: 'shooter@example.com', key, username: 'range-day' },
+    storeOpts
+  )
+  assert.equal(restored.ok, true)
+  if (restored.ok) {
+    assert.equal(restored.license.tier, 'paid')
+    assert.equal(restored.license.activatedUsername, 'range-day')
   }
 })
 

@@ -15,6 +15,8 @@ export type CompetitionSeries = 'PRS' | 'NRL' | 'NRL22' | 'ELR' | 'Other'
 
 export type Profile = {
   id: string
+  /** Local identity (first-run); empty until the user sets one. */
+  username: string
   firstName: string
   lastName: string
   email: string | null

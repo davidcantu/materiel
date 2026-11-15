@@ -15,7 +15,11 @@ export function registerLicenseIpc(): void {
         license: getLicenseStatus()
       }
     }
-    return activateLicense({ email: request.email, key: request.key })
+    return activateLicense({
+      email: request.email,
+      key: request.key,
+      username: typeof request.username === 'string' ? request.username : undefined
+    })
   })
 
   ipcMain.handle('license:clear', () => clearLicense())

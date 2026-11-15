@@ -27,6 +27,7 @@ export function getLicenseStatus(options: GetLicenseStatusOptions = {}): License
 
   let keyPresent = Boolean(stored)
   let activatedEmail: string | null = stored?.email ?? null
+  let activatedUsername: string | null = stored?.username?.trim() || null
   let tier: LicenseStatusInfo['tier'] = 'free'
 
   if (stored) {
@@ -39,10 +40,12 @@ export function getLicenseStatus(options: GetLicenseStatusOptions = {}): License
       tier = 'paid'
       keyPresent = true
       activatedEmail = verified.email
+      activatedUsername = stored.username?.trim() || null
     } else {
       // Corrupt / wrong-secret key on disk — treat as free.
       keyPresent = false
       activatedEmail = null
+      activatedUsername = null
       tier = 'free'
     }
   }
@@ -82,6 +85,7 @@ export function getLicenseStatus(options: GetLicenseStatusOptions = {}): License
     canCreateRifle,
     keyPresent,
     activatedEmail,
+    activatedUsername,
     mode,
     blockReason
   }

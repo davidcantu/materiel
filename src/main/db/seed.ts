@@ -30,11 +30,11 @@ export function seedDemoIfEmpty(db: Database.Database): boolean {
 
     db.prepare(
       `INSERT INTO profile (
-        id, first_name, last_name, email, city, state, country,
+        id, username, first_name, last_name, email, city, state, country,
         competition_series, track_value, track_ammo, unlock_pin_set,
         created_at, updated_at
       ) VALUES (
-        'local-profile', 'David', 'Cantu', 'david@local', 'Austin', 'TX', 'USA',
+        'local-profile', 'david', 'David', 'Cantu', 'david@local', 'Austin', 'TX', 'USA',
         '["PRS","NRL"]', 1, 1, 0, @createdAt, @createdAt
       )`
     ).run({ createdAt })
