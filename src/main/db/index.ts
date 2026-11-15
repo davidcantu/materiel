@@ -40,8 +40,21 @@ export {
   updateSystem,
   deleteSystem,
   getSystem,
+  listSystems,
   countCompleteSystems
 } from './systems'
+export {
+  listParts,
+  getPart,
+  createPart,
+  updatePart,
+  deletePart,
+  setPartStatus,
+  resetPartMaintenance
+} from './parts'
+export type { NewPartInput, UpdatePartInput, ListPartsOptions } from './parts'
+export { ensureLocalProfile, getProfile, updateProfile } from './profile'
+export type { ProfilePatch } from './profile'
 export { migrate, getAppliedMigrationVersion, MIGRATIONS } from './migrate'
 export { seedDemoIfEmpty } from './seed'
 export { resolveDatabaseKey, DB_CIPHER } from './key'
