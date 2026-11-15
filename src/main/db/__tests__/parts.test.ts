@@ -96,6 +96,7 @@ test('parts: refuses delete while part is on a system', () => {
 
   const system = createCustomSystem(db, {
     name: 'Test',
+    platform: 'bolt_action',
     actionId: action.id,
     barrelId: barrel.id,
     chassisId: chassis.id,

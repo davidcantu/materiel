@@ -56,10 +56,25 @@ test('migrations run forward from empty encrypted DB', () => {
     // Re-open / re-migrate is a no-op.
     const versionAgain = getAppliedMigrationVersion(db)
     assert.equal(versionAgain, MIGRATIONS[MIGRATIONS.length - 1].id)
-    assert.equal(versionAgain, 4)
+    assert.equal(versionAgain, 5)
 
     const partCols = db.prepare(`PRAGMA table_info(parts)`).all() as Array<{ name: string }>
     assert.ok(!partCols.some((c) => c.name === 'name'), 'parts.name should be dropped')
+    assert.ok(
+      partCols.some((c) => c.name === 'platforms'),
+      'parts.platforms column missing'
+    )
+
+    const systemCols = db.prepare(`PRAGMA table_info(systems)`).all() as Array<{ name: string }>
+    assert.ok(
+      systemCols.some((c) => c.name === 'platform'),
+      'systems.platform column missing'
+    )
+    assert.ok(
+      systemCols.some((c) => c.name === 'laser_ir_id'),
+      'systems.laser_ir_id column missing'
+    )
+    assert.ok(systemCols.some((c) => c.name === 'light_id'), 'systems.light_id column missing')
   } finally {
     db.close()
   }

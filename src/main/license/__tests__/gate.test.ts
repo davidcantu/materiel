@@ -62,11 +62,11 @@ function insertSystems(count: number): void {
   const createdAt = '2026-01-01T00:00:00.000Z'
   const insertPart = db.prepare(
     `INSERT INTO parts (
-      id, manufacturer, value, type, status, model, serial_number,
+      id, manufacturer, value, type, status, platforms, model, serial_number,
       total_round_count, rounds_after_cleaning, maintenance_interval,
       caliber, gunsmith, twist_rate, barrel_life, created_at, updated_at
     ) VALUES (
-      @id, 'Acme', 100, @type, 'In Stock', 'M1', @serial,
+      @id, 'Acme', 100, @type, 'In Stock', '["bolt_action"]', 'M1', @serial,
       0, 0, 500, @caliber, @gunsmith, @twist, @life, @createdAt, @createdAt
     )`
   )
@@ -108,6 +108,7 @@ function insertSystems(count: number): void {
     createCustomSystem(db, {
       id: `sys-${i}`,
       name: `Rifle ${i}`,
+      platform: 'bolt_action',
       actionId,
       barrelId,
       chassisId

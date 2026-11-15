@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { PartInfo, PartInput, PartStatus, PartType } from '../../../shared/parts'
-import { PART_TYPES, PART_STATUSES } from '../../../shared/parts'
+import { PART_STATUSES, partTypeLabel } from '../../../shared/parts'
+import {
+  PLATFORMS,
+  PLATFORM_LABELS,
+  PLATFORM_PART_TYPES,
+  type Platform
+} from '../../../shared/platforms'
 import { EmptyState } from '../components/EmptyState'
 import { PageFeedback } from '../components/PageFeedback'
 import { PageHeader } from '../components/PageHeader'
@@ -13,7 +19,6 @@ import {
   maintenancePercent,
   maintenanceTone,
   partPrimaryTitle,
-  partTypeLabel,
   typeFilterLabel
 } from '../lib/format'
 
@@ -29,10 +34,28 @@ export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Ele
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  const [platformFilter, setPlatformFilter] = useState<Platform | 'All'>('All')
   const [typeFilter, setTypeFilter] = useState<PartType | 'All'>('All')
   const [statuses, setStatuses] = useState<PartStatus[]>(DEFAULT_STATUSES)
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<PartInfo | null>(null)
+
+  const categoryOptions = useMemo(() => {
+    if (platformFilter === 'All') {
+      const seen = new Set<PartType>()
+      const types: PartType[] = []
+      for (const platform of PLATFORMS) {
+        for (const type of PLATFORM_PART_TYPES[platform]) {
+          if (!seen.has(type)) {
+            seen.add(type)
+            types.push(type)
+          }
+        }
+      }
+      return types
+    }
+    return [...PLATFORM_PART_TYPES[platformFilter]]
+  }, [platformFilter])
 
   const load = useCallback(async () => {
     setError(null)
@@ -67,9 +90,16 @@ export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Ele
     }
   }, [])
 
+  useEffect(() => {
+    if (typeFilter !== 'All' && !categoryOptions.includes(typeFilter)) {
+      setTypeFilter('All')
+    }
+  }, [categoryOptions, typeFilter])
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     return parts.filter((part) => {
+      if (platformFilter !== 'All' && !part.platforms.includes(platformFilter)) return false
       if (typeFilter !== 'All' && part.type !== typeFilter) return false
       if (!statuses.includes(part.status)) return false
       if (!q) return true
@@ -79,7 +109,7 @@ export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Ele
         .toLowerCase()
       return hay.includes(q)
     })
-  }, [parts, search, typeFilter, statuses])
+  }, [parts, search, platformFilter, typeFilter, statuses])
 
   function toggleStatus(status: PartStatus): void {
     setStatuses((prev) => {
@@ -141,7 +171,7 @@ export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Ele
     <div className="page">
       <PageHeader
         title="Parts Inventory"
-        description="Track components, status, and maintenance intervals."
+        description="Track components by platform, category, status, and maintenance."
         actions={
           <button type="button" className="btn-primary" onClick={openCreate}>
             + Add Part
@@ -157,8 +187,20 @@ export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Ele
           onChange={(e) => setSearch(e.target.value)}
           aria-label="Search parts"
         />
-        <div className="chip-row" role="group" aria-label="Type filter">
-          {(['All', ...PART_TYPES] as const).map((type) => (
+        <div className="chip-row" role="group" aria-label="Platform filter">
+          {(['All', ...PLATFORMS] as const).map((platform) => (
+            <button
+              key={platform}
+              type="button"
+              className={`chip${platformFilter === platform ? ' active' : ''}`}
+              onClick={() => setPlatformFilter(platform)}
+            >
+              {platform === 'All' ? 'All platforms' : PLATFORM_LABELS[platform]}
+            </button>
+          ))}
+        </div>
+        <div className="chip-row" role="group" aria-label="Category filter">
+          {(['All', ...categoryOptions] as const).map((type) => (
             <button
               key={type}
               type="button"
@@ -193,7 +235,7 @@ export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Ele
       {!loading && parts.length === 0 ? (
         <EmptyState
           title="Your armory is empty"
-          description="Add your first action, barrel, or optic to get started."
+          description="Add bolt-action, AR, or pistol parts to get started."
           actionLabel="Add your first part"
           onAction={openCreate}
         />
@@ -202,10 +244,11 @@ export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Ele
       {!loading && parts.length > 0 && filtered.length === 0 ? (
         <EmptyState
           title="No parts match the current filters"
-          description="Clear search and status filters to see your full inventory."
+          description="Clear search, platform, and status filters to see your full inventory."
           actionLabel="Clear filters"
           onAction={() => {
             setSearch('')
+            setPlatformFilter('All')
             setTypeFilter('All')
             setStatuses(DEFAULT_STATUSES)
           }}
@@ -218,6 +261,7 @@ export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Ele
             <thead>
               <tr>
                 <th>Type</th>
+                <th>Platform</th>
                 <th>Part</th>
                 <th>Details</th>
                 <th>Status</th>
@@ -234,6 +278,9 @@ export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Ele
                     <td>
                       <span className="type-pill">{partTypeLabel(part.type)}</span>
                     </td>
+                    <td className="cell-meta">
+                      {part.platforms.map((p) => PLATFORM_LABELS[p]).join(', ')}
+                    </td>
                     <td>
                       <div className="cell-title">{partPrimaryTitle(part)}</div>
                       {part.serialNumber ? (
@@ -249,9 +296,6 @@ export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Ele
                           <div>Twist 1:{part.twistRate ?? '—'}</div>
                           <div>{part.gunsmith}</div>
                         </>
-                      ) : null}
-                      {(part.type === 'Action' || part.type === 'Optic') && part.serialNumber ? (
-                        <div>S/N {part.serialNumber}</div>
                       ) : null}
                       {part.type === 'Suppressor' ? <div>{part.muzzleType}</div> : null}
                     </td>
@@ -344,6 +388,7 @@ export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Ele
         <PartFormModal
           trackValue={trackValue}
           initial={editing}
+          defaultPlatforms={platformFilter === 'All' ? undefined : [platformFilter]}
           onClose={() => {
             setModalOpen(false)
             setEditing(null)

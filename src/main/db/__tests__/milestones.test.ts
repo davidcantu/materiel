@@ -86,6 +86,17 @@ test('evaluateMilestones: each §7.5 rule unlocks independently', () => {
     ),
     false
   )
+  assert.equal(
+    byId(
+      evaluateMilestones(
+        emptySnapshot({
+          ownedPartTypes: ['Action', 'Barrel', 'Chassis', 'Optic', 'Suppressor', 'Misc']
+        })
+      ),
+      'full-kit'
+    ),
+    true
+  )
 })
 
 test('getMilestonesSummary: derives unlocks from DB rows', () => {
@@ -133,6 +144,7 @@ test('getMilestonesSummary: derives unlocks from DB rows', () => {
 
   const system = createCustomSystem(db, {
     name: 'GT Match',
+    platform: 'bolt_action',
     actionId: action.id,
     barrelId: barrel.id,
     chassisId: chassis.id,
