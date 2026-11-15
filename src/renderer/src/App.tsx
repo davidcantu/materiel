@@ -4,6 +4,7 @@ import type { LicenseStatusInfo } from '../../shared/license'
 import type { ProfileInfo } from '../../shared/profile'
 import { BuildsPage } from './pages/BuildsPage'
 import { InventoryPage } from './pages/InventoryPage'
+import { LogsPage } from './pages/LogsPage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
 import { SettingsPage } from './pages/SettingsPage'
 
@@ -13,7 +14,7 @@ const NAV_ITEMS: Array<{ id: NavId; label: string; enabled: boolean }> = [
   { id: 'dashboard', label: 'Dashboard', enabled: false },
   { id: 'inventory', label: 'Inventory', enabled: true },
   { id: 'builds', label: 'Complete Builds', enabled: true },
-  { id: 'logs', label: 'Logs', enabled: false },
+  { id: 'logs', label: 'Shooting Logs', enabled: true },
   { id: 'ammo', label: 'Ammo', enabled: false },
   { id: 'settings', label: 'Settings', enabled: true }
 ]
@@ -105,6 +106,7 @@ function App(): React.JSX.Element {
             onLicenseChange={() => void refresh()}
           />
         ) : null}
+        {active === 'logs' ? <LogsPage /> : null}
         {active === 'settings' ? (
           <SettingsPage license={license} profile={profile} onRefresh={() => void refresh()} />
         ) : null}
@@ -113,9 +115,6 @@ function App(): React.JSX.Element {
             title="Dashboard"
             blurb="Overview and maintenance alerts arrive in a later module."
           />
-        ) : null}
-        {active === 'logs' ? (
-          <PlaceholderPage title="Shooting Logs" blurb="Session logging lands next." />
         ) : null}
         {active === 'ammo' ? (
           <PlaceholderPage title="Ammo & Reloading" blurb="Ammo inventory and loads come later." />

@@ -27,6 +27,12 @@ import type {
   GatedSystemCreateResult,
   RestoreLicenseCheckResult
 } from '../shared/systems'
+import type { AmmoInventoryInfo } from '../shared/ammo'
+import type {
+  NewShootingLogInputInfo,
+  ShootingLogInfo,
+  UpdateShootingLogInputInfo
+} from '../shared/shooting-logs'
 
 declare global {
   interface Window {
@@ -66,6 +72,12 @@ declare global {
       ) => Promise<CompleteSystemInfo>
       deleteSystem: (id: string) => Promise<{ ok: true }>
       assertRestoreAllowed: (systemCount: number) => Promise<RestoreLicenseCheckResult>
+      listLogs: () => Promise<ShootingLogInfo[]>
+      getLog: (id: string) => Promise<ShootingLogInfo | null>
+      addLog: (input: NewShootingLogInputInfo) => Promise<ShootingLogInfo>
+      updateLog: (input: UpdateShootingLogInputInfo) => Promise<ShootingLogInfo>
+      deleteLog: (id: string) => Promise<{ ok: true }>
+      listAmmo: () => Promise<AmmoInventoryInfo[]>
     }
   }
 }
