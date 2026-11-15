@@ -24,9 +24,10 @@ Never log raw keys; `keyFingerprint` (12-char SHA-256 prefix) is safe for diagno
 
 Forward-only migrations live in `src/main/db/migrations/`. Runner: `migrate(db)` in `src/main/db/migrate.ts`.
 
-| Version | Name          | Notes                                                                                                                                                        |
-| ------: | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-|       1 | `001_initial` | profile, parts, systems, system_misc_parts, load_developments, ammo_inventory, shooting_logs, backup_settings, backup_logs, license_state, schema_migrations |
+| Version | Name                | Notes                                                                                                                                                        |
+| ------: | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+|       1 | `001_initial`       | profile, parts, systems, system_misc_parts, load_developments, ammo_inventory, shooting_logs, backup_settings, backup_logs, license_state, schema_migrations |
+|       2 | `002_drop_part_name`| Drops `parts.name` — parts are identified by `id`; UI labels use manufacturer/model/caliber                                                                  |
 
 Empty DB → apply all pending versions in a transaction.
 

@@ -73,7 +73,7 @@ export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Ele
       if (typeFilter !== 'All' && part.type !== typeFilter) return false
       if (!statuses.includes(part.status)) return false
       if (!q) return true
-      const hay = [part.name, part.manufacturer, part.model, part.caliber, part.serialNumber]
+      const hay = [part.manufacturer, part.model, part.caliber, part.serialNumber]
         .filter(Boolean)
         .join(' ')
         .toLowerCase()
@@ -108,7 +108,7 @@ export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Ele
   }
 
   async function handleDelete(part: PartInfo): Promise<void> {
-    if (!window.confirm(`Delete ${part.name}?`)) return
+    if (!window.confirm(`Delete ${partPrimaryTitle(part)}?`)) return
     try {
       await window.api.deletePart(part.id)
       toast.success('Part deleted.')
@@ -152,7 +152,7 @@ export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Ele
       <div className="toolbar">
         <input
           className="search-input"
-          placeholder="Search parts by name, manufacturer, or cartridge…"
+          placeholder="Search parts by manufacturer, model, or cartridge…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           aria-label="Search parts"
@@ -227,7 +227,9 @@ export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Ele
                     </td>
                     <td>
                       <div className="cell-title">{partPrimaryTitle(part)}</div>
-                      <div className="cell-sub">{part.name}</div>
+                      {part.serialNumber ? (
+                        <div className="cell-sub">S/N {part.serialNumber}</div>
+                      ) : null}
                     </td>
                     <td className="cell-meta">
                       {isMaintenanceTracked(part.type) ? (

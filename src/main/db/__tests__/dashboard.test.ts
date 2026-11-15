@@ -59,7 +59,6 @@ test('getDashboardSummary: KPIs, alerts, hides value when trackValue false', () 
   updateProfile(db, { firstName: 'David', trackValue: true })
 
   const action = createPart(db, {
-    name: 'Action',
     manufacturer: 'Impact',
     type: 'Action',
     model: '737R',
@@ -70,7 +69,6 @@ test('getDashboardSummary: KPIs, alerts, hides value when trackValue false', () 
     totalRoundCount: 480
   })
   const barrel = createPart(db, {
-    name: 'Barrel',
     manufacturer: 'Proof',
     type: 'Barrel',
     caliber: '6.5 Creedmoor',
@@ -83,14 +81,12 @@ test('getDashboardSummary: KPIs, alerts, hides value when trackValue false', () 
     totalRoundCount: 1650
   })
   const chassis = createPart(db, {
-    name: 'Chassis',
     manufacturer: 'MDT',
     type: 'Chassis',
     model: 'ACC',
     value: 1200
   })
   const optic = createPart(db, {
-    name: 'Optic',
     manufacturer: 'Vortex',
     type: 'Optic',
     model: 'Razor',

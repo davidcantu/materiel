@@ -18,7 +18,6 @@ type PartFormModalProps = {
 
 type FormState = {
   type: PartType
-  name: string
   manufacturer: string
   model: string
   serialNumber: string
@@ -36,7 +35,6 @@ type FormState = {
 function blankForm(type: PartType = 'Action'): FormState {
   return {
     type,
-    name: '',
     manufacturer: '',
     model: '',
     serialNumber: '',
@@ -55,7 +53,6 @@ function blankForm(type: PartType = 'Action'): FormState {
 function fromPart(part: PartInfo): FormState {
   return {
     type: part.type,
-    name: part.name,
     manufacturer: part.manufacturer,
     model: part.model ?? '',
     serialNumber: part.serialNumber ?? '',
@@ -102,7 +99,6 @@ export function PartFormModal({
     setSaving(true)
     try {
       const input: PartInput = {
-        name: form.name.trim(),
         manufacturer: form.manufacturer.trim(),
         type: form.type,
         status: form.status,
@@ -239,11 +235,6 @@ export function PartFormModal({
             </datalist>
           </label>
         )}
-
-        <label className="field">
-          <span className="field-label">Name</span>
-          <input value={form.name} onChange={(e) => setField('name', e.target.value)} required />
-        </label>
 
         {form.type === 'Action' || form.type === 'Optic' ? (
           <label className="field">
