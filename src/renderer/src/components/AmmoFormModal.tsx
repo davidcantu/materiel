@@ -16,6 +16,8 @@ import { Modal } from './Modal'
 
 type AmmoFormModalProps = {
   initial?: AmmoInventoryInfo | null
+  /** Prefill a new ammo lot from a load recipe (Move to Practice from Load Data). */
+  fromLoad?: LoadDevelopmentInfo | null
   loads: LoadDevelopmentInfo[]
   onClose: () => void
   onSave: (input: AmmoInput) => Promise<void>
@@ -103,6 +105,50 @@ function fromAmmo(ammo: AmmoInventoryInfo): FormState {
   }
 }
 
+function fromLoad(load: LoadDevelopmentInfo): FormState {
+  return {
+    type: 'Handload',
+    name: load.name,
+    caliber: load.caliber,
+    quantity: '',
+    lotNumber: '',
+    manufacturer: '',
+    loadId: load.id,
+    bulletManufacturer: load.bulletManufacturer,
+    bulletType: load.bulletModel,
+    powderManufacturer: load.powderManufacturer,
+    powder: load.powderModel,
+    chargeWeight: String(load.powderCharge),
+    primerManufacturer: load.primerManufacturer,
+    primer: load.primerModel,
+    caseManufacturer: load.brassManufacturer,
+    caseName: load.brassModel ?? '',
+    seatingDepth: load.cbto != null ? String(load.cbto) : String(load.coal),
+    notes: '',
+    showComponents: true
+  }
+}
+
+function applyLoadFields(prev: FormState, load: LoadDevelopmentInfo): FormState {
+  return {
+    ...prev,
+    type: 'Handload',
+    caliber: load.caliber,
+    loadId: load.id,
+    bulletManufacturer: load.bulletManufacturer,
+    bulletType: load.bulletModel,
+    powderManufacturer: load.powderManufacturer,
+    powder: load.powderModel,
+    chargeWeight: String(load.powderCharge),
+    primerManufacturer: load.primerManufacturer,
+    primer: load.primerModel,
+    caseManufacturer: load.brassManufacturer,
+    caseName: load.brassModel ?? '',
+    seatingDepth: load.cbto != null ? String(load.cbto) : String(load.coal),
+    showComponents: true
+  }
+}
+
 function parseOptionalNumber(value: string): number | null {
   const trimmed = value.trim()
   if (!trimmed) return null
@@ -112,12 +158,18 @@ function parseOptionalNumber(value: string): number | null {
 
 export function AmmoFormModal({
   initial,
+  fromLoad: seedLoad = null,
   loads,
   onClose,
   onSave
 }: AmmoFormModalProps): React.JSX.Element {
   const editing = Boolean(initial)
-  const [form, setForm] = useState<FormState>(() => (initial ? fromAmmo(initial) : blankForm()))
+  const fromLoadFlow = Boolean(seedLoad) && !initial
+  const [form, setForm] = useState<FormState>(() => {
+    if (initial) return fromAmmo(initial)
+    if (seedLoad) return fromLoad(seedLoad)
+    return blankForm()
+  })
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
@@ -141,6 +193,19 @@ export function AmmoFormModal({
 
   function setField<K extends keyof FormState>(key: K, value: FormState[K]): void {
     setForm((prev) => ({ ...prev, [key]: value }))
+  }
+
+  function handleLoadLinkChange(loadId: string): void {
+    if (!loadId) {
+      setField('loadId', '')
+      return
+    }
+    const load = loads.find((item) => item.id === loadId)
+    if (!load) {
+      setField('loadId', loadId)
+      return
+    }
+    setForm((prev) => applyLoadFields(prev, load))
   }
 
   async function handleSubmit(event: React.FormEvent): Promise<void> {
@@ -197,7 +262,7 @@ export function AmmoFormModal({
 
   return (
     <Modal
-      title={editing ? 'Edit Ammo' : 'Add Ammo'}
+      title={editing ? 'Edit Ammo' : fromLoadFlow ? 'Move Load to Practice' : 'Add Ammo'}
       onClose={onClose}
       wide
       footer={
@@ -206,7 +271,13 @@ export function AmmoFormModal({
             Cancel
           </button>
           <button type="submit" form="ammo-form" className="btn-primary" disabled={saving}>
-            {saving ? 'Saving…' : editing ? 'Save Changes' : 'Add Ammo'}
+            {saving
+              ? 'Saving…'
+              : editing
+                ? 'Save Changes'
+                : fromLoadFlow
+                  ? 'Move to Practice'
+                  : 'Add Ammo'}
           </button>
         </>
       }
@@ -282,7 +353,11 @@ export function AmmoFormModal({
         ) : (
           <label className="field field-span">
             <span className="field-label">Link to Load Recipe (Optional)</span>
-            <select value={form.loadId} onChange={(e) => setField('loadId', e.target.value)}>
+            <select
+              value={form.loadId}
+              onChange={(e) => handleLoadLinkChange(e.target.value)}
+              disabled={fromLoadFlow}
+            >
               <option value="">— None —</option>
               {matchingLoads.map((load) => (
                 <option key={load.id} value={load.id}>
@@ -290,6 +365,12 @@ export function AmmoFormModal({
                 </option>
               ))}
             </select>
+            {fromLoadFlow ? (
+              <span className="muted field-hint">
+                Prefills cartridge, powder, bullet, and other components from this load. Enter
+                quantity to continue.
+              </span>
+            ) : null}
           </label>
         )}
 

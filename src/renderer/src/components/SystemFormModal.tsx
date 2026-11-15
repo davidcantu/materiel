@@ -258,6 +258,25 @@ export function SystemFormModal({
               onChange={(v) => setField('barrelId', v)}
               required
             />
+            <label className="field">
+              <span className="field-label">Cartridge</span>
+              <input
+                value={
+                  form.barrelId
+                    ? (parts.find((part) => part.id === form.barrelId)?.caliber ?? '')
+                    : ''
+                }
+                readOnly
+                placeholder="Select a barrel…"
+                aria-readonly="true"
+              />
+              <span className="muted field-hint">
+                Locked from the selected barrel
+                {form.barrelId && !parts.find((part) => part.id === form.barrelId)?.caliber
+                  ? ' (no cartridge on that barrel)'
+                  : ''}
+              </span>
+            </label>
             <PartSelect
               label="Chassis / Stock"
               value={form.chassisId}
