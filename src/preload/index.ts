@@ -8,6 +8,17 @@ import type {
   BackupSettingsPatchInfo,
   BackupStatusInfo
 } from '../shared/backup'
+import type {
+  LicenseActivateRequest,
+  LicenseActivateResult,
+  LicenseStatusInfo
+} from '../shared/license'
+import type {
+  CustomSystemInputInfo,
+  FactorySystemInputInfo,
+  GatedSystemCreateResult,
+  RestoreLicenseCheckResult
+} from '../shared/systems'
 
 const api = {
   getAppInfo: (): Promise<AppInfo> => ipcRenderer.invoke('app:get-info'),
@@ -20,7 +31,18 @@ const api = {
     ipcRenderer.invoke('backup:list-logs', limit),
   getBackupStatus: (): Promise<BackupStatusInfo> => ipcRenderer.invoke('backup:get-status'),
   authenticateBackup: (): Promise<BackupStatusInfo> => ipcRenderer.invoke('backup:authenticate'),
-  disconnectBackup: (): Promise<BackupStatusInfo> => ipcRenderer.invoke('backup:disconnect')
+  disconnectBackup: (): Promise<BackupStatusInfo> => ipcRenderer.invoke('backup:disconnect'),
+  getLicenseStatus: (): Promise<LicenseStatusInfo> => ipcRenderer.invoke('license:get-status'),
+  activateLicense: (request: LicenseActivateRequest): Promise<LicenseActivateResult> =>
+    ipcRenderer.invoke('license:activate', request),
+  clearLicense: (): Promise<LicenseStatusInfo> => ipcRenderer.invoke('license:clear'),
+  countSystems: (): Promise<number> => ipcRenderer.invoke('systems:count'),
+  createCustomSystem: (input: CustomSystemInputInfo): Promise<GatedSystemCreateResult> =>
+    ipcRenderer.invoke('systems:create-custom', input),
+  createFactorySystem: (input: FactorySystemInputInfo): Promise<GatedSystemCreateResult> =>
+    ipcRenderer.invoke('systems:create-factory', input),
+  assertRestoreAllowed: (systemCount: number): Promise<RestoreLicenseCheckResult> =>
+    ipcRenderer.invoke('systems:assert-restore-allowed', systemCount)
 }
 
 if (process.contextIsolated) {

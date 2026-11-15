@@ -4,7 +4,7 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { closeDatabase, getHealth, initDatabase } from './db'
 import { initBackupSubsystem } from './backup'
-import { getLicenseStatus } from './license'
+import { initLicenseSubsystem } from './license'
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
@@ -48,7 +48,7 @@ app.whenReady().then(() => {
 
   initDatabase()
   const backupProvider = initBackupSubsystem()
-  const license = getLicenseStatus(0)
+  const license = initLicenseSubsystem()
 
   ipcMain.handle('app:get-info', () => ({
     name: 'Materiel',

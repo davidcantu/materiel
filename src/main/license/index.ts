@@ -1,49 +1,58 @@
 /**
- * Local license gate (stub).
+ * Local license gate for Materiel.
  *
  * Free tier: up to FREE_RIFLE_LIMIT complete rifle systems.
- * Paid: local key format MAT-XXXX-XXXX-XXXX stored via safeStorage.
- *
- * TODO:
- * - Count complete systems from SQLite
- * - Encrypt/decrypt key with Electron safeStorage / OS keychain
- * - Enforce create-build gate in IPC handlers
+ * Paid: MAT-1-… HMAC key bound to an email, stored via safeStorage.
+ * Dev: MAIN_VITE_LICENSE_MODE=unlocked always allows creates.
  */
 
-export const FREE_RIFLE_LIMIT = 2
+export { FREE_RIFLE_LIMIT, LICENSE_KEY_PREFIX } from './crypto'
+export {
+  issueLicenseKey,
+  verifyLicenseKey,
+  validateLicenseKeyFormat,
+  normalizeEmail,
+  resolveSigningSecret,
+  licenseKeyFingerprint,
+  parseLicenseKey
+} from './crypto'
+export { resolveLicenseMode, isLicenseUnlocked } from './mode'
+export { getLicenseStatus, buildRifleLimitDenial } from './status'
+export {
+  assertCanCreateCompleteSystem,
+  assertLicenseAllowsSystemCount,
+  canCreateCompleteSystem,
+  checkCreateCompleteSystem,
+  LicenseLimitError
+} from './gate'
+export { activateLicense, clearLicense } from './activate'
+export {
+  loadStoredLicense,
+  saveStoredLicense,
+  clearStoredLicense,
+  getLicenseFilePath
+} from './store'
+export {
+  ensureLicenseState,
+  readLicenseState,
+  markLicenseActivated,
+  markLicenseCleared
+} from './state'
+export { registerLicenseIpc } from './ipc'
 
-export type LicenseStatus = {
-  tier: 'free' | 'paid'
-  freeRifleLimit: number
-  completeRifleCount: number
-  canCreateRifle: boolean
-  keyPresent: boolean
-}
+import { registerLicenseIpc } from './ipc'
+import { registerSystemsIpc } from '../systems/ipc'
+import { ensureLicenseState } from './state'
+import { getLicenseStatus } from './status'
 
-/**
- * Dev / mock status — unlocked for scaffolding.
- * Follow-up: read encrypted key file and query system count.
- */
-export function getLicenseStatus(completeRifleCount = 0): LicenseStatus {
-  const keyPresent = false
-  const tier: LicenseStatus['tier'] = keyPresent ? 'paid' : 'free'
-  const canCreateRifle = tier === 'paid' || completeRifleCount < FREE_RIFLE_LIMIT
-
-  return {
-    tier,
-    freeRifleLimit: FREE_RIFLE_LIMIT,
-    completeRifleCount,
-    canCreateRifle,
-    keyPresent
+/** Wire license + gated systems IPC; sync license_state row. */
+export function initLicenseSubsystem(): ReturnType<typeof getLicenseStatus> {
+  try {
+    ensureLicenseState()
+  } catch (error) {
+    console.warn('[license] could not ensure license_state:', error)
   }
-}
-
-export function validateLicenseKeyFormat(key: string): boolean {
-  return /^MAT-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(key.trim().toUpperCase())
-}
-
-export async function saveLicenseKey(key: string): Promise<void> {
-  void key
-  // TODO: encrypt with safeStorage and persist under userData
-  throw new Error('License key persistence not implemented yet')
+  registerLicenseIpc()
+  registerSystemsIpc()
+  return getLicenseStatus()
 }

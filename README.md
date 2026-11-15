@@ -23,7 +23,7 @@ npm install
 npm run dev
 ```
 
-Runs Electron with Vite HMR. Uses `.env.development` (mock cloud backup, unlocked license mode).
+Runs Electron with Vite HMR. Uses `.env.development` (mock cloud backup, **unlocked** license mode — creates are never blocked).
 
 ## Build gates
 
@@ -60,6 +60,16 @@ Hourly (configurable) + on quit. Uploads the encrypted DB file.
 
 Set `MAIN_VITE_GOOGLE_CLIENT_ID` / `MAIN_VITE_ONEDRIVE_CLIENT_ID` in the matching env file or CI secrets (never commit secrets). IPC: `getBackupSettings`, `setBackupSettings`, `runBackupNow`, `listBackupLogs`, `getBackupStatus`, `authenticateBackup`.
 
+## License
+
+Free tier: **2** complete rifles. Paid: HMAC `MAT-1-…` key bound to an email (issued manually after Venmo). Activation is offline; key stored via `safeStorage`. See [docs/license.md](./docs/license.md).
+
+```bash
+LICENSE_SIGNING_SECRET='…' npm run license:issue -- --email customer@example.com
+```
+
+Dev unlock: `MAIN_VITE_LICENSE_MODE=unlocked` (already set in `.env.development`).
+
 ## Project layout
 
 ```
@@ -67,21 +77,24 @@ src/
   main/           # Electron main process
     db/           # Encrypted SQLite + migrations + §7 helpers
     backup/       # Drive / OneDrive / mock + hourly/quit scheduler
-    license/      # Free-tier rifle gate (stub)
+    license/      # Free-tier rifle gate + activate / verify
+    systems/      # Gated create IPC
   preload/        # Typed contextBridge
   renderer/       # React UI shell
+scripts/
+  issue-license.ts
 docs/
   database.md     # Key supply, migrations, schema map
   backup.md       # OAuth setup + IPC
+  license.md      # Issue keys, activate, free tier, IPC
 ```
 
 Env templates: `.env.development`, `.env.test`, `.env.production`, and `.env.example` (no secrets).
 
 ## Follow-ups
 
-- Settings UI for backup provider / interval
-- Restore-from-cloud UX
-- License key persistence + create-build gate
+- Settings UI for backup provider / interval / license activate form
+- Restore-from-cloud UX (preflight IPC already gated)
 - Inventory, Builds, Logs, Ammo, Dashboard modules
 
 ## License

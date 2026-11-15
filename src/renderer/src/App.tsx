@@ -49,7 +49,9 @@ function App(): React.JSX.Element {
           <div>
             License:{' '}
             <strong>
-              {info ? `${info.license.tier} (${info.license.freeRifleLimit} rifles free)` : '…'}
+              {info
+                ? `${info.license.tier}${info.license.mode === 'unlocked' ? ' · unlocked' : ''} (${info.license.completeRifleCount}/${info.license.freeRifleLimit} free)`
+                : '…'}
             </strong>
           </div>
         </div>
@@ -67,8 +69,7 @@ function App(): React.JSX.Element {
         <section className="placeholder" aria-label="Scaffold status">
           <h2>Coming next</h2>
           <ul>
-            <li>Settings UI for backup / license (IPC ready for backup)</li>
-            <li>License key gate on complete builds</li>
+            <li>Settings UI for backup / license activate (IPC ready)</li>
             <li>Feature modules from the software spec</li>
           </ul>
         </section>
