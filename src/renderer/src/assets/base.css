@@ -1,0 +1,56 @@
+:root {
+  /* Brand tokens — software-spec §2.1 */
+  --brand-primary: #70a060;
+  --brand-secondary: #d0d0a0;
+  --brand-neutral: #a0a0a0;
+  --brand-dark: #505040;
+  --brand-deep: #303020;
+  --page-canvas: #f7f7f2;
+  --surface: #ffffff;
+  --border-subtle: color-mix(in srgb, var(--brand-neutral) 20%, transparent);
+  --danger: #dc2626;
+  --success: #059669;
+
+  --sidebar-width: 288px;
+  --radius: 16px;
+
+  color-scheme: light;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  min-height: 100vh;
+  color: var(--brand-deep);
+  background:
+    radial-gradient(ellipse 80% 60% at 10% 0%, color-mix(in srgb, var(--brand-secondary) 28%, transparent), transparent 55%),
+    radial-gradient(ellipse 70% 50% at 100% 100%, color-mix(in srgb, var(--brand-primary) 12%, transparent), transparent 50%),
+    var(--page-canvas);
+  line-height: 1.5;
+  font-family:
+    'Avenir Next',
+    'Segoe UI',
+    'Helvetica Neue',
+    sans-serif;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  user-select: none;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}

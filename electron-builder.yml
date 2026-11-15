@@ -1,0 +1,55 @@
+appId: com.davidcantu.materiel
+productName: Materiel
+copyright: Copyright © 2026 David Cantu
+directories:
+  buildResources: build
+  output: dist
+files:
+  - '!**/.vscode/*'
+  - '!src/*'
+  - '!electron.vite.config.{js,ts,mjs,cjs}'
+  - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
+  - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
+  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+  - '!docs/*'
+  - '!.github/*'
+asarUnpack:
+  - resources/**
+  - '**/*.{node,dll}'
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  executableName: Materiel
+nsis:
+  artifactName: Materiel-${version}-setup.${ext}
+  shortcutName: ${productName}
+  uninstallDisplayName: ${productName}
+  createDesktopShortcut: always
+mac:
+  target:
+    - target: dmg
+      arch:
+        - universal
+  entitlementsInherit: build/entitlements.mac.plist
+  extendInfo:
+    - NSDocumentsFolderUsageDescription: Materiel stores local inventory data and encrypted backups.
+    - NSDownloadsFolderUsageDescription: Materiel may export backups to your Downloads folder.
+  category: public.app-category.utilities
+  notarize: false
+dmg:
+  artifactName: Materiel-${version}.${ext}
+linux:
+  target:
+    - AppImage
+  category: Utility
+  maintainer: David Cantu
+appImage:
+  artifactName: Materiel-${version}.${ext}
+npmRebuild: true
+publish:
+  provider: github
+  owner: davidcantu
+  repo: materiel
+  releaseType: release
