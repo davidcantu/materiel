@@ -1,27 +1,4 @@
-/** Dashboard summary types and §7.4 / §7.6 helpers. */
-
-export type RankTier = 'Beginner' | 'Novice' | 'Intermediate' | 'Pro' | 'Elite'
-
-export type BenchmarkMetric = 'rounds' | 'value' | 'systems'
-
-/** Seed benchmarks for single-user percentile/rank (§7.6). */
-export const SEED_BENCHMARKS: ReadonlyArray<{
-  rounds: number
-  value: number
-  systems: number
-}> = [
-  { rounds: 500, value: 2500, systems: 1 },
-  { rounds: 1500, value: 5000, systems: 2 },
-  { rounds: 3000, value: 10000, systems: 3 },
-  { rounds: 5000, value: 15000, systems: 4 },
-  { rounds: 10000, value: 25000, systems: 6 }
-]
-
-export type MetricStanding = {
-  percentile: number
-  topPercent: number
-  rank: RankTier
-}
+/** Dashboard summary types and helpers. */
 
 export type MonthlyRounds = {
   /** YYYY-MM */
@@ -57,88 +34,9 @@ export type DashboardSummary = {
   activeSystems: number
   inventoryItems: number
   totalValue: number
-  roundsStanding: MetricStanding
-  systemsStanding: MetricStanding
-  valueStanding: MetricStanding | null
-  loggingStreak: number
   monthlyRounds: MonthlyRounds[]
   recentActivity: RecentActivityItem[]
   maintenanceAlerts: MaintenanceAlertItem[]
-}
-
-export function rankFromPercentile(percentile: number): RankTier {
-  if (percentile >= 90) return 'Elite'
-  if (percentile >= 75) return 'Pro'
-  if (percentile >= 50) return 'Intermediate'
-  if (percentile >= 25) return 'Novice'
-  return 'Beginner'
-}
-
-/**
- * §7.6 — combine seed benchmarks with the user's value, sort ascending,
- * find first index where v >= userValue, percentile = (index / total) * 100.
- */
-export function computeMetricStanding(
-  userValue: number,
-  metric: BenchmarkMetric,
-  extraValues: number[] = []
-): MetricStanding {
-  const values = [...SEED_BENCHMARKS.map((b) => b[metric]), ...extraValues, userValue].sort(
-    (a, b) => a - b
-  )
-
-  const totalCount = values.length
-  const index = values.findIndex((v) => v >= userValue)
-  const percentile = totalCount === 0 ? 0 : (index / totalCount) * 100
-  const topPercent = Math.max(0, 100 - Math.round(percentile))
-
-  return {
-    percentile,
-    topPercent,
-    rank: rankFromPercentile(percentile)
-  }
-}
-
-function parseDay(iso: string): Date {
-  const day = iso.slice(0, 10)
-  const d = new Date(`${day}T00:00:00`)
-  return d
-}
-
-function startOfToday(now: Date = new Date()): Date {
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate())
-}
-
-function daysBetween(a: Date, b: Date): number {
-  const ms = a.getTime() - b.getTime()
-  return Math.round(ms / (24 * 60 * 60 * 1000))
-}
-
-/**
- * §7.4 — logging streak: unique calendar days in an unbroken chain
- * where consecutive gaps are ≤ 14 days; 0 if gap from today to latest > 14.
- */
-export function computeLoggingStreak(logDates: string[], now: Date = new Date()): number {
-  if (logDates.length === 0) return 0
-
-  const uniqueDays = [
-    ...new Set(logDates.map((d) => d.slice(0, 10)).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)))
-  ].sort((a, b) => (a < b ? 1 : a > b ? -1 : 0))
-
-  if (uniqueDays.length === 0) return 0
-
-  const today = startOfToday(now)
-  const latest = parseDay(uniqueDays[0])
-  if (daysBetween(today, latest) > 14) return 0
-
-  let streak = 1
-  for (let i = 1; i < uniqueDays.length; i++) {
-    const newer = parseDay(uniqueDays[i - 1])
-    const older = parseDay(uniqueDays[i])
-    if (daysBetween(newer, older) > 14) break
-    streak += 1
-  }
-  return streak
 }
 
 const MONTH_SHORT = [
