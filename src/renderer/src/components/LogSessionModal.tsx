@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { AmmoInventoryInfo } from '../../../shared/ammo'
+import { pickDefaultAmmo, rankLocations, systemCaliber } from '../../../shared/log-defaults'
 import type { PartInfo } from '../../../shared/parts'
 import type {
   NewShootingLogInputInfo,
@@ -7,12 +8,14 @@ import type {
   ShootingLogInfo
 } from '../../../shared/shooting-logs'
 import type { CompleteSystemInfo } from '../../../shared/systems'
+import { getLogSessionDefaults, rememberLogSessionDefaults } from '../lib/session-defaults'
 import { Modal } from './Modal'
 
 type LogSessionModalProps = {
   systems: CompleteSystemInfo[]
   parts: PartInfo[]
   ammo: AmmoInventoryInfo[]
+  logs: ShootingLogInfo[]
   initial?: ShootingLogInfo | null
   onClose: () => void
   onSave: (input: NewShootingLogInputInfo, editingId?: string) => Promise<void>
@@ -40,23 +43,75 @@ function todayIsoDate(): string {
   return `${y}-${m}-${d}`
 }
 
-function systemCaliber(
-  system: CompleteSystemInfo | undefined,
-  partsById: Map<string, PartInfo>
-): string | null {
-  if (!system) return null
-  if (system.buildType === 'factory') return system.factoryCartridge
-  return partsById.get(system.barrelId)?.caliber ?? null
+function parseRounds(value: string): number | null {
+  if (!value.trim()) return null
+  const n = Number(value)
+  if (!Number.isFinite(n) || n < 0 || !Number.isInteger(n)) return null
+  return n
 }
 
-function blankForm(defaultSystemId = ''): FormState {
+function resolveAmmoChoice(options: {
+  ammo: AmmoInventoryInfo[]
+  caliber: string | null
+  roundsFired: number | null
+  systemId: string | null
+  logs: ShootingLogInfo[]
+  preferredAmmoId: string | null
+}): string {
+  const rounds = options.roundsFired
+  if (rounds == null) {
+    // No rounds yet — sticky lot if it still matches caliber.
+    if (
+      options.preferredAmmoId &&
+      options.ammo.some(
+        (item) => item.id === options.preferredAmmoId && item.caliber === options.caliber
+      )
+    ) {
+      return options.preferredAmmoId
+    }
+    return MANUAL_AMMO
+  }
+
+  const picked = pickDefaultAmmo({
+    ammo: options.ammo,
+    caliber: options.caliber,
+    roundsFired: rounds,
+    systemId: options.systemId,
+    logs: options.logs,
+    preferredAmmoId: options.preferredAmmoId
+  })
+  return picked ?? MANUAL_AMMO
+}
+
+function blankForm(
+  systems: CompleteSystemInfo[],
+  partsById: Map<string, PartInfo>,
+  ammo: AmmoInventoryInfo[],
+  logs: ShootingLogInfo[]
+): FormState {
+  const sticky = getLogSessionDefaults()
+  const systemId =
+    (sticky.systemId && systems.some((s) => s.id === sticky.systemId) ? sticky.systemId : null) ??
+    systems[0]?.id ??
+    ''
+  const selected = systems.find((s) => s.id === systemId)
+  const caliber = systemCaliber(selected, partsById)
+  const ammoChoice = resolveAmmoChoice({
+    ammo,
+    caliber,
+    roundsFired: null,
+    systemId: systemId || null,
+    logs,
+    preferredAmmoId: sticky.ammoId
+  })
+
   return {
-    systemId: defaultSystemId,
-    ammoChoice: MANUAL_AMMO,
-    cartridge: '',
+    systemId,
+    ammoChoice,
+    cartridge: caliber ?? '',
     date: todayIsoDate(),
     roundsFired: '',
-    location: '',
+    location: sticky.location ?? '',
     velocity: '',
     sessionType: 'Practice',
     notes: ''
@@ -81,25 +136,30 @@ export function LogSessionModal({
   systems,
   parts,
   ammo,
+  logs,
   initial,
   onClose,
   onSave
 }: LogSessionModalProps): React.JSX.Element {
   const editing = Boolean(initial)
-  const [form, setForm] = useState<FormState>(() =>
-    initial ? fromLog(initial) : blankForm(systems[0]?.id ?? '')
-  )
-  const [error, setError] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
-
   const partsById = useMemo(() => {
     const map = new Map<string, PartInfo>()
     for (const part of parts) map.set(part.id, part)
     return map
   }, [parts])
 
+  const [form, setForm] = useState<FormState>(() =>
+    initial ? fromLog(initial) : blankForm(systems, partsById, ammo, logs)
+  )
+  /** When true, user picked ammo manually — stop auto-replacing. */
+  const [ammoTouched, setAmmoTouched] = useState(() => Boolean(initial))
+  const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+
   const selectedSystem = systems.find((system) => system.id === form.systemId)
   const caliber = systemCaliber(selectedSystem, partsById)
+
+  const locationSuggestions = useMemo(() => rankLocations(logs), [logs])
 
   const matchingAmmo = useMemo(() => {
     const matched = caliber ? ammo.filter((item) => item.caliber === caliber) : []
@@ -114,13 +174,54 @@ export function LogSessionModal({
     setForm((prev) => ({ ...prev, [key]: value }))
   }
 
+  function applySmartAmmo(
+    next: FormState,
+    preferredAmmoId: string | null,
+    force = false
+  ): FormState {
+    if (ammoTouched && !force) return next
+    const sticky = getLogSessionDefaults()
+    const choice = resolveAmmoChoice({
+      ammo,
+      caliber: systemCaliber(
+        systems.find((s) => s.id === next.systemId),
+        partsById
+      ),
+      roundsFired: parseRounds(next.roundsFired),
+      systemId: next.systemId || null,
+      logs,
+      preferredAmmoId: preferredAmmoId ?? sticky.ammoId
+    })
+    return { ...next, ammoChoice: choice }
+  }
+
   function handleSystemChange(systemId: string): void {
-    setForm((prev) => ({
-      ...prev,
-      systemId,
-      ammoChoice: MANUAL_AMMO,
-      cartridge: prev.ammoChoice === MANUAL_AMMO ? prev.cartridge : ''
-    }))
+    const nextCaliber = systemCaliber(
+      systems.find((s) => s.id === systemId),
+      partsById
+    )
+    setAmmoTouched(false)
+    setForm((prev) => {
+      const next: FormState = {
+        ...prev,
+        systemId,
+        cartridge: nextCaliber ?? '',
+        ammoChoice: MANUAL_AMMO
+      }
+      return applySmartAmmo(next, getLogSessionDefaults().ammoId, true)
+    })
+  }
+
+  function handleRoundsChange(value: string): void {
+    setForm((prev) => {
+      const next = { ...prev, roundsFired: value }
+      return applySmartAmmo(next, getLogSessionDefaults().ammoId)
+    })
+  }
+
+  function handleAmmoChange(value: string): void {
+    setAmmoTouched(true)
+    setField('ammoChoice', value)
   }
 
   async function handleSubmit(event: React.FormEvent): Promise<void> {
@@ -179,6 +280,11 @@ export function LogSessionModal({
     setSaving(true)
     try {
       await onSave(input, initial?.id)
+      rememberLogSessionDefaults({
+        systemId: input.systemId,
+        location: input.location,
+        ammoId: input.ammoId ?? null
+      })
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save session')
@@ -233,7 +339,7 @@ export function LogSessionModal({
           <span className="field-label">Ammunition</span>
           <select
             value={form.ammoChoice}
-            onChange={(e) => setField('ammoChoice', e.target.value)}
+            onChange={(e) => handleAmmoChange(e.target.value)}
             disabled={!form.systemId}
           >
             <option value={MANUAL_AMMO}>-- Manual Entry --</option>
@@ -274,7 +380,7 @@ export function LogSessionModal({
             min={0}
             step={1}
             value={form.roundsFired}
-            onChange={(e) => setField('roundsFired', e.target.value)}
+            onChange={(e) => handleRoundsChange(e.target.value)}
             required
           />
         </label>
@@ -282,11 +388,17 @@ export function LogSessionModal({
         <label className="field field-span">
           <span className="field-label">Location</span>
           <input
+            list="log-location-suggestions"
             value={form.location}
             onChange={(e) => setField('location', e.target.value)}
             placeholder="Range or match venue"
             required
           />
+          <datalist id="log-location-suggestions">
+            {locationSuggestions.map((item) => (
+              <option key={item.location} value={item.location} />
+            ))}
+          </datalist>
         </label>
 
         <label className="field">

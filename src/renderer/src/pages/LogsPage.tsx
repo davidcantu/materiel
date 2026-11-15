@@ -318,6 +318,7 @@ export function LogsPage(): React.JSX.Element {
           systems={systems}
           parts={parts}
           ammo={ammo}
+          logs={logs}
           initial={editing}
           onClose={() => {
             setModalOpen(false)
