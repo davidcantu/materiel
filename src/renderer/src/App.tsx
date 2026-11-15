@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { AppInfo } from '../../shared/app-info'
 import type { LicenseStatusInfo } from '../../shared/license'
-import type { ProfileInfo } from '../../shared/profile'
+import { hasLocalUsername, type ProfileInfo } from '../../shared/profile'
 import { ToastProvider } from './components/Toast'
 import { AmmoPage } from './pages/AmmoPage'
 import { BuildsPage } from './pages/BuildsPage'
@@ -9,6 +9,7 @@ import { DashboardPage } from './pages/DashboardPage'
 import { InventoryPage } from './pages/InventoryPage'
 import { LogsPage } from './pages/LogsPage'
 import { SettingsPage } from './pages/SettingsPage'
+import { WelcomePage } from './pages/WelcomePage'
 
 type NavId = 'dashboard' | 'inventory' | 'builds' | 'logs' | 'ammo' | 'settings'
 
@@ -19,9 +20,11 @@ function AppShell(): React.JSX.Element {
   const [license, setLicense] = useState<LicenseStatusInfo | null>(null)
   const [profile, setProfile] = useState<ProfileInfo | null>(null)
   const [active, setActive] = useState<NavId>('dashboard')
+  const [bootstrapped, setBootstrapped] = useState(false)
 
   const trackAmmo = profile?.trackAmmo ?? true
   const view: NavId = !trackAmmo && active === 'ammo' ? 'dashboard' : active
+  const needsSetup = bootstrapped && !hasLocalUsername(profile)
 
   const navItems = useMemo<NavItem[]>(
     () => [
@@ -59,14 +62,30 @@ function AppShell(): React.JSX.Element {
         setInfo(nextInfo)
         setLicense(nextLicense)
         setProfile(nextProfile)
+        setBootstrapped(true)
       })
       .catch((err) => {
-        if (!cancelled) console.error(err)
+        if (!cancelled) {
+          console.error(err)
+          setBootstrapped(true)
+        }
       })
     return () => {
       cancelled = true
     }
   }, [])
+
+  if (!bootstrapped) {
+    return (
+      <div className="welcome-gate welcome-loading">
+        <p className="muted">Opening Materiel…</p>
+      </div>
+    )
+  }
+
+  if (needsSetup) {
+    return <WelcomePage onComplete={() => void refresh()} />
+  }
 
   return (
     <div className="app-shell">
@@ -101,6 +120,9 @@ function AppShell(): React.JSX.Element {
         <div className="sidebar-meta">
           <div>
             Env: <strong>{info?.env ?? '…'}</strong>
+          </div>
+          <div>
+            User: <strong>{profile?.username || '…'}</strong>
           </div>
           <div>
             License:{' '}

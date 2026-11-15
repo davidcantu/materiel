@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { LicenseStatusInfo } from '../../../shared/license'
 import type { MilestoneStatus, MilestonesSummary } from '../../../shared/milestones'
-import type { ProfileInfo } from '../../../shared/profile'
+import { normalizeUsername, type ProfileInfo } from '../../../shared/profile'
 import { PageHeader } from '../components/PageHeader'
 import { useToast } from '../components/toast-context'
 
@@ -64,13 +64,30 @@ export function SettingsPage({
     }
   }, [])
 
+  const profileEmail = profile?.email?.trim().toLowerCase() || null
+  const licenseEmail = license?.activatedEmail?.trim().toLowerCase() || null
+  const emailMismatch =
+    Boolean(profileEmail && licenseEmail && profileEmail !== licenseEmail) ||
+    Boolean(
+      profileEmail &&
+      emailDraft !== null &&
+      emailDraft.trim() &&
+      profileEmail !== emailDraft.trim().toLowerCase() &&
+      key.trim()
+    )
+
   async function handleActivate(event: React.FormEvent): Promise<void> {
     event.preventDefault()
     setBusy(true)
     setMessage(null)
     setError(null)
     try {
-      const result = await window.api.activateLicense({ email: email.trim(), key: key.trim() })
+      const username = profile?.username ? normalizeUsername(profile.username) : undefined
+      const result = await window.api.activateLicense({
+        email: email.trim(),
+        key: key.trim(),
+        username
+      })
       if (!result.ok) {
         setError(`${result.code}: ${result.message}`)
         toast.error(result.message)
@@ -78,6 +95,7 @@ export function SettingsPage({
         setMessage('License activated.')
         toast.success('License activated.')
         setKey('')
+        setEmailDraft(null)
         onRefresh()
       }
     } catch (err) {
@@ -138,6 +156,14 @@ export function SettingsPage({
         {profile ? (
           <dl className="meta-list">
             <div>
+              <dt>Username</dt>
+              <dd>{profile.username || '—'}</dd>
+            </div>
+            <div>
+              <dt>Email</dt>
+              <dd>{profile.email || '—'}</dd>
+            </div>
+            <div>
               <dt>Name</dt>
               <dd>{displayName || '—'}</dd>
             </div>
@@ -151,6 +177,10 @@ export function SettingsPage({
         ) : (
           <p className="muted">Loading profile…</p>
         )}
+        <p className="muted settings-note">
+          Username is local identity (no password). After reinstall, enter the same username with
+          your email-bound license key to restore paid access.
+        </p>
       </section>
 
       <section className="settings-panel settings-panel-wide">
@@ -194,10 +224,24 @@ export function SettingsPage({
               <dt>Key</dt>
               <dd>{license.keyPresent ? (license.activatedEmail ?? 'Present') : 'None'}</dd>
             </div>
+            {license.activatedUsername ? (
+              <div>
+                <dt>Licensed as</dt>
+                <dd>{license.activatedUsername}</dd>
+              </div>
+            ) : null}
           </dl>
         ) : (
           <p className="muted">Loading license…</p>
         )}
+
+        {profile && profileEmail && licenseEmail && profileEmail !== licenseEmail ? (
+          <p className="form-error" role="status">
+            Profile email ({profile.email}) differs from the activated license email (
+            {license?.activatedEmail}). Keys are email-bound — activate with the issued email;
+            successful activation updates the local profile email to match.
+          </p>
+        ) : null}
 
         <form className="form-grid settings-form" onSubmit={(e) => void handleActivate(e)}>
           <label className="field">
@@ -209,12 +253,18 @@ export function SettingsPage({
             <input
               value={key}
               onChange={(e) => setKey(e.target.value)}
-              placeholder="MAT-XXXX-XXXX-XXXX"
+              placeholder="MAT-1.…"
               required
             />
           </label>
+          {emailMismatch && key.trim() ? (
+            <p className="muted field-span">
+              Activating will bind this key’s email and update the local profile email if it
+              differs.
+            </p>
+          ) : null}
           <div className="row-actions field-span">
-            <button type="submit" className="btn-primary" disabled={busy}>
+            <button type="submit" className="btn-primary" disabled={busy || !profile?.username}>
               Activate
             </button>
             <button
@@ -227,6 +277,9 @@ export function SettingsPage({
             </button>
           </div>
         </form>
+        {!profile?.username ? (
+          <p className="form-error">Set a username on first launch before activating a license.</p>
+        ) : null}
         {message ? <p className="form-success">{message}</p> : null}
         {error ? <p className="form-error">{error}</p> : null}
       </section>

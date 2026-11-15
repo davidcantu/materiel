@@ -10,6 +10,8 @@ export type StoredLicense = {
   email: string
   key: string
   activatedAt: string
+  /** Local username paired at activation (reinstall recovery hint). */
+  username?: string
 }
 
 export type SafeStorageLike = {
@@ -94,7 +96,12 @@ export function loadStoredLicense(options: LicenseStoreOptions = {}): StoredLice
     const raw = decodePayload(readFileSync(path), safeStorage)
     const parsed = JSON.parse(raw) as StoredLicense
     if (!parsed?.email || !parsed?.key || !parsed?.activatedAt) return null
-    return parsed
+    return {
+      email: parsed.email,
+      key: parsed.key,
+      activatedAt: parsed.activatedAt,
+      ...(parsed.username ? { username: parsed.username } : {})
+    }
   } catch (error) {
     console.warn('[license] failed to read license.dat:', error)
     return null

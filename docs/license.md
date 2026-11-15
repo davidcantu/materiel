@@ -23,6 +23,31 @@ Channels: `systems:create-custom`, `systems:create-factory`. Status: `license:ge
 
 Restore preflight: `systems:assert-restore-allowed` with the backup’s system count — blocked when a free-tier install would restore more than 2 systems.
 
+## Local username + email-bound keys
+
+First launch collects a **username** (no password) and an email. The username is the local identity shown in Settings and the sidebar.
+
+License keys remain **email-bound** (`MAT-1.…` HMAC over the normalized email). Activation also requires a username:
+
+- Already set on first-run, **or**
+- Passed together on the welcome “Restore license” form / `activateLicense({ email, key, username })`.
+
+On success the app stores `{ email, key, activatedAt, username }` in `license.dat` and syncs the profile username + email.
+
+### Reinstall recovery
+
+1. Enter the **same username** you used before.
+2. Enter the **email the key was issued for**.
+3. Paste the `MAT-1.…` key.
+
+The app verifies the key offline and restores paid status. Username is not part of the cryptographic key; it is the local handle you must re-enter so paid installs stay intentional after a wipe.
+
+### Email mismatch UX
+
+- Keys are verified against the email you enter (must match the email embedded in the key) → `LICENSE_EMAIL_MISMATCH` when they differ.
+- If Settings shows a profile email that differs from the activated license email, a clear warning is shown. Activating with the issued email updates the local profile email to match.
+- If this install already has a username and you try to activate with a different username → `LICENSE_USERNAME_MISMATCH`.
+
 ## Paid key (after Venmo)
 
 v1 payment is **manual**: customer Venmos you → you issue a key → you email the key.
@@ -48,13 +73,14 @@ The HMAC covers the canonical string `v1|<normalized-email>` (email trimmed + lo
 
 ### Activate (customer)
 
-In Settings (or via IPC):
+On first launch (welcome) or in Settings:
 
-1. Enter the **same email** the key was issued for.
-2. Paste the `MAT-1.…` key.
-3. Call `license:activate` / `window.api.activateLicense({ email, key })`.
+1. Ensure a **username** is set (first-run) or enter it with the key (restore).
+2. Enter the **same email** the key was issued for.
+3. Paste the `MAT-1.…` key.
+4. Call `license:activate` / `window.api.activateLicense({ email, key, username })`.
 
-On success the payload `{ email, key, activatedAt }` is written to `{userData}/license.dat` via Electron `safeStorage` when available (plaintext fallback only in headless/dev). The `license_state` DB row is updated to `tier=paid`.
+On success the payload `{ email, key, activatedAt, username }` is written to `{userData}/license.dat` via Electron `safeStorage` when available (plaintext fallback only in headless/dev). The `license_state` DB row is updated to `tier=paid`.
 
 ## Dev unlock
 
@@ -72,8 +98,8 @@ When `unlocked` (aliases: `always-allow`, `dev`), create/restore gates always al
 
 | Channel | Purpose |
 | ------- | ------- |
-| `license:get-status` | `LicenseStatusInfo` (tier, counts, `canCreateRifle`, mode, …) |
-| `license:activate` | `{ email, key }` → activate result |
+| `license:get-status` | `LicenseStatusInfo` (tier, counts, `canCreateRifle`, mode, username, …) |
+| `license:activate` | `{ email, key, username? }` → activate result |
 | `license:clear` | Remove local key (dev / support) |
 | `systems:create-custom` | Gated create |
 | `systems:create-factory` | Gated create |

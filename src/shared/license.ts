@@ -15,6 +15,8 @@ export type LicenseStatusInfo = {
   canCreateRifle: boolean
   keyPresent: boolean
   activatedEmail: string | null
+  /** Username stored with the activated key (local pairing for reinstall). */
+  activatedUsername: string | null
   mode: LicenseMode
   /** Present when create/restore would be blocked under enforced free tier. */
   blockReason: string | null
@@ -23,6 +25,11 @@ export type LicenseStatusInfo = {
 export type LicenseActivateRequest = {
   email: string
   key: string
+  /**
+   * Local username required for activation. Sets / updates the profile username
+   * when provided (first-run or reinstall recovery).
+   */
+  username?: string
 }
 
 export type LicenseActivateResult =
@@ -33,6 +40,8 @@ export type LicenseErrorCode =
   | 'LICENSE_RIFLE_LIMIT'
   | 'LICENSE_INVALID_KEY'
   | 'LICENSE_EMAIL_MISMATCH'
+  | 'LICENSE_USERNAME_REQUIRED'
+  | 'LICENSE_USERNAME_MISMATCH'
   | 'LICENSE_SECRET_MISSING'
   | 'LICENSE_STORAGE_UNAVAILABLE'
   | 'LICENSE_NOT_ACTIVATED'

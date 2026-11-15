@@ -47,9 +47,15 @@ test('migrations run forward from empty encrypted DB', () => {
       assert.ok(names.includes(expected), `missing table ${expected}`)
     }
 
+    const columns = db.prepare(`PRAGMA table_info(profile)`).all() as Array<{ name: string }>
+    assert.ok(
+      columns.some((c) => c.name === 'username'),
+      'profile.username column missing'
+    )
+
     // Re-open / re-migrate is a no-op.
     const versionAgain = getAppliedMigrationVersion(db)
-    assert.equal(versionAgain, 2)
+    assert.equal(versionAgain, MIGRATIONS[MIGRATIONS.length - 1].id)
 
     const partCols = db.prepare(`PRAGMA table_info(parts)`).all() as Array<{ name: string }>
     assert.ok(!partCols.some((c) => c.name === 'name'), 'parts.name should be dropped')

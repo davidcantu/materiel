@@ -1,4 +1,7 @@
 import type { LicenseActivateResult } from '../../shared/license'
+import { isValidUsername, normalizeUsername } from '../../shared/profile'
+import { ensureLocalProfile, updateProfile } from '../db/profile'
+import { requireDatabase } from '../db/connection'
 import { isValidEmailShape, normalizeEmail, resolveSigningSecret, verifyLicenseKey } from './crypto'
 import { markLicenseActivated, markLicenseCleared } from './state'
 import { clearStoredLicense, saveStoredLicense, type LicenseStoreOptions } from './store'
@@ -6,8 +9,16 @@ import { getLicenseStatus } from './status'
 
 export type ActivateOptions = LicenseStoreOptions
 
+function tryGetProfile(): ReturnType<typeof ensureLocalProfile> | null {
+  try {
+    return ensureLocalProfile(requireDatabase().db)
+  } catch {
+    return null
+  }
+}
+
 export function activateLicense(
-  input: { email: string; key: string },
+  input: { email: string; key: string; username?: string },
   options: ActivateOptions = {}
 ): LicenseActivateResult {
   const email = normalizeEmail(input.email)
@@ -19,6 +30,35 @@ export function activateLicense(
       ok: false,
       code: 'LICENSE_INVALID_KEY',
       message: 'Enter a valid email address bound to your license key.',
+      license: license()
+    }
+  }
+
+  const profile = tryGetProfile()
+  const incomingUsername =
+    input.username !== undefined ? normalizeUsername(input.username) : undefined
+  const existingUsername = profile ? normalizeUsername(profile.username) : ''
+
+  const resolvedUsername = incomingUsername ?? existingUsername
+  if (!resolvedUsername || !isValidUsername(resolvedUsername)) {
+    return {
+      ok: false,
+      code: 'LICENSE_USERNAME_REQUIRED',
+      message:
+        'Set a username before activating a license (first-run), or enter the same username you used before when restoring after reinstall.',
+      license: license()
+    }
+  }
+
+  if (
+    existingUsername &&
+    incomingUsername &&
+    existingUsername.toLowerCase() !== incomingUsername.toLowerCase()
+  ) {
+    return {
+      ok: false,
+      code: 'LICENSE_USERNAME_MISMATCH',
+      message: `This install already has username “${existingUsername}”. Use that username to restore your license, or clear the local profile first.`,
       license: license()
     }
   }
@@ -62,7 +102,15 @@ export function activateLicense(
 
   const activatedAt = new Date().toISOString()
   try {
-    saveStoredLicense({ email: verified.email, key: verified.key, activatedAt }, options)
+    saveStoredLicense(
+      {
+        email: verified.email,
+        key: verified.key,
+        activatedAt,
+        username: resolvedUsername
+      },
+      options
+    )
   } catch (error) {
     return {
       ok: false,
@@ -74,6 +122,11 @@ export function activateLicense(
   }
 
   try {
+    const db = requireDatabase().db
+    updateProfile(db, {
+      username: resolvedUsername,
+      email: verified.email
+    })
     markLicenseActivated({ email: verified.email, key: verified.key, activatedAt })
   } catch {
     // Store succeeded; DB sync is best-effort when DB is unavailable in tests.
