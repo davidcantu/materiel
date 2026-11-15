@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { AmmoInventoryInfo } from '../../../shared/ammo'
+import type { LoadDevelopmentInfo } from '../../../shared/loads'
 import type { PartInfo } from '../../../shared/parts'
 import type {
   LogsTimeRange,
@@ -15,6 +16,10 @@ import { MaintenanceDueModal } from '../components/MaintenanceDueModal'
 import { PageFeedback } from '../components/PageFeedback'
 import { PageHeader } from '../components/PageHeader'
 import { useToast } from '../components/toast-context'
+
+type LogsPageProps = {
+  onNavigateBuilds?: () => void
+}
 
 function daysAgoIso(days: number): string {
   const d = new Date()
@@ -45,12 +50,13 @@ function cartridgeLabel(log: ShootingLogInfo, ammoById: Map<string, AmmoInventor
   return 'Manual entry'
 }
 
-export function LogsPage(): React.JSX.Element {
+export function LogsPage({ onNavigateBuilds }: LogsPageProps = {}): React.JSX.Element {
   const toast = useToast()
   const [logs, setLogs] = useState<ShootingLogInfo[]>([])
   const [systems, setSystems] = useState<CompleteSystemInfo[]>([])
   const [parts, setParts] = useState<PartInfo[]>([])
   const [ammo, setAmmo] = useState<AmmoInventoryInfo[]>([])
+  const [loads, setLoads] = useState<LoadDevelopmentInfo[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
@@ -76,16 +82,18 @@ export function LogsPage(): React.JSX.Element {
   const load = useCallback(async () => {
     setError(null)
     try {
-      const [nextLogs, nextSystems, nextParts, nextAmmo] = await Promise.all([
+      const [nextLogs, nextSystems, nextParts, nextAmmo, nextLoads] = await Promise.all([
         window.api.listLogs(),
         window.api.listSystems(),
         window.api.listParts(),
-        window.api.listAmmo()
+        window.api.listAmmo(),
+        window.api.listLoads()
       ])
       setLogs(nextLogs)
       setSystems(nextSystems)
       setParts(nextParts)
       setAmmo(nextAmmo)
+      setLoads(nextLoads)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load shooting logs')
     } finally {
@@ -99,14 +107,16 @@ export function LogsPage(): React.JSX.Element {
       window.api.listLogs(),
       window.api.listSystems(),
       window.api.listParts(),
-      window.api.listAmmo()
+      window.api.listAmmo(),
+      window.api.listLoads()
     ])
-      .then(([nextLogs, nextSystems, nextParts, nextAmmo]) => {
+      .then(([nextLogs, nextSystems, nextParts, nextAmmo, nextLoads]) => {
         if (!cancelled) {
           setLogs(nextLogs)
           setSystems(nextSystems)
           setParts(nextParts)
           setAmmo(nextAmmo)
+          setLoads(nextLoads)
           setLoading(false)
         }
       })
@@ -268,7 +278,16 @@ export function LogsPage(): React.JSX.Element {
         onRetry={() => void load()}
       />
 
-      {!loading && logs.length === 0 ? (
+      {!loading && systems.length === 0 ? (
+        <EmptyState
+          title="No complete rifles yet"
+          description="Add a complete build before you can log practice or match sessions."
+          actionLabel="Add your first complete build"
+          onAction={() => onNavigateBuilds?.()}
+        />
+      ) : null}
+
+      {!loading && systems.length > 0 && logs.length === 0 ? (
         <EmptyState
           title="No shooting logs yet"
           description="Log your first practice or match session to start tracking rounds."
@@ -278,7 +297,17 @@ export function LogsPage(): React.JSX.Element {
       ) : null}
 
       {!loading && logs.length > 0 && filtered.length === 0 ? (
-        <p className="filter-empty">No shooting logs found for this period.</p>
+        <EmptyState
+          title="No shooting logs found for this period"
+          description="Clear filters to see every logged session."
+          actionLabel="Clear filters"
+          onAction={() => {
+            setSearch('')
+            setSystemFilter('All')
+            setSessionFilter('All')
+            setTimeRange('all')
+          }}
+        />
       ) : null}
 
       {!loading && filtered.length > 0 ? (
@@ -346,12 +375,17 @@ export function LogsPage(): React.JSX.Element {
           parts={parts}
           ammo={ammo}
           logs={logs}
+          loads={loads}
           initial={editing}
           onClose={() => {
             setModalOpen(false)
             setEditing(null)
           }}
           onSave={handleSave}
+          onAmmoChanged={() => {
+            void window.api.listAmmo().then(setAmmo)
+          }}
+          onNavigateBuilds={onNavigateBuilds}
         />
       ) : null}
 

@@ -186,9 +186,9 @@ export function BuildsPage({
 
       {!loading && systems.length === 0 ? (
         <EmptyState
-          title="No complete systems yet"
-          description="Build your first rifle from parts in stock, or add a factory rifle."
-          actionLabel="Build your first rifle"
+          title="No complete rifles yet"
+          description="Assemble a custom build from inventory parts, or add a factory rifle."
+          actionLabel="Add your first complete build"
           onAction={openCreate}
         />
       ) : null}
@@ -291,6 +291,7 @@ export function BuildsPage({
       {modalOpen ? (
         <SystemFormModal
           parts={parts}
+          trackValue={trackValue}
           initial={editing}
           onClose={() => {
             setModalOpen(false)
@@ -299,6 +300,9 @@ export function BuildsPage({
           onCreateCustom={handleCreateCustom}
           onCreateFactory={handleCreateFactory}
           onUpdate={handleUpdate}
+          onPartsChanged={() => {
+            void window.api.listParts().then(setParts)
+          }}
         />
       ) : null}
 

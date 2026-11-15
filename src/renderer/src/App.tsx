@@ -145,7 +145,7 @@ function AppShell(): React.JSX.Element {
             onLicenseChange={() => void refresh()}
           />
         ) : null}
-        {view === 'logs' ? <LogsPage /> : null}
+        {view === 'logs' ? <LogsPage onNavigateBuilds={() => setActive('builds')} /> : null}
         {view === 'ammo' && trackAmmo ? <AmmoPage /> : null}
         {view === 'settings' ? (
           <SettingsPage license={license} profile={profile} onRefresh={() => void refresh()} />

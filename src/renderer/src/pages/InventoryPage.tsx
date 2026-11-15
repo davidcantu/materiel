@@ -200,7 +200,16 @@ export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Ele
       ) : null}
 
       {!loading && parts.length > 0 && filtered.length === 0 ? (
-        <p className="filter-empty">No parts match the current filters.</p>
+        <EmptyState
+          title="No parts match the current filters"
+          description="Clear search and status filters to see your full inventory."
+          actionLabel="Clear filters"
+          onAction={() => {
+            setSearch('')
+            setTypeFilter('All')
+            setStatuses(DEFAULT_STATUSES)
+          }}
+        />
       ) : null}
 
       {!loading && filtered.length > 0 ? (
