@@ -5,6 +5,10 @@
 /** Public download page — update when packaging moves off GitHub Releases. */
 export const MATERIEL_DOWNLOAD_URL = 'https://github.com/davidcantu/materiel/releases'
 
+/** Repo used by the soft update checker (GitHub Releases API). */
+export const MATERIEL_GITHUB_OWNER = 'davidcantu'
+export const MATERIEL_GITHUB_REPO = 'materiel'
+
 export const SHARE_EMAIL_SUBJECT = 'Check out Materiel — local firearms inventory & logs'
 
 export const SHARE_EMAIL_BODY = [

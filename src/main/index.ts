@@ -5,6 +5,7 @@ import icon from '../../resources/icon.png?asset'
 import { closeDatabase, getHealth, initDatabase } from './db'
 import { initBackupSubsystem } from './backup'
 import { initLicenseSubsystem } from './license'
+import { initUpdateChecker } from './updates'
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
@@ -60,6 +61,9 @@ app.whenReady().then(() => {
   ipcMain.handle('db:health', () => getHealth())
 
   createWindow()
+
+  // Soft GitHub Releases check: prompt when a newer tag exists; no-op offline.
+  initUpdateChecker()
 
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
