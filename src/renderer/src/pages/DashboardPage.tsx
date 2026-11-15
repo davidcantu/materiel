@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { DashboardSummary, MetricStanding } from '../../../shared/dashboard'
+import type { DashboardSummary } from '../../../shared/dashboard'
 import { PageFeedback } from '../components/PageFeedback'
 import { PageHeader } from '../components/PageHeader'
 import { formatCurrency } from '../lib/format'
@@ -16,15 +16,6 @@ function formatLogDate(iso: string): string {
     month: 'short',
     day: 'numeric'
   })
-}
-
-function StandingBadges({ standing }: { standing: MetricStanding }): React.JSX.Element {
-  return (
-    <div className="kpi-badges">
-      <span className="kpi-badge">Top {standing.topPercent}%</span>
-      <span className="kpi-badge kpi-badge-rank">{standing.rank}</span>
-    </div>
-  )
 }
 
 export function DashboardPage({ onNavigateLogs }: DashboardPageProps): React.JSX.Element {
@@ -105,7 +96,6 @@ export function DashboardPage({ onNavigateLogs }: DashboardPageProps): React.JSX
   }
 
   const title = summary.firstName ? `Welcome back, ${summary.firstName}` : 'Welcome'
-  const streakPct = Math.min(100, Math.round((summary.loggingStreak / 28) * 100))
   const maxMonthRounds = Math.max(1, ...summary.monthlyRounds.map((m) => m.rounds))
 
   return (
@@ -120,43 +110,22 @@ export function DashboardPage({ onNavigateLogs }: DashboardPageProps): React.JSX
           <article className="kpi-card">
             <div className="kpi-label">Total Rounds</div>
             <div className="kpi-value">{summary.totalRounds.toLocaleString()}</div>
-            <StandingBadges standing={summary.roundsStanding} />
           </article>
           <article className="kpi-card">
             <div className="kpi-label">Active Systems</div>
             <div className="kpi-value">{summary.activeSystems.toLocaleString()}</div>
-            <StandingBadges standing={summary.systemsStanding} />
           </article>
           <article className="kpi-card">
             <div className="kpi-label">Inventory Items</div>
             <div className="kpi-value">{summary.inventoryItems.toLocaleString()}</div>
           </article>
-          {summary.trackValue && summary.valueStanding ? (
+          {summary.trackValue ? (
             <article className="kpi-card">
               <div className="kpi-label">Total Value</div>
               <div className="kpi-value">{formatCurrency(summary.totalValue)}</div>
-              <StandingBadges standing={summary.valueStanding} />
             </article>
           ) : null}
         </div>
-
-        <article className="streak-card">
-          <div className="streak-header">
-            <span className="kpi-label">Logging Streak</span>
-            <span className="streak-count">{summary.loggingStreak}</span>
-          </div>
-          <div className="progress-track streak-track" title={`${streakPct}%`}>
-            <div className="progress-fill" style={{ width: `${streakPct}%` }} />
-          </div>
-          <div className="streak-meta">
-            <span>{streakPct}%</span>
-            <span>
-              {summary.loggingStreak >= 28
-                ? 'Elite streak maintained.'
-                : 'Log every 14 days to keep your streak alive.'}
-            </span>
-          </div>
-        </article>
       </section>
 
       <section className="dash-main">
