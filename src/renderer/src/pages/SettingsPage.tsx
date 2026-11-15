@@ -6,11 +6,18 @@ import { ImageCropField, type ImageCropValue } from '../components/ImageCropFiel
 import { PageHeader } from '../components/PageHeader'
 import { PreferenceInfoButton } from '../components/PreferenceInfoButton'
 import { useToast } from '../components/toast-context'
+import {
+  setStoredThemePreference,
+  THEME_OPTIONS,
+  type ThemePreference
+} from '../lib/theme'
 
 type SettingsPageProps = {
   license: LicenseStatusInfo | null
   profile: ProfileInfo | null
   onRefresh: () => void
+  themePreference: ThemePreference
+  onThemePreferenceChange: (preference: ThemePreference) => void
 }
 
 type ProfileDraft = {
@@ -59,7 +66,9 @@ function draftFromProfile(profile: ProfileInfo): ProfileDraft {
 export function SettingsPage({
   license,
   profile,
-  onRefresh
+  onRefresh,
+  themePreference,
+  onThemePreferenceChange
 }: SettingsPageProps): React.JSX.Element {
   const toast = useToast()
   const [emailDraft, setEmailDraft] = useState<string | null>(null)
@@ -462,6 +471,30 @@ export function SettingsPage({
         ) : null}
         {message ? <p className="form-success">{message}</p> : null}
         {error ? <p className="form-error">{error}</p> : null}
+      </section>
+
+      <section className="settings-panel">
+        <h2>Appearance</h2>
+        <p className="muted">Follow your system theme by default, or lock Light / Dark.</p>
+        <div className="theme-toggle" role="group" aria-label="Color theme">
+          {THEME_OPTIONS.map((option) => {
+            const active = themePreference === option.value
+            return (
+              <button
+                key={option.value}
+                type="button"
+                className={`theme-option${active ? ' active' : ''}`}
+                aria-pressed={active}
+                onClick={() => {
+                  setStoredThemePreference(option.value)
+                  onThemePreferenceChange(option.value)
+                }}
+              >
+                {option.label}
+              </button>
+            )
+          })}
+        </div>
       </section>
 
       <section className="settings-panel">
