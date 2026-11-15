@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { LicenseStatusInfo } from '../../../shared/license'
+import type { MilestoneStatus, MilestonesSummary } from '../../../shared/milestones'
 import type { ProfileInfo } from '../../../shared/profile'
 import { PageHeader } from '../components/PageHeader'
 import { useToast } from '../components/toast-context'
@@ -8,6 +9,24 @@ type SettingsPageProps = {
   license: LicenseStatusInfo | null
   profile: ProfileInfo | null
   onRefresh: () => void
+}
+
+function MilestoneCard({ milestone }: { milestone: MilestoneStatus }): React.JSX.Element {
+  return (
+    <article
+      className={`milestone-card${milestone.unlocked ? ' unlocked' : ' locked'}`}
+      aria-label={`${milestone.name}: ${milestone.unlocked ? 'Unlocked' : 'Locked'}`}
+    >
+      <div className="milestone-card-top">
+        <h3>{milestone.name}</h3>
+        <span className={`milestone-status${milestone.unlocked ? ' is-unlocked' : ''}`}>
+          <span className="milestone-dot" aria-hidden="true" />
+          {milestone.unlocked ? 'Unlocked' : 'Locked'}
+        </span>
+      </div>
+      <p>{milestone.description}</p>
+    </article>
+  )
 }
 
 export function SettingsPage({
@@ -22,6 +41,28 @@ export function SettingsPage({
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [milestones, setMilestones] = useState<MilestonesSummary | null>(null)
+  const [milestonesError, setMilestonesError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    void window.api
+      .getMilestones()
+      .then((next) => {
+        if (!cancelled) {
+          setMilestones(next)
+          setMilestonesError(null)
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setMilestonesError(err instanceof Error ? err.message : 'Failed to load milestones')
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   async function handleActivate(event: React.FormEvent): Promise<void> {
     event.preventDefault()
@@ -86,9 +127,51 @@ export function SettingsPage({
     }
   }
 
+  const displayName = [profile?.firstName, profile?.lastName].filter(Boolean).join(' ').trim()
+
   return (
     <div className="page">
-      <PageHeader title="Settings" description="License and local preferences." />
+      <PageHeader title="Settings" description="Profile, milestones, license, and preferences." />
+
+      <section className="settings-panel settings-panel-wide">
+        <h2>Profile</h2>
+        {profile ? (
+          <dl className="meta-list">
+            <div>
+              <dt>Name</dt>
+              <dd>{displayName || '—'}</dd>
+            </div>
+            <div>
+              <dt>Location</dt>
+              <dd>
+                {[profile.city, profile.state, profile.country].filter(Boolean).join(', ') || '—'}
+              </dd>
+            </div>
+          </dl>
+        ) : (
+          <p className="muted">Loading profile…</p>
+        )}
+      </section>
+
+      <section className="settings-panel settings-panel-wide">
+        <div className="section-header">
+          <h2>Milestones</h2>
+          {milestones ? (
+            <span className="muted">
+              {milestones.unlockedCount} / {milestones.milestones.length} unlocked
+            </span>
+          ) : null}
+        </div>
+        {milestonesError ? <p className="form-error">{milestonesError}</p> : null}
+        {!milestones && !milestonesError ? <p className="muted">Loading milestones…</p> : null}
+        {milestones ? (
+          <div className="milestone-grid">
+            {milestones.milestones.map((milestone) => (
+              <MilestoneCard key={milestone.id} milestone={milestone} />
+            ))}
+          </div>
+        ) : null}
+      </section>
 
       <section className="settings-panel">
         <h2>License</h2>

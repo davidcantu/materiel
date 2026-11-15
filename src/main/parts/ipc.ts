@@ -16,6 +16,7 @@ import {
   type UpdatePartInput
 } from '../db/parts'
 import { ensureLocalProfile, updateProfile, type ProfilePatch } from '../db/profile'
+import { getMilestonesSummary } from '../db/milestones'
 import { requireDatabase } from '../db/connection'
 import type { PartStatus } from '../db/types'
 
@@ -55,5 +56,9 @@ export function registerPartsIpc(): void {
 
   ipcMain.handle('profile:update', (_event, patch: ProfilePatch) => {
     return updateProfile(requireDatabase().db, patch ?? {})
+  })
+
+  ipcMain.handle('milestones:get', () => {
+    return getMilestonesSummary(requireDatabase().db)
   })
 }
