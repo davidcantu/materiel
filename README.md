@@ -51,25 +51,36 @@ Encrypted SQLite (`sqlcipher` / AES-256) with forward migrations. Default key is
 
 Dev can seed demo data with `MAIN_VITE_SEED_DEMO=true` (already set in `.env.development`).
 
+## Backup
+
+Hourly (configurable) + on quit. Uploads the encrypted DB file.
+
+- **Dev:** mock provider writes to `{userData}/mock-cloud/`
+- **Test/Prod:** Google Drive or OneDrive via OAuth PKCE — see [docs/backup.md](./docs/backup.md)
+
+Set `MAIN_VITE_GOOGLE_CLIENT_ID` / `MAIN_VITE_ONEDRIVE_CLIENT_ID` in the matching env file or CI secrets (never commit secrets). IPC: `getBackupSettings`, `setBackupSettings`, `runBackupNow`, `listBackupLogs`, `getBackupStatus`, `authenticateBackup`.
+
 ## Project layout
 
 ```
 src/
   main/           # Electron main process
     db/           # Encrypted SQLite + migrations + §7 helpers
-    backup/       # Drive / OneDrive / mock + hourly/quit hooks (stub)
+    backup/       # Drive / OneDrive / mock + hourly/quit scheduler
     license/      # Free-tier rifle gate (stub)
   preload/        # Typed contextBridge
   renderer/       # React UI shell
 docs/
   database.md     # Key supply, migrations, schema map
+  backup.md       # OAuth setup + IPC
 ```
 
 Env templates: `.env.development`, `.env.test`, `.env.production`, and `.env.example` (no secrets).
 
 ## Follow-ups
 
-- Real Google Drive / OneDrive OAuth backup
+- Settings UI for backup provider / interval
+- Restore-from-cloud UX
 - License key persistence + create-build gate
 - Inventory, Builds, Logs, Ammo, Dashboard modules
 

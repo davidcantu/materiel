@@ -46,6 +46,20 @@ export { migrate, getAppliedMigrationVersion, MIGRATIONS } from './migrate'
 export { seedDemoIfEmpty } from './seed'
 export { resolveDatabaseKey, DB_CIPHER } from './key'
 export { openTestDatabase, openEncryptedConnection } from './connection'
+export {
+  ALLOWED_BACKUP_INTERVAL_HOURS,
+  DEFAULT_BACKUP_INTERVAL_HOURS,
+  buildBackupFileName,
+  countBackupRecords,
+  ensureBackupSettings,
+  formatFileSize,
+  getBackupLog,
+  getBackupSettings,
+  insertBackupLog,
+  listRecentBackupLogs,
+  updateBackupSettings
+} from './backup'
+export type { BackupProviderChoice, BackupSettingsPatch, NewBackupLogInput } from './backup'
 
 export type OpenDatabaseOptions = Omit<CoreOpenOptions, 'path'> & {
   path?: string
