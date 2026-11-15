@@ -32,6 +32,7 @@ export type ProfilePatch = {
   city?: string
   state?: string
   country?: string
+  profileImageUrl?: string | null
   trackValue?: boolean
   trackAmmo?: boolean
 }

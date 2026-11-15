@@ -66,7 +66,7 @@ Dev-only: `openDatabase({ seedDemo: true })` or `MAIN_VITE_SEED_DEMO=true`. Seed
 - `db:health` → `{ ready, path, cipher, migrationVersion, encrypted }`
 - Parts: `parts:list`, `parts:get`, `parts:create`, `parts:update`, `parts:delete`, `parts:set-status`, `parts:reset-maintenance`
 - Systems: `systems:list`, `systems:get`, `systems:create-custom`, `systems:create-factory`, `systems:update`, `systems:delete`, `systems:count`, `systems:assert-restore-allowed` (create paths license-gated)
-- Profile: `profile:get`, `profile:update` (`trackValue` / `trackAmmo`)
+- Profile: `profile:get`, `profile:update` (`trackValue` / `trackAmmo` / identity fields / `profileImageUrl` JPEG data URI)
 - Logs: `logs:list`, `logs:get`, `logs:add`, `logs:update`, `logs:delete`
 - Ammo: `ammo:list`, `ammo:get`, `ammo:create`, `ammo:update`, `ammo:delete`, `ammo:move-to-practice`
 - Loads: `loads:list`, `loads:get`, `loads:create`, `loads:update`, `loads:delete`

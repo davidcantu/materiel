@@ -33,6 +33,7 @@ export type ProfilePatch = {
   city?: string
   state?: string
   country?: string
+  profileImageUrl?: string | null
   trackValue?: boolean
   trackAmmo?: boolean
 }
@@ -142,6 +143,7 @@ export function updateProfile(db: Database.Database, patch: ProfilePatch): Profi
       city = @city,
       state = @state,
       country = @country,
+      profile_image_url = @profileImageUrl,
       track_value = @trackValue,
       track_ammo = @trackAmmo,
       updated_at = @updatedAt
@@ -155,6 +157,8 @@ export function updateProfile(db: Database.Database, patch: ProfilePatch): Profi
     city: patch.city ?? existing.city,
     state: patch.state ?? existing.state,
     country: patch.country ?? existing.country,
+    profileImageUrl:
+      patch.profileImageUrl !== undefined ? patch.profileImageUrl : existing.profileImageUrl,
     trackValue: (patch.trackValue ?? existing.trackValue) ? 1 : 0,
     trackAmmo: (patch.trackAmmo ?? existing.trackAmmo) ? 1 : 0,
     updatedAt

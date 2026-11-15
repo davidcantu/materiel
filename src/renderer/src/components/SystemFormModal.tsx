@@ -20,6 +20,7 @@ import {
   type Platform
 } from '../../../shared/platforms'
 import { partOptionLabel } from '../lib/format'
+import { ImageCropField, type ImageCropValue } from './ImageCropField'
 import { Modal } from './Modal'
 import { PartFormModal } from './PartFormModal'
 import { TypeaheadSelect } from './TypeaheadSelect'
@@ -65,6 +66,7 @@ type FormState = {
   factorySuppressorId: string
   factoryLaserIrId: string
   factoryLightId: string
+  image: ImageCropValue
 }
 
 type CreateTarget =
@@ -103,7 +105,8 @@ function blankForm(): FormState {
     factoryOpticId: '',
     factorySuppressorId: '',
     factoryLaserIrId: '',
-    factoryLightId: ''
+    factoryLightId: '',
+    image: { imageUrl: null, imageScale: 1 }
   }
 }
 
@@ -129,7 +132,11 @@ function fromSystem(system: CompleteSystemInfo): FormState {
     factoryOpticId: system.opticId ?? '',
     factorySuppressorId: system.suppressorId ?? '',
     factoryLaserIrId: system.laserIrId ?? '',
-    factoryLightId: system.lightId ?? ''
+    factoryLightId: system.lightId ?? '',
+    image: {
+      imageUrl: system.imageUrl,
+      imageScale: system.imageScale ?? 1
+    }
   }
 }
 
@@ -313,6 +320,8 @@ export function SystemFormModal({
     setSaving(true)
     try {
       const miscPartIds = form.miscPartIds.filter(Boolean)
+      const imageUrl = form.image.imageUrl
+      const imageScale = form.image.imageScale ?? 1
       if (form.mode === 'custom') {
         const input: CustomSystemInputInfo = {
           name: form.name.trim(),
@@ -325,6 +334,8 @@ export function SystemFormModal({
           laserIrId: form.platform === 'bolt_action' ? null : form.laserIrId || null,
           lightId: form.platform === 'bolt_action' ? null : form.lightId || null,
           miscPartIds,
+          imageUrl,
+          imageScale,
           notes: form.notes.trim() || null
         }
         if (!input.actionId || !input.barrelId || !input.chassisId) {
@@ -354,6 +365,8 @@ export function SystemFormModal({
           laserIrId: form.platform === 'bolt_action' ? null : form.factoryLaserIrId || null,
           lightId: form.platform === 'bolt_action' ? null : form.factoryLightId || null,
           miscPartIds,
+          imageUrl,
+          imageScale,
           notes: form.notes.trim() || null
         }
         if (!input.factoryManufacturer || !input.factoryModel || !input.factoryCartridge) {
@@ -435,6 +448,16 @@ export function SystemFormModal({
             <span className="field-label">Build Name</span>
             <input value={form.name} onChange={(e) => setField('name', e.target.value)} required />
           </label>
+
+          <div className="field field-span">
+            <ImageCropField
+              label="Build Image (Landscape)"
+              variant="build"
+              value={form.image}
+              onChange={(image) => setField('image', image)}
+              disabled={saving}
+            />
+          </div>
 
           {form.mode === 'custom' ? (
             <>
