@@ -53,7 +53,17 @@ export {
   resetPartMaintenance
 } from './parts'
 export type { NewPartInput, UpdatePartInput, ListPartsOptions } from './parts'
-export { listAmmoInventory, getAmmoInventory } from './ammo'
+export {
+  listAmmoInventory,
+  getAmmoInventory,
+  createAmmoInventory,
+  updateAmmoInventory,
+  deleteAmmoInventory,
+  moveAmmoToPractice
+} from './ammo'
+export type { NewAmmoInput, UpdateAmmoInput } from './ammo'
+export { listLoads, getLoad, createLoad, updateLoad, deleteLoad } from './loads'
+export type { NewLoadInput, UpdateLoadInput } from './loads'
 export { ensureLocalProfile, getProfile, updateProfile } from './profile'
 export type { ProfilePatch } from './profile'
 export { migrate, getAppliedMigrationVersion, MIGRATIONS } from './migrate'

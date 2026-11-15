@@ -61,6 +61,12 @@ export function SettingsPage({
     onRefresh()
   }
 
+  async function toggleTrackAmmo(): Promise<void> {
+    if (!profile) return
+    await window.api.updateProfile({ trackAmmo: !profile.trackAmmo })
+    onRefresh()
+  }
+
   return (
     <div className="page">
       <header className="page-header">
@@ -137,6 +143,14 @@ export function SettingsPage({
             onChange={() => void toggleTrackValue()}
           />
           <span>Track part values</span>
+        </label>
+        <label className="toggle-row">
+          <input
+            type="checkbox"
+            checked={profile?.trackAmmo ?? true}
+            onChange={() => void toggleTrackAmmo()}
+          />
+          <span>Track ammo — enable detailed ammunition inventory and consumption tracking.</span>
         </label>
       </section>
     </div>

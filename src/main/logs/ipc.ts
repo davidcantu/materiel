@@ -1,9 +1,8 @@
 /**
- * Shooting logs IPC + minimal ammo list for session modal.
+ * Shooting logs IPC.
  */
 
 import { ipcMain } from 'electron'
-import { listAmmoInventory } from '../db/ammo'
 import {
   addShootingLog,
   deleteShootingLog,
@@ -34,9 +33,5 @@ export function registerLogsIpc(): void {
   ipcMain.handle('logs:delete', (_event, id: string) => {
     deleteShootingLog(requireDatabase().db, id)
     return { ok: true as const }
-  })
-
-  ipcMain.handle('ammo:list', () => {
-    return listAmmoInventory(requireDatabase().db)
   })
 }

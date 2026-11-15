@@ -27,7 +27,8 @@ import type {
   GatedSystemCreateResult,
   RestoreLicenseCheckResult
 } from '../shared/systems'
-import type { AmmoInventoryInfo } from '../shared/ammo'
+import type { AmmoInput, AmmoInventoryInfo, AmmoUpdateInput } from '../shared/ammo'
+import type { LoadDevelopmentInfo, LoadInput, LoadUpdateInput } from '../shared/loads'
 import type {
   NewShootingLogInputInfo,
   ShootingLogInfo,
@@ -78,6 +79,16 @@ declare global {
       updateLog: (input: UpdateShootingLogInputInfo) => Promise<ShootingLogInfo>
       deleteLog: (id: string) => Promise<{ ok: true }>
       listAmmo: () => Promise<AmmoInventoryInfo[]>
+      getAmmo: (id: string) => Promise<AmmoInventoryInfo | null>
+      createAmmo: (input: AmmoInput) => Promise<AmmoInventoryInfo>
+      updateAmmo: (id: string, patch: AmmoUpdateInput) => Promise<AmmoInventoryInfo>
+      deleteAmmo: (id: string) => Promise<{ ok: true }>
+      moveAmmoToPractice: (id: string) => Promise<AmmoInventoryInfo>
+      listLoads: () => Promise<LoadDevelopmentInfo[]>
+      getLoad: (id: string) => Promise<LoadDevelopmentInfo | null>
+      createLoad: (input: LoadInput) => Promise<LoadDevelopmentInfo>
+      updateLoad: (id: string, patch: LoadUpdateInput) => Promise<LoadDevelopmentInfo>
+      deleteLoad: (id: string) => Promise<{ ok: true }>
     }
   }
 }

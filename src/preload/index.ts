@@ -28,7 +28,8 @@ import type {
   GatedSystemCreateResult,
   RestoreLicenseCheckResult
 } from '../shared/systems'
-import type { AmmoInventoryInfo } from '../shared/ammo'
+import type { AmmoInput, AmmoInventoryInfo, AmmoUpdateInput } from '../shared/ammo'
+import type { LoadDevelopmentInfo, LoadInput, LoadUpdateInput } from '../shared/loads'
 import type {
   NewShootingLogInputInfo,
   ShootingLogInfo,
@@ -89,7 +90,22 @@ const api = {
   updateLog: (input: UpdateShootingLogInputInfo): Promise<ShootingLogInfo> =>
     ipcRenderer.invoke('logs:update', input),
   deleteLog: (id: string): Promise<{ ok: true }> => ipcRenderer.invoke('logs:delete', id),
-  listAmmo: (): Promise<AmmoInventoryInfo[]> => ipcRenderer.invoke('ammo:list')
+  listAmmo: (): Promise<AmmoInventoryInfo[]> => ipcRenderer.invoke('ammo:list'),
+  getAmmo: (id: string): Promise<AmmoInventoryInfo | null> => ipcRenderer.invoke('ammo:get', id),
+  createAmmo: (input: AmmoInput): Promise<AmmoInventoryInfo> =>
+    ipcRenderer.invoke('ammo:create', input),
+  updateAmmo: (id: string, patch: AmmoUpdateInput): Promise<AmmoInventoryInfo> =>
+    ipcRenderer.invoke('ammo:update', id, patch),
+  deleteAmmo: (id: string): Promise<{ ok: true }> => ipcRenderer.invoke('ammo:delete', id),
+  moveAmmoToPractice: (id: string): Promise<AmmoInventoryInfo> =>
+    ipcRenderer.invoke('ammo:move-to-practice', id),
+  listLoads: (): Promise<LoadDevelopmentInfo[]> => ipcRenderer.invoke('loads:list'),
+  getLoad: (id: string): Promise<LoadDevelopmentInfo | null> => ipcRenderer.invoke('loads:get', id),
+  createLoad: (input: LoadInput): Promise<LoadDevelopmentInfo> =>
+    ipcRenderer.invoke('loads:create', input),
+  updateLoad: (id: string, patch: LoadUpdateInput): Promise<LoadDevelopmentInfo> =>
+    ipcRenderer.invoke('loads:update', id, patch),
+  deleteLoad: (id: string): Promise<{ ok: true }> => ipcRenderer.invoke('loads:delete', id)
 }
 
 if (process.contextIsolated) {

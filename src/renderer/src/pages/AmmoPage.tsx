@@ -1,0 +1,453 @@
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import type { AmmoInput, AmmoInventoryInfo } from '../../../shared/ammo'
+import type { LoadDevelopmentInfo, LoadInput } from '../../../shared/loads'
+import { AmmoFormModal } from '../components/AmmoFormModal'
+import { EmptyState } from '../components/EmptyState'
+import { LoadFormModal } from '../components/LoadFormModal'
+
+type SubTab = 'inventory' | 'loads'
+
+function telemetry(value: number | null | undefined): string {
+  return value == null ? '—' : String(value)
+}
+
+function AmmoCard({
+  ammo,
+  loadName,
+  onEdit,
+  onDelete,
+  onMoveToPractice
+}: {
+  ammo: AmmoInventoryInfo
+  loadName: string | null
+  onEdit: () => void
+  onDelete: () => void
+  onMoveToPractice: () => void
+}): React.JSX.Element {
+  const components = [
+    ammo.bulletManufacturer || ammo.bulletType
+      ? {
+          label: 'Bullet',
+          value: [ammo.bulletManufacturer, ammo.bulletType].filter(Boolean).join(' ')
+        }
+      : null,
+    ammo.powderManufacturer || ammo.powder || ammo.chargeWeight != null
+      ? {
+          label: 'Powder',
+          value: [
+            [ammo.powderManufacturer, ammo.powder].filter(Boolean).join(' '),
+            ammo.chargeWeight != null ? `${ammo.chargeWeight}gr` : null
+          ]
+            .filter(Boolean)
+            .join(' · ')
+        }
+      : null,
+    ammo.primerManufacturer || ammo.primer
+      ? {
+          label: 'Primer',
+          value: [ammo.primerManufacturer, ammo.primer].filter(Boolean).join(' ')
+        }
+      : null,
+    ammo.caseManufacturer || ammo.caseName
+      ? {
+          label: 'Case',
+          value: [ammo.caseManufacturer, ammo.caseName].filter(Boolean).join(' ')
+        }
+      : null,
+    ammo.seatingDepth
+      ? {
+          label: 'Seating',
+          value: ammo.seatingDepth
+        }
+      : null
+  ].filter(Boolean) as Array<{ label: string; value: string }>
+
+  const isPractice = ammo.name === 'Practice Ammo'
+
+  return (
+    <article className="ammo-card">
+      <header className="ammo-card-header">
+        <div className="ammo-card-badges">
+          <span className={`ammo-badge ammo-badge-${ammo.type.toLowerCase()}`}>{ammo.type}</span>
+          <span className="ammo-badge ammo-badge-caliber">{ammo.caliber}</span>
+        </div>
+        <div className="ammo-card-actions">
+          <button type="button" className="btn-ghost btn-sm" onClick={onEdit}>
+            Edit
+          </button>
+          <button type="button" className="btn-ghost btn-sm" onClick={onDelete}>
+            Delete
+          </button>
+        </div>
+      </header>
+
+      <h3 className="ammo-card-title">{ammo.name}</h3>
+      {ammo.manufacturer ? <p className="ammo-card-mfr">{ammo.manufacturer}</p> : null}
+
+      <div className="ammo-qty-row">
+        <span className="ammo-qty">{ammo.quantity}</span>
+        <span className="ammo-qty-label">rounds</span>
+        {ammo.lotNumber ? <span className="ammo-lot">Lot #{ammo.lotNumber}</span> : null}
+      </div>
+
+      {components.length ? (
+        <dl className="ammo-component-grid">
+          {components.map((item) => (
+            <div key={item.label}>
+              <dt>{item.label}</dt>
+              <dd>{item.value}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
+
+      {loadName ? (
+        <p className="ammo-load-link">
+          Load recipe: <strong>{loadName}</strong>
+        </p>
+      ) : null}
+
+      {ammo.notes ? <p className="ammo-notes">{ammo.notes}</p> : null}
+
+      {!isPractice ? (
+        <footer className="ammo-card-footer">
+          <button type="button" className="btn-ghost" onClick={onMoveToPractice}>
+            Move to Practice
+          </button>
+        </footer>
+      ) : null}
+    </article>
+  )
+}
+
+function LoadCard({
+  load,
+  onEdit,
+  onDelete
+}: {
+  load: LoadDevelopmentInfo
+  onEdit: () => void
+  onDelete: () => void
+}): React.JSX.Element {
+  return (
+    <article className="ammo-card">
+      <header className="ammo-card-header">
+        <div className="ammo-card-badges">
+          <span className="ammo-badge ammo-badge-caliber">{load.caliber}</span>
+        </div>
+        <div className="ammo-card-actions">
+          <button type="button" className="btn-ghost btn-sm" onClick={onEdit}>
+            Edit
+          </button>
+          <button type="button" className="btn-ghost btn-sm" onClick={onDelete}>
+            Delete
+          </button>
+        </div>
+      </header>
+
+      <h3 className="ammo-card-title">{load.name}</h3>
+
+      <dl className="load-component-grid">
+        <div>
+          <dt>Bullet</dt>
+          <dd>
+            {load.bulletManufacturer} {load.bulletModel}
+          </dd>
+        </div>
+        <div>
+          <dt>Powder</dt>
+          <dd>
+            {load.powderManufacturer} {load.powderModel} ({load.powderCharge}gr)
+          </dd>
+        </div>
+        <div>
+          <dt>Brass</dt>
+          <dd>
+            {load.brassManufacturer}
+            {load.brassModel ? ` ${load.brassModel}` : ''}
+          </dd>
+        </div>
+        <div>
+          <dt>Primer</dt>
+          <dd>
+            {load.primerManufacturer} {load.primerModel}
+          </dd>
+        </div>
+      </dl>
+
+      <div className="load-ballistics">
+        <div>
+          <span className="load-ballistics-label">Velocity</span>
+          <span className="load-ballistics-value">{telemetry(load.velocity)}</span>
+        </div>
+        <div>
+          <span className="load-ballistics-label">SD</span>
+          <span className="load-ballistics-value">{telemetry(load.sd)}</span>
+        </div>
+        <div>
+          <span className="load-ballistics-label">ES</span>
+          <span className="load-ballistics-value">{telemetry(load.es)}</span>
+        </div>
+      </div>
+
+      {load.notes ? <p className="ammo-notes">{load.notes}</p> : null}
+    </article>
+  )
+}
+
+export function AmmoPage(): React.JSX.Element {
+  const [subTab, setSubTab] = useState<SubTab>('inventory')
+  const [ammo, setAmmo] = useState<AmmoInventoryInfo[]>([])
+  const [loads, setLoads] = useState<LoadDevelopmentInfo[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [ammoModalOpen, setAmmoModalOpen] = useState(false)
+  const [loadModalOpen, setLoadModalOpen] = useState(false)
+  const [editingAmmo, setEditingAmmo] = useState<AmmoInventoryInfo | null>(null)
+  const [editingLoad, setEditingLoad] = useState<LoadDevelopmentInfo | null>(null)
+
+  const loadsById = useMemo(() => {
+    const map = new Map<string, LoadDevelopmentInfo>()
+    for (const load of loads) map.set(load.id, load)
+    return map
+  }, [loads])
+
+  const load = useCallback(async () => {
+    setError(null)
+    try {
+      const [nextAmmo, nextLoads] = await Promise.all([
+        window.api.listAmmo(),
+        window.api.listLoads()
+      ])
+      setAmmo(nextAmmo)
+      setLoads(nextLoads)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load ammo data')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    void Promise.all([window.api.listAmmo(), window.api.listLoads()])
+      .then(([nextAmmo, nextLoads]) => {
+        if (!cancelled) {
+          setAmmo(nextAmmo)
+          setLoads(nextLoads)
+          setLoading(false)
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Failed to load ammo data')
+          setLoading(false)
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  async function handleSaveAmmo(input: AmmoInput): Promise<void> {
+    if (editingAmmo) {
+      await window.api.updateAmmo(editingAmmo.id, input)
+    } else {
+      await window.api.createAmmo(input)
+    }
+    await load()
+  }
+
+  async function handleSaveLoad(input: LoadInput): Promise<void> {
+    if (editingLoad) {
+      await window.api.updateLoad(editingLoad.id, input)
+    } else {
+      await window.api.createLoad(input)
+    }
+    await load()
+  }
+
+  async function handleDeleteAmmo(item: AmmoInventoryInfo): Promise<void> {
+    if (!window.confirm(`Delete ${item.name}?`)) return
+    try {
+      await window.api.deleteAmmo(item.id)
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Delete failed')
+    }
+  }
+
+  async function handleDeleteLoad(item: LoadDevelopmentInfo): Promise<void> {
+    if (!window.confirm(`Delete load “${item.name}”?`)) return
+    try {
+      await window.api.deleteLoad(item.id)
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Delete failed')
+    }
+  }
+
+  async function handleMoveToPractice(item: AmmoInventoryInfo): Promise<void> {
+    if (
+      !window.confirm(
+        `Move ${item.quantity} rounds of “${item.name}” into Practice Ammo (${item.caliber})?`
+      )
+    ) {
+      return
+    }
+    try {
+      await window.api.moveAmmoToPractice(item.id)
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Move to Practice failed')
+    }
+  }
+
+  return (
+    <div className="page">
+      <header className="page-header">
+        <div>
+          <h1>Ammo & Reloading</h1>
+          <p>Track ammunition lots and reloading load development.</p>
+        </div>
+        <div className="subtab-row" role="tablist" aria-label="Ammo sections">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={subTab === 'inventory'}
+            className={`chip${subTab === 'inventory' ? ' active' : ''}`}
+            onClick={() => setSubTab('inventory')}
+          >
+            Inventory
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={subTab === 'loads'}
+            className={`chip${subTab === 'loads' ? ' active' : ''}`}
+            onClick={() => setSubTab('loads')}
+          >
+            Load Data
+          </button>
+        </div>
+      </header>
+
+      {error ? <p className="form-error">{error}</p> : null}
+
+      {subTab === 'inventory' ? (
+        <>
+          <div className="section-header">
+            <h2>Ammunition Inventory</h2>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => {
+                setEditingAmmo(null)
+                setAmmoModalOpen(true)
+              }}
+            >
+              + Add Ammo
+            </button>
+          </div>
+
+          {loading ? (
+            <p className="muted">Loading…</p>
+          ) : ammo.length === 0 ? (
+            <EmptyState
+              title="No Ammunition Tracked"
+              description="Add factory or handload lots to track on-hand quantity."
+              actionLabel="Add First Ammo"
+              onAction={() => {
+                setEditingAmmo(null)
+                setAmmoModalOpen(true)
+              }}
+            />
+          ) : (
+            <div className="ammo-card-grid">
+              {ammo.map((item) => (
+                <AmmoCard
+                  key={item.id}
+                  ammo={item}
+                  loadName={item.loadId ? (loadsById.get(item.loadId)?.name ?? null) : null}
+                  onEdit={() => {
+                    setEditingAmmo(item)
+                    setAmmoModalOpen(true)
+                  }}
+                  onDelete={() => void handleDeleteAmmo(item)}
+                  onMoveToPractice={() => void handleMoveToPractice(item)}
+                />
+              ))}
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          <div className="section-header">
+            <h2>Load Development</h2>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => {
+                setEditingLoad(null)
+                setLoadModalOpen(true)
+              }}
+            >
+              + New Load
+            </button>
+          </div>
+
+          {loading ? (
+            <p className="muted">Loading…</p>
+          ) : loads.length === 0 ? (
+            <EmptyState
+              title="No Load Data"
+              description="Create a reloading recipe with charge, COAL, and components."
+              actionLabel="Create First Load"
+              onAction={() => {
+                setEditingLoad(null)
+                setLoadModalOpen(true)
+              }}
+            />
+          ) : (
+            <div className="ammo-card-grid">
+              {loads.map((item) => (
+                <LoadCard
+                  key={item.id}
+                  load={item}
+                  onEdit={() => {
+                    setEditingLoad(item)
+                    setLoadModalOpen(true)
+                  }}
+                  onDelete={() => void handleDeleteLoad(item)}
+                />
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {ammoModalOpen ? (
+        <AmmoFormModal
+          initial={editingAmmo}
+          loads={loads}
+          onClose={() => {
+            setAmmoModalOpen(false)
+            setEditingAmmo(null)
+          }}
+          onSave={handleSaveAmmo}
+        />
+      ) : null}
+
+      {loadModalOpen ? (
+        <LoadFormModal
+          initial={editingLoad}
+          onClose={() => {
+            setLoadModalOpen(false)
+            setEditingLoad(null)
+          }}
+          onSave={handleSaveLoad}
+        />
+      ) : null}
+    </div>
+  )
+}

@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { AppInfo } from '../../shared/app-info'
 import type { LicenseStatusInfo } from '../../shared/license'
 import type { ProfileInfo } from '../../shared/profile'
+import { AmmoPage } from './pages/AmmoPage'
 import { BuildsPage } from './pages/BuildsPage'
 import { InventoryPage } from './pages/InventoryPage'
 import { LogsPage } from './pages/LogsPage'
@@ -10,20 +11,28 @@ import { SettingsPage } from './pages/SettingsPage'
 
 type NavId = 'dashboard' | 'inventory' | 'builds' | 'logs' | 'ammo' | 'settings'
 
-const NAV_ITEMS: Array<{ id: NavId; label: string; enabled: boolean }> = [
-  { id: 'dashboard', label: 'Dashboard', enabled: false },
-  { id: 'inventory', label: 'Inventory', enabled: true },
-  { id: 'builds', label: 'Complete Builds', enabled: true },
-  { id: 'logs', label: 'Shooting Logs', enabled: true },
-  { id: 'ammo', label: 'Ammo', enabled: false },
-  { id: 'settings', label: 'Settings', enabled: true }
-]
+type NavItem = { id: NavId; label: string; enabled: boolean; visible?: boolean }
 
 function App(): React.JSX.Element {
   const [info, setInfo] = useState<AppInfo | null>(null)
   const [license, setLicense] = useState<LicenseStatusInfo | null>(null)
   const [profile, setProfile] = useState<ProfileInfo | null>(null)
   const [active, setActive] = useState<NavId>('inventory')
+
+  const trackAmmo = profile?.trackAmmo ?? true
+  const view: NavId = !trackAmmo && active === 'ammo' ? 'inventory' : active
+
+  const navItems = useMemo<NavItem[]>(
+    () => [
+      { id: 'dashboard', label: 'Dashboard', enabled: false },
+      { id: 'inventory', label: 'Inventory', enabled: true },
+      { id: 'builds', label: 'Complete Builds', enabled: true },
+      { id: 'logs', label: 'Shooting Logs', enabled: true },
+      { id: 'ammo', label: 'Ammo & Reloading', enabled: true, visible: trackAmmo },
+      { id: 'settings', label: 'Settings', enabled: true }
+    ],
+    [trackAmmo]
+  )
 
   const refresh = useCallback(async () => {
     const [nextInfo, nextLicense, nextProfile] = await Promise.all([
@@ -68,18 +77,20 @@ function App(): React.JSX.Element {
         </div>
 
         <nav className="nav" aria-label="Primary">
-          {NAV_ITEMS.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className={`nav-item${active === item.id ? ' active' : ''}${item.enabled ? '' : ' muted'}`}
-              disabled={!item.enabled}
-              onClick={() => item.enabled && setActive(item.id)}
-            >
-              <span className="nav-dot" aria-hidden="true" />
-              {item.label}
-            </button>
-          ))}
+          {navItems
+            .filter((item) => item.visible !== false)
+            .map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={`nav-item${view === item.id ? ' active' : ''}${item.enabled ? '' : ' muted'}`}
+                disabled={!item.enabled}
+                onClick={() => item.enabled && setActive(item.id)}
+              >
+                <span className="nav-dot" aria-hidden="true" />
+                {item.label}
+              </button>
+            ))}
         </nav>
 
         <div className="sidebar-meta">
@@ -98,26 +109,24 @@ function App(): React.JSX.Element {
       </aside>
 
       <main className="main">
-        {active === 'inventory' ? <InventoryPage trackValue={profile?.trackValue ?? true} /> : null}
-        {active === 'builds' ? (
+        {view === 'inventory' ? <InventoryPage trackValue={profile?.trackValue ?? true} /> : null}
+        {view === 'builds' ? (
           <BuildsPage
             trackValue={profile?.trackValue ?? true}
             license={license}
             onLicenseChange={() => void refresh()}
           />
         ) : null}
-        {active === 'logs' ? <LogsPage /> : null}
-        {active === 'settings' ? (
+        {view === 'logs' ? <LogsPage /> : null}
+        {view === 'ammo' && trackAmmo ? <AmmoPage /> : null}
+        {view === 'settings' ? (
           <SettingsPage license={license} profile={profile} onRefresh={() => void refresh()} />
         ) : null}
-        {active === 'dashboard' ? (
+        {view === 'dashboard' ? (
           <PlaceholderPage
             title="Dashboard"
             blurb="Overview and maintenance alerts arrive in a later module."
           />
-        ) : null}
-        {active === 'ammo' ? (
-          <PlaceholderPage title="Ammo & Reloading" blurb="Ammo inventory and loads come later." />
         ) : null}
       </main>
     </div>
