@@ -34,7 +34,6 @@ export type Profile = {
 
 export type Part = {
   id: string
-  name: string
   manufacturer: string
   value: number
   type: PartType

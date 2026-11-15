@@ -95,14 +95,12 @@ test('getMilestonesSummary: derives unlocks from DB rows', () => {
   assert.equal(summary.unlockedCount, 0)
 
   const action = createPart(db, {
-    name: 'Action',
     manufacturer: 'Impact',
     type: 'Action',
     model: '737R',
     serialNumber: 'A1'
   })
   const barrel = createPart(db, {
-    name: 'Barrel',
     manufacturer: 'Proof',
     type: 'Barrel',
     caliber: '6mm GT',
@@ -111,27 +109,23 @@ test('getMilestonesSummary: derives unlocks from DB rows', () => {
     totalRoundCount: 2500
   })
   const chassis = createPart(db, {
-    name: 'Chassis',
     manufacturer: 'Manners',
     type: 'Chassis',
     model: 'TCS'
   })
   const optic = createPart(db, {
-    name: 'Optic',
     manufacturer: 'Nightforce',
     type: 'Optic',
     model: 'ATACR',
     serialNumber: 'O1'
   })
   createPart(db, {
-    name: 'Can',
     manufacturer: 'Thunder Beast',
     type: 'Suppressor',
     model: 'Ultra 7',
     muzzleType: 'Suppressor'
   })
   createPart(db, {
-    name: 'Bag',
     manufacturer: 'Area 419',
     type: 'Misc',
     model: 'Hellfire'

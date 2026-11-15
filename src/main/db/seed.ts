@@ -41,12 +41,12 @@ export function seedDemoIfEmpty(db: Database.Database): boolean {
 
     const insertPart = db.prepare(
       `INSERT INTO parts (
-        id, name, manufacturer, value, type, status, model, serial_number,
+        id, manufacturer, value, type, status, model, serial_number,
         total_round_count, rounds_after_cleaning, maintenance_interval,
         caliber, gunsmith, twist_rate, barrel_life, muzzle_type, notes,
         created_at, updated_at
       ) VALUES (
-        @id, @name, @manufacturer, @value, @type, 'In Stock', @model, @serialNumber,
+        @id, @manufacturer, @value, @type, 'In Stock', @model, @serialNumber,
         @totalRoundCount, @roundsAfterCleaning, @maintenanceInterval,
         @caliber, @gunsmith, @twistRate, @barrelLife, NULL, NULL,
         @createdAt, @createdAt
@@ -55,7 +55,6 @@ export function seedDemoIfEmpty(db: Database.Database): boolean {
 
     insertPart.run({
       id: 'part-action-1',
-      name: 'Match Action',
       manufacturer: 'Impact',
       value: 1400,
       type: 'Action',
@@ -73,7 +72,6 @@ export function seedDemoIfEmpty(db: Database.Database): boolean {
 
     insertPart.run({
       id: 'part-barrel-1',
-      name: '26" 6.5 CM',
       manufacturer: 'Proof Research',
       value: 850,
       type: 'Barrel',
@@ -91,7 +89,6 @@ export function seedDemoIfEmpty(db: Database.Database): boolean {
 
     insertPart.run({
       id: 'part-chassis-1',
-      name: 'ACC Premier',
       manufacturer: 'MDT',
       value: 1200,
       type: 'Chassis',
@@ -109,7 +106,6 @@ export function seedDemoIfEmpty(db: Database.Database): boolean {
 
     insertPart.run({
       id: 'part-optic-1',
-      name: 'Razor Gen III',
       manufacturer: 'Vortex',
       value: 3000,
       type: 'Optic',

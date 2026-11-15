@@ -25,18 +25,17 @@ function setup(): Database.Database {
 
   const insertPart = db.prepare(
     `INSERT INTO parts (
-      id, name, manufacturer, value, type, status, model, serial_number,
+      id, manufacturer, value, type, status, model, serial_number,
       total_round_count, rounds_after_cleaning, maintenance_interval,
       caliber, gunsmith, twist_rate, barrel_life, created_at, updated_at
     ) VALUES (
-      @id, @name, 'Acme', 100, @type, 'In Stock', 'M1', @serial,
+      @id, 'Acme', 100, @type, 'In Stock', 'M1', @serial,
       0, 0, 500, @caliber, @gunsmith, @twist, @life, @createdAt, @createdAt
     )`
   )
 
   insertPart.run({
     id: 'action-1',
-    name: 'Action',
     type: 'Action',
     serial: 'S1',
     caliber: null,
@@ -47,7 +46,6 @@ function setup(): Database.Database {
   })
   insertPart.run({
     id: 'barrel-1',
-    name: 'Barrel',
     type: 'Barrel',
     serial: null,
     caliber: '6.5 Creedmoor',
@@ -58,7 +56,6 @@ function setup(): Database.Database {
   })
   insertPart.run({
     id: 'chassis-1',
-    name: 'Chassis',
     type: 'Chassis',
     serial: null,
     caliber: null,

@@ -1,11 +1,9 @@
 /**
- * Dashboard aggregations (§6.1, §7.4, §7.6).
+ * Dashboard aggregations (§6.1).
  */
 
 import type Database from 'better-sqlite3-multiple-ciphers'
 import {
-  computeLoggingStreak,
-  computeMetricStanding,
   maintenanceTone,
   trailing12MonthRounds,
   type DashboardSummary,
@@ -23,12 +21,11 @@ function partTitle(part: {
   manufacturer: string
   model: string | null
   caliber: string | null
-  name: string
 }): string {
   if (part.type === 'Barrel') {
     return [part.manufacturer, part.caliber].filter(Boolean).join(' ')
   }
-  return [part.manufacturer, part.model].filter(Boolean).join(' ') || part.name
+  return [part.manufacturer, part.model].filter(Boolean).join(' ') || part.manufacturer
 }
 
 function buildMaintenanceAlerts(parts: ReturnType<typeof listParts>): MaintenanceAlertItem[] {
@@ -116,10 +113,6 @@ export function getDashboardSummary(db: Database.Database): DashboardSummary {
     activeSystems,
     inventoryItems,
     totalValue,
-    roundsStanding: computeMetricStanding(totalRounds, 'rounds'),
-    systemsStanding: computeMetricStanding(activeSystems, 'systems'),
-    valueStanding: profile.trackValue ? computeMetricStanding(totalValue, 'value') : null,
-    loggingStreak: computeLoggingStreak(logs.map((l) => l.date)),
     monthlyRounds: trailing12MonthRounds(logs),
     recentActivity: buildRecentActivity(db, logs),
     maintenanceAlerts: buildMaintenanceAlerts(parts)

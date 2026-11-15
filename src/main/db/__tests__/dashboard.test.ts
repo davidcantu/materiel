@@ -10,11 +10,7 @@ import { createPart } from '../parts'
 import { ensureLocalProfile, updateProfile } from '../profile'
 import { addShootingLog } from '../shooting-logs'
 import { createCustomSystem } from '../systems'
-import {
-  computeLoggingStreak,
-  computeMetricStanding,
-  trailing12MonthRounds
-} from '../../../shared/dashboard'
+import { trailing12MonthRounds } from '../../../shared/dashboard'
 
 const dirs: string[] = []
 
@@ -39,34 +35,6 @@ function dayOffset(daysAgo: number, from: Date = new Date('2026-11-15T12:00:00')
   return `${y}-${m}-${day}`
 }
 
-test('computeLoggingStreak: empty → 0', () => {
-  assert.equal(computeLoggingStreak([], new Date('2026-11-15')), 0)
-})
-
-test('computeLoggingStreak: gap > 14 from today → 0', () => {
-  const now = new Date('2026-11-15T12:00:00')
-  assert.equal(computeLoggingStreak([dayOffset(15, now)], now), 0)
-})
-
-test('computeLoggingStreak: unique days with ≤14 gaps', () => {
-  const now = new Date('2026-11-15T12:00:00')
-  const dates = [
-    dayOffset(0, now),
-    dayOffset(0, now), // duplicate same day
-    dayOffset(10, now),
-    dayOffset(20, now),
-    dayOffset(40, now) // gap > 14 from previous → stop
-  ]
-  assert.equal(computeLoggingStreak(dates, now), 3)
-})
-
-test('computeMetricStanding: seed benchmarks produce expected band', () => {
-  const standing = computeMetricStanding(3000, 'rounds')
-  assert.ok(standing.percentile >= 0 && standing.percentile <= 100)
-  assert.ok(['Beginner', 'Novice', 'Intermediate', 'Pro', 'Elite'].includes(standing.rank))
-  assert.equal(standing.topPercent, Math.max(0, 100 - Math.round(standing.percentile)))
-})
-
 test('trailing12MonthRounds: always 12 months ending current', () => {
   const now = new Date('2026-11-15T12:00:00')
   const months = trailing12MonthRounds(
@@ -85,13 +53,12 @@ test('trailing12MonthRounds: always 12 months ending current', () => {
   assert.equal(months[0].key, '2025-12')
 })
 
-test('getDashboardSummary: KPIs, streak, alerts, hides value when trackValue false', () => {
+test('getDashboardSummary: KPIs, alerts, hides value when trackValue false', () => {
   const db = setup()
   ensureLocalProfile(db)
   updateProfile(db, { firstName: 'David', trackValue: true })
 
   const action = createPart(db, {
-    name: 'Action',
     manufacturer: 'Impact',
     type: 'Action',
     model: '737R',
@@ -102,7 +69,6 @@ test('getDashboardSummary: KPIs, streak, alerts, hides value when trackValue fal
     totalRoundCount: 480
   })
   const barrel = createPart(db, {
-    name: 'Barrel',
     manufacturer: 'Proof',
     type: 'Barrel',
     caliber: '6.5 Creedmoor',
@@ -115,14 +81,12 @@ test('getDashboardSummary: KPIs, streak, alerts, hides value when trackValue fal
     totalRoundCount: 1650
   })
   const chassis = createPart(db, {
-    name: 'Chassis',
     manufacturer: 'MDT',
     type: 'Chassis',
     model: 'ACC',
     value: 1200
   })
   const optic = createPart(db, {
-    name: 'Optic',
     manufacturer: 'Vortex',
     type: 'Optic',
     model: 'Razor',
@@ -153,8 +117,6 @@ test('getDashboardSummary: KPIs, streak, alerts, hides value when trackValue fal
     roundsFired: 80
   })
 
-  // Freeze-ish: streak uses real Date.now inside getDashboardSummary.
-  // We still assert structural fields; streak is computed from real today.
   const summary = getDashboardSummary(db)
   assert.equal(summary.firstName, 'David')
   assert.equal(summary.trackValue, true)
@@ -162,7 +124,6 @@ test('getDashboardSummary: KPIs, streak, alerts, hides value when trackValue fal
   assert.equal(summary.activeSystems, 1)
   assert.equal(summary.inventoryItems, 4)
   assert.equal(summary.totalValue, 1400 + 850 + 1200 + 3000)
-  assert.ok(summary.valueStanding)
   assert.equal(summary.monthlyRounds.length, 12)
   assert.equal(summary.recentActivity.length, 2)
   assert.equal(summary.recentActivity[0].systemName, 'Match 6.5')
@@ -173,5 +134,4 @@ test('getDashboardSummary: KPIs, streak, alerts, hides value when trackValue fal
   updateProfile(db, { trackValue: false })
   const hidden = getDashboardSummary(db)
   assert.equal(hidden.trackValue, false)
-  assert.equal(hidden.valueStanding, null)
 })

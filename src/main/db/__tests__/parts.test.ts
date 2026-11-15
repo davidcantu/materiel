@@ -36,7 +36,6 @@ test('parts CRUD: create, list, status, maintenance reset, delete', () => {
   ensureLocalProfile(db)
 
   const action = createPart(db, {
-    name: 'Match Action',
     manufacturer: 'Impact',
     type: 'Action',
     model: '737R',
@@ -47,7 +46,6 @@ test('parts CRUD: create, list, status, maintenance reset, delete', () => {
   assert.equal(action.maintenanceInterval, 500)
 
   const barrel = createPart(db, {
-    name: '26 CM',
     manufacturer: 'Proof Research',
     type: 'Barrel',
     caliber: '6.5 Creedmoor',
@@ -73,27 +71,23 @@ test('parts CRUD: create, list, status, maintenance reset, delete', () => {
 test('parts: refuses delete while part is on a system', () => {
   const db = setup()
   const action = createPart(db, {
-    name: 'A',
     manufacturer: 'Impact',
     type: 'Action',
     model: '737R',
     serialNumber: '1'
   })
   const barrel = createPart(db, {
-    name: 'B',
     manufacturer: 'Bartlein',
     type: 'Barrel',
     caliber: '6mm GT',
     gunsmith: 'Factory'
   })
   const chassis = createPart(db, {
-    name: 'C',
     manufacturer: 'MDT',
     type: 'Chassis',
     model: 'ACC'
   })
   const optic = createPart(db, {
-    name: 'O',
     manufacturer: 'Vortex',
     type: 'Optic',
     model: 'Razor',

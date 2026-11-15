@@ -26,12 +26,15 @@ export function partPrimaryTitle(part: PartInfo): string {
   if (part.type === 'Barrel') {
     return [part.manufacturer, part.caliber].filter(Boolean).join(' ')
   }
-  return [part.manufacturer, part.model].filter(Boolean).join(' ') || part.name
+  return [part.manufacturer, part.model].filter(Boolean).join(' ') || part.manufacturer
 }
 
+/** Build-picker label: manufacturer/model (or caliber) · serial · status. Value is always part.id. */
 export function partOptionLabel(part: PartInfo): string {
-  const title = partPrimaryTitle(part)
-  return `${title} — ${part.name}`
+  const bits = [partPrimaryTitle(part)]
+  if (part.serialNumber) bits.push(`S/N ${part.serialNumber}`)
+  bits.push(part.status)
+  return bits.join(' · ')
 }
 
 export function typeFilterLabel(type: PartType | 'All'): string {

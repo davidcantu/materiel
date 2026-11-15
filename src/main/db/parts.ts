@@ -8,7 +8,6 @@ import type { MuzzleType, Part, PartStatus, PartType } from './types'
 
 type PartRow = {
   id: string
-  name: string
   manufacturer: string
   value: number
   type: PartType
@@ -30,7 +29,6 @@ type PartRow = {
 
 export type NewPartInput = {
   id?: string
-  name: string
   manufacturer: string
   value?: number
   type: PartType
@@ -63,7 +61,6 @@ function nowIso(): string {
 function mapPart(row: PartRow): Part {
   return {
     id: row.id,
-    name: row.name,
     manufacturer: row.manufacturer,
     value: row.value,
     type: row.type,
@@ -87,7 +84,6 @@ function mapPart(row: PartRow): Part {
 function validatePartFields(
   type: PartType,
   input: {
-    name?: string
     manufacturer?: string
     serialNumber?: string | null
     caliber?: string | null
@@ -97,9 +93,6 @@ function validatePartFields(
   },
   requireCore: boolean
 ): void {
-  if (requireCore || input.name !== undefined) {
-    if (!input.name?.trim()) throw new Error('Part name is required')
-  }
   if (requireCore || input.manufacturer !== undefined) {
     if (!input.manufacturer?.trim()) throw new Error('Manufacturer is required')
   }
@@ -148,16 +141,16 @@ export function listParts(db: Database.Database, options: ListPartsOptions = {})
   if (options.search?.trim()) {
     const q = `%${options.search.trim().toLowerCase()}%`
     clauses.push(
-      `(LOWER(name) LIKE ? OR LOWER(manufacturer) LIKE ? OR LOWER(COALESCE(model, '')) LIKE ? OR LOWER(COALESCE(caliber, '')) LIKE ? OR LOWER(COALESCE(serial_number, '')) LIKE ?)`
+      `(LOWER(manufacturer) LIKE ? OR LOWER(COALESCE(model, '')) LIKE ? OR LOWER(COALESCE(caliber, '')) LIKE ? OR LOWER(COALESCE(serial_number, '')) LIKE ?)`
     )
-    params.push(q, q, q, q, q)
+    params.push(q, q, q, q)
   }
 
   const where = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : ''
   const rows = db
     .prepare(
       `SELECT * FROM parts ${where}
-       ORDER BY type ASC, manufacturer ASC, name ASC`
+       ORDER BY type ASC, manufacturer ASC, COALESCE(model, caliber, '') ASC`
     )
     .all(...params) as PartRow[]
   return rows.map(mapPart)
@@ -176,19 +169,18 @@ export function createPart(db: Database.Database, input: NewPartInput): Part {
 
   db.prepare(
     `INSERT INTO parts (
-      id, name, manufacturer, value, type, status, model, serial_number,
+      id, manufacturer, value, type, status, model, serial_number,
       total_round_count, rounds_after_cleaning, maintenance_interval,
       caliber, gunsmith, twist_rate, barrel_life, muzzle_type, notes,
       created_at, updated_at
     ) VALUES (
-      @id, @name, @manufacturer, @value, @type, @status, @model, @serialNumber,
+      @id, @manufacturer, @value, @type, @status, @model, @serialNumber,
       @totalRoundCount, @roundsAfterCleaning, @maintenanceInterval,
       @caliber, @gunsmith, @twistRate, @barrelLife, @muzzleType, @notes,
       @createdAt, @updatedAt
     )`
   ).run({
     id,
-    name: input.name.trim(),
     manufacturer: input.manufacturer.trim(),
     value: input.value ?? 0,
     type: input.type,
@@ -226,7 +218,6 @@ export function updatePart(db: Database.Database, id: string, patch: UpdatePartI
   const updatedAt = nowIso()
   db.prepare(
     `UPDATE parts SET
-      name = @name,
       manufacturer = @manufacturer,
       value = @value,
       status = @status,
@@ -245,7 +236,6 @@ export function updatePart(db: Database.Database, id: string, patch: UpdatePartI
     WHERE id = @id`
   ).run({
     id,
-    name: (patch.name ?? existing.name).trim(),
     manufacturer: (patch.manufacturer ?? existing.manufacturer).trim(),
     value: patch.value ?? existing.value,
     status: nextStatus,

@@ -1,6 +1,7 @@
 import type Database from 'better-sqlite3-multiple-ciphers'
 import * as migration001 from './migrations/001_initial'
-import * as migration002 from './migrations/002_profile_username'
+import * as migration002 from './migrations/002_drop_part_name'
+import * as migration003 from './migrations/003_profile_username'
 
 export type Migration = {
   id: number
@@ -10,7 +11,8 @@ export type Migration = {
 
 export const MIGRATIONS: Migration[] = [
   { id: migration001.id, name: migration001.name, sql: migration001.sql },
-  { id: migration002.id, name: migration002.name, sql: migration002.sql }
+  { id: migration002.id, name: migration002.name, sql: migration002.sql },
+  { id: migration003.id, name: migration003.name, sql: migration003.sql }
 ]
 
 export function getAppliedMigrationVersion(db: Database.Database): number {
