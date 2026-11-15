@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { DashboardSummary, MetricStanding } from '../../../shared/dashboard'
+import { PageFeedback } from '../components/PageFeedback'
+import { PageHeader } from '../components/PageHeader'
 import { formatCurrency } from '../lib/format'
 
 type DashboardPageProps = {
@@ -31,6 +33,7 @@ export function DashboardPage({ onNavigateLogs }: DashboardPageProps): React.JSX
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
+    setLoading(true)
     setError(null)
     try {
       const next = await window.api.getDashboard()
@@ -63,26 +66,40 @@ export function DashboardPage({ onNavigateLogs }: DashboardPageProps): React.JSX
     }
   }, [])
 
-  if (loading) {
+  if (loading && !summary) {
     return (
       <div className="page">
-        <p className="muted">Loading dashboard…</p>
+        <PageHeader
+          title="Dashboard"
+          description="Your rifle systems, rounds, and maintenance at a glance."
+        />
+        <PageFeedback loading loadingLabel="Loading dashboard…" />
       </div>
     )
   }
 
-  if (error || !summary) {
+  if (error && !summary) {
     return (
       <div className="page">
-        <header className="page-header">
-          <div>
-            <h1>Dashboard</h1>
-            <p className="error-text">{error ?? 'Unable to load dashboard.'}</p>
-          </div>
-          <button type="button" className="btn-ghost" onClick={() => void load()}>
-            Retry
-          </button>
-        </header>
+        <PageHeader
+          title="Dashboard"
+          description="Your rifle systems, rounds, and maintenance at a glance."
+          actions={
+            <button type="button" className="btn-ghost" onClick={() => void load()}>
+              Retry
+            </button>
+          }
+        />
+        <PageFeedback error={error} onRetry={() => void load()} />
+      </div>
+    )
+  }
+
+  if (!summary) {
+    return (
+      <div className="page">
+        <PageHeader title="Dashboard" />
+        <PageFeedback error="Unable to load dashboard." onRetry={() => void load()} />
       </div>
     )
   }
@@ -93,12 +110,10 @@ export function DashboardPage({ onNavigateLogs }: DashboardPageProps): React.JSX
 
   return (
     <div className="page dashboard-page">
-      <header className="page-header">
-        <div>
-          <h1>{title}</h1>
-          <p>Your rifle systems, rounds, and maintenance at a glance.</p>
-        </div>
-      </header>
+      <PageHeader
+        title={title}
+        description="Your rifle systems, rounds, and maintenance at a glance."
+      />
 
       <section className="dash-top" aria-label="Key metrics">
         <div className={`kpi-grid${summary.trackValue ? ' kpi-grid-4' : ' kpi-grid-3'}`}>
@@ -137,7 +152,7 @@ export function DashboardPage({ onNavigateLogs }: DashboardPageProps): React.JSX
             <span>{streakPct}%</span>
             <span>
               {summary.loggingStreak >= 28
-                ? 'Elite Streak Maintained!'
+                ? 'Elite streak maintained.'
                 : 'Log every 14 days to keep your streak alive.'}
             </span>
           </div>
@@ -150,7 +165,7 @@ export function DashboardPage({ onNavigateLogs }: DashboardPageProps): React.JSX
             <header className="dash-panel-header">
               <div>
                 <h2>Shooting Activity</h2>
-                <p className="dash-panel-sub">Rounds fired per month (Trailing 12 Months)</p>
+                <p className="dash-panel-sub">Rounds fired per month (trailing 12 months)</p>
               </div>
             </header>
             <div className="activity-chart" role="img" aria-label="Trailing 12 month rounds chart">
@@ -164,7 +179,7 @@ export function DashboardPage({ onNavigateLogs }: DashboardPageProps): React.JSX
                     <div
                       className={`activity-bar${month.rounds > 0 ? '' : ' activity-bar-zero'}`}
                       style={{ height: `${height}%` }}
-                      title={`${month.fullLabel}: ${month.rounds} Rounds`}
+                      title={`${month.fullLabel}: ${month.rounds} rounds`}
                     />
                     <span className="activity-bar-label">{month.label}</span>
                   </div>
@@ -177,7 +192,7 @@ export function DashboardPage({ onNavigateLogs }: DashboardPageProps): React.JSX
             <header className="dash-panel-header">
               <h2>Recent Activity</h2>
               <button type="button" className="btn-link" onClick={onNavigateLogs}>
-                View All
+                View all
               </button>
             </header>
             {summary.recentActivity.length === 0 ? (
@@ -193,7 +208,7 @@ export function DashboardPage({ onNavigateLogs }: DashboardPageProps): React.JSX
                       </div>
                       <div className="muted">{item.cartridgeLabel}</div>
                     </div>
-                    <span className="rounds-badge">+{item.roundsFired} Rounds</span>
+                    <span className="rounds-badge">+{item.roundsFired}</span>
                   </li>
                 ))}
               </ul>

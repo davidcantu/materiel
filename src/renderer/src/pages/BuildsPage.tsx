@@ -3,7 +3,10 @@ import type { PartInfo } from '../../../shared/parts'
 import type { CompleteSystemInfo } from '../../../shared/systems'
 import type { LicenseGateDenial, LicenseStatusInfo } from '../../../shared/license'
 import { EmptyState } from '../components/EmptyState'
+import { PageFeedback } from '../components/PageFeedback'
+import { PageHeader } from '../components/PageHeader'
 import { SystemFormModal } from '../components/SystemFormModal'
+import { useToast } from '../components/toast-context'
 import { formatCurrency, maintenancePercent, partPrimaryTitle } from '../lib/format'
 
 type BuildsPageProps = {
@@ -17,6 +20,7 @@ export function BuildsPage({
   license,
   onLicenseChange
 }: BuildsPageProps): React.JSX.Element {
+  const toast = useToast()
   const [systems, setSystems] = useState<CompleteSystemInfo[]>([])
   const [parts, setParts] = useState<PartInfo[]>([])
   const [loading, setLoading] = useState(true)
@@ -91,9 +95,11 @@ export function BuildsPage({
     if (!result.ok) {
       setLicenseBanner(result.error)
       onLicenseChange()
+      toast.error(result.error.message)
       throw new Error(result.error.message)
     }
     onLicenseChange()
+    toast.success('Build created.')
     await load()
   }
 
@@ -104,9 +110,11 @@ export function BuildsPage({
     if (!result.ok) {
       setLicenseBanner(result.error)
       onLicenseChange()
+      toast.error(result.error.message)
       throw new Error(result.error.message)
     }
     onLicenseChange()
+    toast.success('Factory rifle created.')
     await load()
   }
 
@@ -115,6 +123,7 @@ export function BuildsPage({
     patch: Parameters<typeof window.api.updateSystem>[1]
   ): Promise<void> {
     await window.api.updateSystem(id, patch)
+    toast.success('Build updated.')
     await load()
   }
 
@@ -125,27 +134,28 @@ export function BuildsPage({
     try {
       await window.api.deleteSystem(system.id)
       onLicenseChange()
+      toast.success('Build deleted.')
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Delete failed')
+      toast.error(err instanceof Error ? err.message : 'Delete failed')
     }
   }
 
   return (
     <div className="page">
-      <header className="page-header">
-        <div>
-          <h1>Complete Builds</h1>
-          <p>Assemble custom or factory rifles from your inventory.</p>
-        </div>
-        <button type="button" className="btn-primary" onClick={openCreate}>
-          + New Build
-        </button>
-      </header>
+      <PageHeader
+        title="Complete Builds"
+        description="Assemble custom or factory rifles from your inventory."
+        actions={
+          <button type="button" className="btn-primary" onClick={openCreate}>
+            + New Build
+          </button>
+        }
+      />
 
       {licenseBanner ? (
         <div className="banner banner-warn" role="alert">
-          <strong>{licenseBanner.code}</strong>
+          <strong>Rifle limit reached</strong>
           <p>{licenseBanner.message}</p>
           <p className="muted">
             Using {licenseBanner.license.completeRifleCount} of{' '}
@@ -155,18 +165,23 @@ export function BuildsPage({
         </div>
       ) : null}
 
-      {error ? <p className="form-error">{error}</p> : null}
+      <PageFeedback
+        loading={loading}
+        loadingLabel="Loading builds…"
+        error={error}
+        onRetry={() => void load()}
+      />
 
-      {loading ? (
-        <p className="muted">Loading builds…</p>
-      ) : systems.length === 0 ? (
+      {!loading && systems.length === 0 ? (
         <EmptyState
-          title="No Complete Systems"
+          title="No complete systems yet"
           description="Build your first rifle from parts in stock, or add a factory rifle."
-          actionLabel="Build Your First Rifle"
+          actionLabel="Build your first rifle"
           onAction={openCreate}
         />
-      ) : (
+      ) : null}
+
+      {!loading && systems.length > 0 ? (
         <div className="table-wrap">
           <table className="data-table">
             <thead>
@@ -204,7 +219,7 @@ export function BuildsPage({
                   <tr key={system.id}>
                     <td>
                       <div className="cell-title">{system.name}</div>
-                      <div className="cell-sub">{caliber ?? 'No Caliber Set'}</div>
+                      <div className="cell-sub">{caliber ?? 'No cartridge set'}</div>
                     </td>
                     <td>
                       <span className="type-pill">
@@ -252,7 +267,7 @@ export function BuildsPage({
             </tbody>
           </table>
         </div>
-      )}
+      ) : null}
 
       {modalOpen ? (
         <SystemFormModal
