@@ -27,15 +27,17 @@ Runs Electron with Vite HMR. Uses `.env.development` (mock cloud backup, **unloc
 
 ## Build gates
 
-| Script               | Mode        | Notes                                                                                       |
-| -------------------- | ----------- | ------------------------------------------------------------------------------------------- |
-| `npm run dev`        | development | Local app + mock backup provider                                                            |
-| `npm run build:test` | test        | Typecheck, Vite build (`--mode test`), electron-builder (no publish)                        |
-| `npm run build:prod` | production  | Typecheck, Vite build (`--mode production`), electron-builder for GitHub Releases packaging |
+| Script                     | Mode        | Notes                                                                                       |
+| -------------------------- | ----------- | ------------------------------------------------------------------------------------------- |
+| `npm run dev`              | development | Local app + mock backup provider                                                            |
+| `npm run build:test`       | test        | Typecheck, Vite build (`--mode test`), electron-builder (no publish)                        |
+| `npm run build:test:linux` | test        | Same as `build:test`, forced Linux AppImage + unpacked `--dir`                              |
+| `npm run smoke:linux`      | test        | `build:test:linux` then brief headless launch of `dist/linux-unpacked/materiel`             |
+| `npm run build:prod`       | production  | Typecheck, Vite build (`--mode production`), electron-builder for GitHub Releases packaging |
 
 Platform helpers: `npm run build:mac`, `npm run build:win`, `npm run build:linux` (run on the matching OS or CI).
 
-Packaging targets **`.dmg`** (mac) and **`.exe`** / NSIS (win) via `electron-builder.yml`, published through GitHub Releases when configured.
+Packaging targets **AppImage** (linux), **`.dmg`** (mac), and **`.exe`** / NSIS (win) via `electron-builder.yml`, published through GitHub Releases when configured. Linux CI cannot produce mac/win installers — see [docs/packaging-smoke.md](./docs/packaging-smoke.md).
 
 ## Quality checks
 
