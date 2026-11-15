@@ -1,39 +1,70 @@
-Materiel
-A web application for precision rifle competitors and enthusiasts to track modular firearm components, complete rifle builds, shooting sessions, ammunition, reloading loads, maintenance intervals, and community performance.
+# Materiel
 
-Overview
-Materiel centralizes the lifecycle of precision rifle systems. Track individual components (actions, barrels, chassis, optics, muzzle devices) with round counts, cleaning intervals, and valuations. Assemble complete custom or factory builds. Log practice and match sessions with automatic propagation of round counts and ammunition deductions. Manage factory and handload inventories alongside detailed load development data. Monitor maintenance alerts, activity trends, logging streaks, and community rankings.
+Local-first Electron desktop app for precision rifle shooters: component inventory, complete builds, session logs, ammo/reloading, and maintenance — with optional encrypted cloud backup.
 
-Features
-Inventory — Component tracking with status, serial numbers, valuations, barrel life, and maintenance intervals
-Complete Builds — Custom and factory rifle assemblies with photos, notes, and total system value
-Shooting Logs — Session recording (rounds, velocity, location, practice/match) with automatic part and ammo updates
-Ammo & Reloading — Factory/handload inventory, load recipes (velocity, SD, ES, COAL/CBTO), and one-click move to practice ammo
-Dashboard — KPIs, 12-month activity chart, 14-day logging streak, and color-coded maintenance alerts
-Community Stats — Percentile rankings, skill tiers, six unlockable milestones, and top-5 reloading component leaderboards
-Admin Console — User roles and tiers, full or per-user backups/restores, automated backup policies, and platform analytics
-Profile & Settings — Shooter details, competition series, MFA, value/ammo tracking toggles, and data export
-Tech Stack
-React 19 + TypeScript
-Vite
-Tailwind CSS
-Recharts
-Lucide React
-Motion
-Getting Started
-Prerequisites: Node.js
+**Display name:** Materiel  
+**Free tier:** 2 complete rifles (license key unlocks more)  
+**Stack:** Electron + React + TypeScript via [electron-vite](https://electron-vite.org/)
 
+## Prerequisites
+
+- Node.js 20.19+ or 22.12+
+- npm 10+
+
+## Setup
+
+```bash
 npm install
-Create a .env.local file and set GEMINI_API_KEY if using AI features.
+```
 
+## Development
+
+```bash
 npm run dev
-Open http://localhost:3000.
+```
 
-Scripts
-Command	Description
-npm run dev	Start development server
-npm run build	Production build
-npm run preview	Preview production build
-npm run lint	TypeScript check
-Documentation
-Full functional, domain, data, and UI/UX specification: SOFTWARE_SPEC.md
+Runs Electron with Vite HMR. Uses `.env.development` (mock cloud backup, unlocked license mode).
+
+## Build gates
+
+| Script | Mode | Notes |
+|--------|------|--------|
+| `npm run dev` | development | Local app + mock backup provider |
+| `npm run build:test` | test | Typecheck, Vite build (`--mode test`), electron-builder (no publish) |
+| `npm run build:prod` | production | Typecheck, Vite build (`--mode production`), electron-builder for GitHub Releases packaging |
+
+Platform helpers: `npm run build:mac`, `npm run build:win`, `npm run build:linux` (run on the matching OS or CI).
+
+Packaging targets **`.dmg`** (mac) and **`.exe`** / NSIS (win) via `electron-builder.yml`, published through GitHub Releases when configured.
+
+## Quality checks
+
+```bash
+npm run typecheck
+npm run lint
+```
+
+## Project layout
+
+```
+src/
+  main/           # Electron main process
+    db/           # SQLite + better-sqlite3-multiple-ciphers (stub)
+    backup/       # Drive / OneDrive / mock + hourly/quit hooks (stub)
+    license/      # Free-tier rifle gate (stub)
+  preload/        # Typed contextBridge
+  renderer/       # React UI shell
+```
+
+Env templates: `.env.development`, `.env.test`, `.env.production`, and `.env.example` (no secrets).
+
+## Follow-ups
+
+- Encrypted SQLite schema + migrations
+- Real Google Drive / OneDrive OAuth backup
+- License key persistence + create-build gate
+- Inventory, Builds, Logs, Ammo, Dashboard modules
+
+## License
+
+MIT — see [LICENSE](./LICENSE).

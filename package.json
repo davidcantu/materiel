@@ -1,0 +1,57 @@
+{
+  "name": "materiel",
+  "version": "0.1.0",
+  "description": "Local-first desktop app for precision rifle inventory, builds, and session logs",
+  "main": "./out/main/index.js",
+  "author": "David Cantu",
+  "license": "MIT",
+  "homepage": "https://github.com/davidcantu/materiel",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/davidcantu/materiel.git"
+  },
+  "scripts": {
+    "format": "prettier --write .",
+    "lint": "eslint --cache .",
+    "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
+    "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
+    "typecheck": "npm run typecheck:node && npm run typecheck:web",
+    "start": "electron-vite preview",
+    "dev": "electron-vite dev --mode development",
+    "build": "npm run typecheck && electron-vite build",
+    "build:test": "npm run typecheck && electron-vite build --mode test && electron-builder --publish never",
+    "build:prod": "npm run typecheck && electron-vite build --mode production && electron-builder --publish never",
+    "postinstall": "electron-builder install-app-deps",
+    "build:unpack": "npm run build && electron-builder --dir",
+    "build:win": "npm run build:prod -- --win",
+    "build:mac": "npm run build:prod -- --mac",
+    "build:linux": "npm run build:prod -- --linux"
+  },
+  "dependencies": {
+    "@electron-toolkit/preload": "^3.0.2",
+    "@electron-toolkit/utils": "^4.0.0",
+    "better-sqlite3-multiple-ciphers": "^13.1.1"
+  },
+  "devDependencies": {
+    "@electron-toolkit/eslint-config-prettier": "^3.0.1",
+    "@electron-toolkit/eslint-config-ts": "^4.0.0",
+    "@electron-toolkit/tsconfig": "^2.0.0",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "electron": "^44.11.3",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^6.0.0",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.7",
+    "prettier": "^3.9.10",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.4"
+  }
+}
