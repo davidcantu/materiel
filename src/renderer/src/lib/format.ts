@@ -39,6 +39,5 @@ export function partOptionLabel(part: PartInfo): string {
 
 export function typeFilterLabel(type: PartType | 'All'): string {
   if (type === 'All') return 'All'
-  if (type === 'Suppressor') return 'Muzzle'
-  return type
+  return partTypeLabel(type)
 }

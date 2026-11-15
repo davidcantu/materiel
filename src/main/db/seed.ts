@@ -41,12 +41,12 @@ export function seedDemoIfEmpty(db: Database.Database): boolean {
 
     const insertPart = db.prepare(
       `INSERT INTO parts (
-        id, manufacturer, value, type, status, model, serial_number,
+        id, manufacturer, value, type, status, platforms, model, serial_number,
         total_round_count, rounds_after_cleaning, maintenance_interval,
         caliber, gunsmith, twist_rate, barrel_life, muzzle_type, notes,
         created_at, updated_at
       ) VALUES (
-        @id, @manufacturer, @value, @type, 'In Stock', @model, @serialNumber,
+        @id, @manufacturer, @value, @type, 'In Stock', @platforms, @model, @serialNumber,
         @totalRoundCount, @roundsAfterCleaning, @maintenanceInterval,
         @caliber, @gunsmith, @twistRate, @barrelLife, NULL, NULL,
         @createdAt, @createdAt
@@ -58,6 +58,7 @@ export function seedDemoIfEmpty(db: Database.Database): boolean {
       manufacturer: 'Impact',
       value: 1400,
       type: 'Action',
+      platforms: '["bolt_action"]',
       model: '737R',
       serialNumber: 'IMP-001',
       totalRoundCount: 1650,
@@ -75,6 +76,7 @@ export function seedDemoIfEmpty(db: Database.Database): boolean {
       manufacturer: 'Proof Research',
       value: 850,
       type: 'Barrel',
+      platforms: '["bolt_action"]',
       model: 'Carbon 26',
       serialNumber: null,
       totalRoundCount: 1650,
@@ -92,6 +94,7 @@ export function seedDemoIfEmpty(db: Database.Database): boolean {
       manufacturer: 'MDT',
       value: 1200,
       type: 'Chassis',
+      platforms: '["bolt_action"]',
       model: 'ACC Premier Chassis',
       serialNumber: null,
       totalRoundCount: 0,
@@ -109,6 +112,7 @@ export function seedDemoIfEmpty(db: Database.Database): boolean {
       manufacturer: 'Vortex',
       value: 3000,
       type: 'Optic',
+      platforms: '["bolt_action"]',
       model: 'Razor Gen III 6-36x56',
       serialNumber: 'VTX-001',
       totalRoundCount: 0,
@@ -124,6 +128,7 @@ export function seedDemoIfEmpty(db: Database.Database): boolean {
     createCustomSystem(db, {
       id: 'system-match-65',
       name: 'Match 6.5 Creedmoor',
+      platform: 'bolt_action',
       actionId: 'part-action-1',
       barrelId: 'part-barrel-1',
       chassisId: 'part-chassis-1',

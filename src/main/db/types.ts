@@ -2,7 +2,25 @@
  * Domain types mirroring software-spec §3, adapted for single-user local-first.
  */
 
-export type PartType = 'Action' | 'Barrel' | 'Chassis' | 'Optic' | 'Suppressor' | 'Misc'
+export type Platform = 'bolt_action' | 'ar_pattern' | 'pistol'
+
+export type PartType =
+  | 'Action'
+  | 'Barrel'
+  | 'Chassis'
+  | 'Optic'
+  | 'Suppressor'
+  | 'Misc'
+  | 'Lower'
+  | 'Upper'
+  | 'Handguard'
+  | 'BCG'
+  | 'GasBlock'
+  | 'Stock'
+  | 'Frame'
+  | 'Slide'
+  | 'LaserIR'
+  | 'Light'
 export type PartStatus = 'In Stock' | 'In Use' | 'Retired' | 'Sold'
 export type MuzzleType = 'Suppressor' | 'Brake'
 export type BuildType = 'custom' | 'factory'
@@ -38,6 +56,7 @@ export type Part = {
   value: number
   type: PartType
   status: PartStatus
+  platforms: Platform[]
   model: string | null
   serialNumber: string | null
   totalRoundCount: number
@@ -57,11 +76,14 @@ export type CompleteSystem = {
   id: string
   name: string
   buildType: BuildType
+  platform: Platform
   actionId: string
   barrelId: string
   chassisId: string
   opticId: string | null
   suppressorId: string | null
+  laserIrId: string | null
+  lightId: string | null
   miscPartIds: string[]
   imageUrl: string | null
   imageScale: number | null
@@ -195,6 +217,7 @@ export type UpdateShootingLogInput = Partial<Omit<NewShootingLogInput, 'id'>> & 
 export type FactorySystemInput = {
   id?: string
   name: string
+  platform: Platform
   factoryManufacturer: string
   factoryModel: string
   factoryCartridge: string
@@ -202,6 +225,8 @@ export type FactorySystemInput = {
   factoryBarrelMaintenance?: number
   opticId?: string | null
   suppressorId?: string | null
+  laserIrId?: string | null
+  lightId?: string | null
   miscPartIds?: string[]
   imageUrl?: string | null
   imageScale?: number | null
@@ -211,11 +236,14 @@ export type FactorySystemInput = {
 export type CustomSystemInput = {
   id?: string
   name: string
+  platform: Platform
   actionId: string
   barrelId: string
   chassisId: string
   opticId?: string | null
   suppressorId?: string | null
+  laserIrId?: string | null
+  lightId?: string | null
   miscPartIds?: string[]
   imageUrl?: string | null
   imageScale?: number | null

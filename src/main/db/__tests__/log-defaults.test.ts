@@ -59,6 +59,7 @@ test('systemCaliber uses factory cartridge or barrel caliber', () => {
         value: 0,
         type: 'Barrel',
         status: 'In Use',
+        platforms: ['bolt_action'],
         model: null,
         serialNumber: null,
         totalRoundCount: 0,

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { PartInfo } from '../../../shared/parts'
 import type { CompleteSystemInfo } from '../../../shared/systems'
 import type { LicenseGateDenial, LicenseStatusInfo } from '../../../shared/license'
+import { PLATFORM_CORE_LABELS, PLATFORM_LABELS } from '../../../shared/platforms'
 import { EmptyState } from '../components/EmptyState'
 import { MaintenanceDueModal } from '../components/MaintenanceDueModal'
 import { PageFeedback } from '../components/PageFeedback'
@@ -157,7 +158,7 @@ export function BuildsPage({
     <div className="page">
       <PageHeader
         title="Complete Builds"
-        description="Assemble custom or factory firearms from your inventory."
+        description="Assemble bolt-action, AR-pattern, or pistol systems from compatible inventory."
         actions={
           <button type="button" className="btn-primary" onClick={openCreate}>
             + New Build
@@ -199,6 +200,7 @@ export function BuildsPage({
             <thead>
               <tr>
                 <th>Build</th>
+                <th>Platform</th>
                 <th>Type</th>
                 <th>Components</th>
                 <th>Barrel rounds</th>
@@ -209,11 +211,14 @@ export function BuildsPage({
             </thead>
             <tbody>
               {systems.map((system) => {
+                const labels = PLATFORM_CORE_LABELS[system.platform]
                 const barrel = partsById.get(system.barrelId)
                 const action = partsById.get(system.actionId)
                 const chassis = partsById.get(system.chassisId)
                 const optic = system.opticId ? partsById.get(system.opticId) : undefined
                 const muzzle = system.suppressorId ? partsById.get(system.suppressorId) : undefined
+                const laser = system.laserIrId ? partsById.get(system.laserIrId) : undefined
+                const light = system.lightId ? partsById.get(system.lightId) : undefined
                 const caliber =
                   system.buildType === 'factory' ? system.factoryCartridge : barrel?.caliber
                 const maint = barrel ? maintenancePercent(barrel) : null
@@ -223,6 +228,8 @@ export function BuildsPage({
                   chassis,
                   optic,
                   muzzle,
+                  laser,
+                  light,
                   ...system.miscPartIds.map((id) => partsById.get(id))
                 ].filter(Boolean) as PartInfo[]
                 const totalValue = valueParts.reduce((sum, part) => sum + part.value, 0)
@@ -234,18 +241,35 @@ export function BuildsPage({
                       <div className="cell-sub">{caliber ?? 'No cartridge set'}</div>
                     </td>
                     <td>
+                      <span className="type-pill">{PLATFORM_LABELS[system.platform]}</span>
+                    </td>
+                    <td>
                       <span className="type-pill">
                         {system.buildType === 'factory' ? 'Factory' : 'Custom'}
                       </span>
                     </td>
                     <td className="cell-meta">
-                      {action ? <div>Action: {partPrimaryTitle(action)}</div> : null}
-                      {barrel ? <div>Barrel: {partPrimaryTitle(barrel)}</div> : null}
-                      {chassis ? <div>Chassis: {partPrimaryTitle(chassis)}</div> : null}
+                      {action ? (
+                        <div>
+                          {labels.primary}: {partPrimaryTitle(action)}
+                        </div>
+                      ) : null}
+                      {barrel ? (
+                        <div>
+                          {labels.barrel}: {partPrimaryTitle(barrel)}
+                        </div>
+                      ) : null}
+                      {chassis ? (
+                        <div>
+                          {labels.furniture}: {partPrimaryTitle(chassis)}
+                        </div>
+                      ) : null}
                       {optic ? <div>Optic: {partPrimaryTitle(optic)}</div> : null}
+                      {laser ? <div>Laser/IR: {partPrimaryTitle(laser)}</div> : null}
+                      {light ? <div>Light: {partPrimaryTitle(light)}</div> : null}
                       {muzzle ? <div>Muzzle: {partPrimaryTitle(muzzle)}</div> : null}
                       {system.miscPartIds.length > 0 ? (
-                        <div>Misc: {system.miscPartIds.length}</div>
+                        <div>Accessories: {system.miscPartIds.length}</div>
                       ) : null}
                     </td>
                     <td>{barrel?.totalRoundCount ?? 0}</td>

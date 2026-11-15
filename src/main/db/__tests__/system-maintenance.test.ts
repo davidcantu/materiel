@@ -15,6 +15,7 @@ function part(partial: Partial<PartInfo> & Pick<PartInfo, 'id' | 'type'>): PartI
     manufacturer: 'Acme',
     value: 0,
     status: 'In Use',
+    platforms: ['bolt_action'],
     model: 'M1',
     serialNumber: null,
     totalRoundCount: 0,
@@ -38,9 +39,12 @@ function systemStub(
   return {
     name: 'Test Rifle',
     buildType: 'custom',
+    platform: 'bolt_action',
     chassisId: 'c1',
     opticId: null,
     suppressorId: null,
+    laserIrId: null,
+    lightId: null,
     miscPartIds: [],
     imageUrl: null,
     imageScale: null,
@@ -56,7 +60,7 @@ function systemStub(
   }
 }
 
-test('systemTrackedPartIds includes action, barrel, suppressor', () => {
+test('systemTrackedPartIds includes action, barrel, suppressor, and accessories', () => {
   const system = systemStub({
     id: 'sys-1',
     actionId: 'a1',
@@ -65,7 +69,7 @@ test('systemTrackedPartIds includes action, barrel, suppressor', () => {
     miscPartIds: ['m1']
   })
 
-  assert.deepEqual(systemTrackedPartIds(system), ['a1', 'b1', 's1'])
+  assert.deepEqual(systemTrackedPartIds(system), ['a1', 'b1', 'm1', 's1'])
 })
 
 test('listSystemMaintenance scopes to the rifle and flags due parts', () => {

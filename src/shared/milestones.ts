@@ -1,7 +1,7 @@
 /** Milestone definitions and §7.5 unlock evaluation. */
 
 import type { PartType } from './parts'
-import { PART_TYPES } from './parts'
+import { PLATFORM_PART_TYPES, PLATFORMS } from './platforms'
 
 export type MilestoneId =
   'iron-sights' | 'round-junkie' | 'match-ready' | 'handloader' | 'barrel-burner' | 'full-kit'
@@ -60,7 +60,7 @@ export const MILESTONE_DEFINITIONS: readonly MilestoneDefinition[] = [
   {
     id: 'full-kit',
     name: 'Full Kit',
-    description: 'All 6 part categories filled'
+    description: 'Every category for one platform filled'
   }
 ] as const
 
@@ -77,7 +77,9 @@ export function isMilestoneUnlocked(id: MilestoneId, snapshot: MilestoneSnapshot
     case 'barrel-burner':
       return snapshot.maxBarrelRounds >= 2500
     case 'full-kit':
-      return PART_TYPES.every((type) => snapshot.ownedPartTypes.includes(type))
+      return PLATFORMS.some((platform) =>
+        PLATFORM_PART_TYPES[platform].every((type) => snapshot.ownedPartTypes.includes(type))
+      )
     default: {
       const _exhaustive: never = id
       return _exhaustive

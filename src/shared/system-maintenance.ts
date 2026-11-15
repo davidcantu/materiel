@@ -19,7 +19,7 @@ export type SystemMaintenanceItem = {
 
 /** Part ids on a system that can carry round/maintenance tracking. */
 export function systemTrackedPartIds(system: CompleteSystemInfo): string[] {
-  const ids = [system.actionId, system.barrelId]
+  const ids = [system.actionId, system.barrelId, ...system.miscPartIds]
   if (system.suppressorId) ids.push(system.suppressorId)
   return ids
 }

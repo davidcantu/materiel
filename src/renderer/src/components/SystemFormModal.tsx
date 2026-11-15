@@ -1,11 +1,24 @@
 import { useMemo, useState } from 'react'
 import type { PartInfo, PartInput, PartType } from '../../../shared/parts'
+import { partTypeLabel } from '../../../shared/parts'
 import type {
   CompleteSystemInfo,
   CustomSystemInputInfo,
   FactorySystemInputInfo
 } from '../../../shared/systems'
 import { CARTRIDGE_OPTIONS } from '../../../shared/catalogs'
+import {
+  ACCESSORY_SLOT_LABELS,
+  ACCESSORY_SLOT_TYPE,
+  PLATFORMS,
+  PLATFORM_ACCESSORY_SLOTS,
+  PLATFORM_CORE_LABELS,
+  PLATFORM_CORE_SLOTS,
+  PLATFORM_LABELS,
+  accessoryListTypes,
+  type AccessorySlot,
+  type Platform
+} from '../../../shared/platforms'
 import { partOptionLabel } from '../lib/format'
 import { Modal } from './Modal'
 import { PartFormModal } from './PartFormModal'
@@ -32,6 +45,7 @@ type SystemFormModalProps = {
 
 type FormState = {
   mode: BuildMode
+  platform: Platform
   name: string
   notes: string
   actionId: string
@@ -39,6 +53,8 @@ type FormState = {
   chassisId: string
   opticId: string
   suppressorId: string
+  laserIrId: string
+  lightId: string
   miscPartIds: string[]
   factoryManufacturer: string
   factoryModel: string
@@ -47,11 +63,28 @@ type FormState = {
   factoryBarrelMaintenance: string
   factoryOpticId: string
   factorySuppressorId: string
+  factoryLaserIrId: string
+  factoryLightId: string
 }
+
+type CreateTarget =
+  | 'actionId'
+  | 'barrelId'
+  | 'chassisId'
+  | 'opticId'
+  | 'suppressorId'
+  | 'laserIrId'
+  | 'lightId'
+  | 'factoryOpticId'
+  | 'factorySuppressorId'
+  | 'factoryLaserIrId'
+  | 'factoryLightId'
+  | { misc: number }
 
 function blankForm(): FormState {
   return {
     mode: 'custom',
+    platform: 'bolt_action',
     name: '',
     notes: '',
     actionId: '',
@@ -59,6 +92,8 @@ function blankForm(): FormState {
     chassisId: '',
     opticId: '',
     suppressorId: '',
+    laserIrId: '',
+    lightId: '',
     miscPartIds: [],
     factoryManufacturer: '',
     factoryModel: '',
@@ -66,13 +101,16 @@ function blankForm(): FormState {
     factoryActionMaintenance: '500',
     factoryBarrelMaintenance: '300',
     factoryOpticId: '',
-    factorySuppressorId: ''
+    factorySuppressorId: '',
+    factoryLaserIrId: '',
+    factoryLightId: ''
   }
 }
 
 function fromSystem(system: CompleteSystemInfo): FormState {
   return {
     mode: system.buildType,
+    platform: system.platform,
     name: system.name,
     notes: system.notes ?? '',
     actionId: system.actionId,
@@ -80,6 +118,8 @@ function fromSystem(system: CompleteSystemInfo): FormState {
     chassisId: system.chassisId,
     opticId: system.opticId ?? '',
     suppressorId: system.suppressorId ?? '',
+    laserIrId: system.laserIrId ?? '',
+    lightId: system.lightId ?? '',
     miscPartIds: [...system.miscPartIds],
     factoryManufacturer: system.factoryManufacturer ?? '',
     factoryModel: system.factoryModel ?? '',
@@ -87,7 +127,9 @@ function fromSystem(system: CompleteSystemInfo): FormState {
     factoryActionMaintenance: String(system.factoryActionMaintenance ?? 500),
     factoryBarrelMaintenance: String(system.factoryBarrelMaintenance ?? 300),
     factoryOpticId: system.opticId ?? '',
-    factorySuppressorId: system.suppressorId ?? ''
+    factorySuppressorId: system.suppressorId ?? '',
+    factoryLaserIrId: system.laserIrId ?? '',
+    factoryLightId: system.lightId ?? ''
   }
 }
 
@@ -113,17 +155,12 @@ export function SystemFormModal({
     return [...byId.values()]
   }, [partsProp, createdParts])
   const [creatingType, setCreatingType] = useState<PartType | null>(null)
-  const [createTarget, setCreateTarget] = useState<
-    | 'actionId'
-    | 'barrelId'
-    | 'chassisId'
-    | 'opticId'
-    | 'suppressorId'
-    | 'factoryOpticId'
-    | 'factorySuppressorId'
-    | { misc: number }
-    | null
-  >(null)
+  const [createTarget, setCreateTarget] = useState<CreateTarget | null>(null)
+
+  const core = PLATFORM_CORE_SLOTS[form.platform]
+  const coreLabels = PLATFORM_CORE_LABELS[form.platform]
+  const accessorySlots = PLATFORM_ACCESSORY_SLOTS[form.platform]
+  const accessoryTypes = accessoryListTypes(form.platform)
 
   const assignedIds = useMemo(() => {
     if (!initial) return new Set<string>()
@@ -134,6 +171,8 @@ export function SystemFormModal({
         initial.chassisId,
         initial.opticId,
         initial.suppressorId,
+        initial.laserIrId,
+        initial.lightId,
         ...initial.miscPartIds
       ].filter(Boolean) as string[]
     )
@@ -143,20 +182,37 @@ export function SystemFormModal({
     return parts.filter(
       (part) =>
         part.type === type &&
+        part.platforms.includes(form.platform) &&
+        (part.status !== 'In Use' || assignedIds.has(part.id) || part.id === selectedId)
+    )
+  }
+
+  function availableAccessory(selectedId?: string): PartInfo[] {
+    return parts.filter(
+      (part) =>
+        accessoryTypes.includes(part.type) &&
+        part.platforms.includes(form.platform) &&
         (part.status !== 'In Use' || assignedIds.has(part.id) || part.id === selectedId)
     )
   }
 
   async function handleInlinePartSave(input: PartInput): Promise<void> {
-    const created = await window.api.createPart(input)
+    const created = await window.api.createPart({
+      ...input,
+      platforms: input.platforms?.length ? input.platforms : [form.platform]
+    })
     setCreatedParts((prev) => [...prev, created])
     if (createTarget === 'actionId') setField('actionId', created.id)
     else if (createTarget === 'barrelId') setField('barrelId', created.id)
     else if (createTarget === 'chassisId') setField('chassisId', created.id)
     else if (createTarget === 'opticId') setField('opticId', created.id)
     else if (createTarget === 'suppressorId') setField('suppressorId', created.id)
+    else if (createTarget === 'laserIrId') setField('laserIrId', created.id)
+    else if (createTarget === 'lightId') setField('lightId', created.id)
     else if (createTarget === 'factoryOpticId') setField('factoryOpticId', created.id)
     else if (createTarget === 'factorySuppressorId') setField('factorySuppressorId', created.id)
+    else if (createTarget === 'factoryLaserIrId') setField('factoryLaserIrId', created.id)
+    else if (createTarget === 'factoryLightId') setField('factoryLightId', created.id)
     else if (createTarget && typeof createTarget === 'object' && 'misc' in createTarget) {
       setMiscAt(createTarget.misc, created.id)
     }
@@ -167,6 +223,28 @@ export function SystemFormModal({
 
   function setField<K extends keyof FormState>(key: K, value: FormState[K]): void {
     setForm((prev) => ({ ...prev, [key]: value }))
+  }
+
+  function setPlatform(platform: Platform): void {
+    setForm((prev) => {
+      if (prev.platform === platform) return prev
+      return {
+        ...prev,
+        platform,
+        actionId: '',
+        barrelId: '',
+        chassisId: '',
+        opticId: '',
+        suppressorId: '',
+        laserIrId: '',
+        lightId: '',
+        miscPartIds: [],
+        factoryOpticId: '',
+        factorySuppressorId: '',
+        factoryLaserIrId: '',
+        factoryLightId: ''
+      }
+    })
   }
 
   function setMiscAt(index: number, value: string): void {
@@ -189,6 +267,46 @@ export function SystemFormModal({
     }))
   }
 
+  function accessoryValue(slot: AccessorySlot, factory: boolean): string {
+    if (factory) {
+      if (slot === 'optic') return form.factoryOpticId
+      if (slot === 'suppressor') return form.factorySuppressorId
+      if (slot === 'laserIr') return form.factoryLaserIrId
+      return form.factoryLightId
+    }
+    if (slot === 'optic') return form.opticId
+    if (slot === 'suppressor') return form.suppressorId
+    if (slot === 'laserIr') return form.laserIrId
+    return form.lightId
+  }
+
+  function setAccessoryValue(slot: AccessorySlot, factory: boolean, value: string): void {
+    if (factory) {
+      if (slot === 'optic') setField('factoryOpticId', value)
+      else if (slot === 'suppressor') setField('factorySuppressorId', value)
+      else if (slot === 'laserIr') setField('factoryLaserIrId', value)
+      else setField('factoryLightId', value)
+      return
+    }
+    if (slot === 'optic') setField('opticId', value)
+    else if (slot === 'suppressor') setField('suppressorId', value)
+    else if (slot === 'laserIr') setField('laserIrId', value)
+    else setField('lightId', value)
+  }
+
+  function accessoryCreateTarget(slot: AccessorySlot, factory: boolean): CreateTarget {
+    if (factory) {
+      if (slot === 'optic') return 'factoryOpticId'
+      if (slot === 'suppressor') return 'factorySuppressorId'
+      if (slot === 'laserIr') return 'factoryLaserIrId'
+      return 'factoryLightId'
+    }
+    if (slot === 'optic') return 'opticId'
+    if (slot === 'suppressor') return 'suppressorId'
+    if (slot === 'laserIr') return 'laserIrId'
+    return 'lightId'
+  }
+
   async function handleSubmit(event: React.FormEvent): Promise<void> {
     event.preventDefault()
     setError(null)
@@ -198,16 +316,24 @@ export function SystemFormModal({
       if (form.mode === 'custom') {
         const input: CustomSystemInputInfo = {
           name: form.name.trim(),
+          platform: form.platform,
           actionId: form.actionId,
           barrelId: form.barrelId,
           chassisId: form.chassisId,
           opticId: form.opticId || null,
           suppressorId: form.suppressorId || null,
+          laserIrId: form.platform === 'bolt_action' ? null : form.laserIrId || null,
+          lightId: form.platform === 'bolt_action' ? null : form.lightId || null,
           miscPartIds,
           notes: form.notes.trim() || null
         }
-        if (!input.actionId || !input.barrelId || !input.chassisId || !input.opticId) {
-          throw new Error('Custom builds require Action, Barrel, Chassis, and Optic')
+        if (!input.actionId || !input.barrelId || !input.chassisId) {
+          throw new Error(
+            `Custom builds require ${coreLabels.primary}, ${coreLabels.barrel}, and ${coreLabels.furniture}`
+          )
+        }
+        if (form.platform === 'bolt_action' && !input.opticId) {
+          throw new Error('Bolt-action custom builds require an optic')
         }
         if (editing && initial) {
           await onUpdate(initial.id, { ...input, buildType: 'custom' })
@@ -217,6 +343,7 @@ export function SystemFormModal({
       } else {
         const input: FactorySystemInputInfo = {
           name: form.name.trim(),
+          platform: form.platform,
           factoryManufacturer: form.factoryManufacturer.trim(),
           factoryModel: form.factoryModel.trim(),
           factoryCartridge: form.factoryCartridge.trim(),
@@ -224,6 +351,8 @@ export function SystemFormModal({
           factoryBarrelMaintenance: Number(form.factoryBarrelMaintenance) || 300,
           opticId: form.factoryOpticId || null,
           suppressorId: form.factorySuppressorId || null,
+          laserIrId: form.platform === 'bolt_action' ? null : form.factoryLaserIrId || null,
+          lightId: form.platform === 'bolt_action' ? null : form.factoryLightId || null,
           miscPartIds,
           notes: form.notes.trim() || null
         }
@@ -263,6 +392,26 @@ export function SystemFormModal({
       >
         <form id="system-form" className="form-grid" onSubmit={(e) => void handleSubmit(e)}>
           <div className="field field-span">
+            <span className="field-label">Platform</span>
+            <div className="chip-row">
+              {PLATFORMS.map((platform) => (
+                <button
+                  key={platform}
+                  type="button"
+                  className={`chip${form.platform === platform ? ' active' : ''}`}
+                  onClick={() => setPlatform(platform)}
+                  disabled={editing}
+                >
+                  {PLATFORM_LABELS[platform]}
+                </button>
+              ))}
+            </div>
+            {editing ? (
+              <span className="muted field-hint">Platform is locked after create.</span>
+            ) : null}
+          </div>
+
+          <div className="field field-span">
             <span className="field-label">Build Mode</span>
             <div className="chip-row">
               <button
@@ -277,7 +426,7 @@ export function SystemFormModal({
                 className={`chip${form.mode === 'factory' ? ' active' : ''}`}
                 onClick={() => setField('mode', 'factory')}
               >
-                Factory firearm
+                Factory Firearm
               </button>
             </div>
           </div>
@@ -290,25 +439,25 @@ export function SystemFormModal({
           {form.mode === 'custom' ? (
             <>
               <PartSelect
-                label="Action / Receiver"
+                label={coreLabels.primary}
                 value={form.actionId}
-                options={available('Action', form.actionId)}
+                options={available(core.primary, form.actionId)}
                 onChange={(v) => setField('actionId', v)}
                 required
                 onCreate={() => {
                   setCreateTarget('actionId')
-                  setCreatingType('Action')
+                  setCreatingType(core.primary)
                 }}
               />
               <PartSelect
-                label="Barrel"
+                label={coreLabels.barrel}
                 value={form.barrelId}
-                options={available('Barrel', form.barrelId)}
+                options={available(core.barrel, form.barrelId)}
                 onChange={(v) => setField('barrelId', v)}
                 required
                 onCreate={() => {
                   setCreateTarget('barrelId')
-                  setCreatingType('Barrel')
+                  setCreatingType(core.barrel)
                 }}
               />
               <label className="field">
@@ -331,38 +480,31 @@ export function SystemFormModal({
                 </span>
               </label>
               <PartSelect
-                label="Chassis / Stock"
+                label={coreLabels.furniture}
                 value={form.chassisId}
-                options={available('Chassis', form.chassisId)}
+                options={available(core.furniture, form.chassisId)}
                 onChange={(v) => setField('chassisId', v)}
                 required
                 onCreate={() => {
                   setCreateTarget('chassisId')
-                  setCreatingType('Chassis')
+                  setCreatingType(core.furniture)
                 }}
               />
-              <PartSelect
-                label="Optic / Scope"
-                value={form.opticId}
-                options={available('Optic', form.opticId)}
-                onChange={(v) => setField('opticId', v)}
-                required
-                onCreate={() => {
-                  setCreateTarget('opticId')
-                  setCreatingType('Optic')
-                }}
-              />
-              <PartSelect
-                label="Muzzle Device (optional)"
-                value={form.suppressorId}
-                options={available('Suppressor', form.suppressorId)}
-                onChange={(v) => setField('suppressorId', v)}
-                allowEmpty
-                onCreate={() => {
-                  setCreateTarget('suppressorId')
-                  setCreatingType('Suppressor')
-                }}
-              />
+              {accessorySlots.map((slot) => (
+                <PartSelect
+                  key={slot}
+                  label={`${ACCESSORY_SLOT_LABELS[slot]}${slot === 'optic' && form.platform === 'bolt_action' ? '' : ' (optional)'}`}
+                  value={accessoryValue(slot, false)}
+                  options={available(ACCESSORY_SLOT_TYPE[slot], accessoryValue(slot, false))}
+                  onChange={(v) => setAccessoryValue(slot, false, v)}
+                  required={slot === 'optic' && form.platform === 'bolt_action'}
+                  allowEmpty={!(slot === 'optic' && form.platform === 'bolt_action')}
+                  onCreate={() => {
+                    setCreateTarget(accessoryCreateTarget(slot, false))
+                    setCreatingType(ACCESSORY_SLOT_TYPE[slot])
+                  }}
+                />
+              ))}
             </>
           ) : (
             <>
@@ -380,7 +522,13 @@ export function SystemFormModal({
                       parts
                         .map((part) => part.manufacturer)
                         .filter(Boolean)
-                        .concat(['Bergara', 'Tikka', 'Remington', 'Howa', 'Savage'])
+                        .concat(
+                          form.platform === 'pistol'
+                            ? ['Glock', 'Sig Sauer', 'Smith & Wesson', 'CZ']
+                            : form.platform === 'ar_pattern'
+                              ? ['Daniel Defense', 'BCM', 'Sons of Liberty', 'Aero Precision']
+                              : ['Bergara', 'Tikka', 'Remington', 'Howa', 'Savage']
+                        )
                     )
                   ].map((item) => (
                     <option key={item} value={item} />
@@ -418,7 +566,7 @@ export function SystemFormModal({
                 </datalist>
               </label>
               <label className="field">
-                <span className="field-label">Action Maint. Interval</span>
+                <span className="field-label">{coreLabels.primary} Maint. Interval</span>
                 <input
                   type="number"
                   min="1"
@@ -437,41 +585,38 @@ export function SystemFormModal({
                   required
                 />
               </label>
-              <PartSelect
-                label="Optic (optional)"
-                value={form.factoryOpticId}
-                options={available('Optic', form.factoryOpticId)}
-                onChange={(v) => setField('factoryOpticId', v)}
-                allowEmpty
-                onCreate={() => {
-                  setCreateTarget('factoryOpticId')
-                  setCreatingType('Optic')
-                }}
-              />
-              <PartSelect
-                label="Muzzle Device (optional)"
-                value={form.factorySuppressorId}
-                options={available('Suppressor', form.factorySuppressorId)}
-                onChange={(v) => setField('factorySuppressorId', v)}
-                allowEmpty
-                onCreate={() => {
-                  setCreateTarget('factorySuppressorId')
-                  setCreatingType('Suppressor')
-                }}
-              />
+              {accessorySlots.map((slot) => (
+                <PartSelect
+                  key={`factory-${slot}`}
+                  label={`${ACCESSORY_SLOT_LABELS[slot]} (optional)`}
+                  value={accessoryValue(slot, true)}
+                  options={available(ACCESSORY_SLOT_TYPE[slot], accessoryValue(slot, true))}
+                  onChange={(v) => setAccessoryValue(slot, true, v)}
+                  allowEmpty
+                  onCreate={() => {
+                    setCreateTarget(accessoryCreateTarget(slot, true))
+                    setCreatingType(ACCESSORY_SLOT_TYPE[slot])
+                  }}
+                />
+              ))}
             </>
           )}
 
           <div className="field field-span">
             <div className="field-row-header">
-              <span className="field-label">Misc Parts</span>
+              <span className="field-label">
+                Accessories
+                {accessoryTypes.length > 1
+                  ? ` (${accessoryTypes.map(partTypeLabel).join(', ')})`
+                  : ''}
+              </span>
               <button
                 type="button"
                 className="btn-link"
                 onClick={addMisc}
                 disabled={form.miscPartIds.length >= 8}
               >
-                + Add Misc Part
+                + Add Accessory
               </button>
             </div>
             {form.miscPartIds.length === 0 ? (
@@ -481,14 +626,14 @@ export function SystemFormModal({
                 {form.miscPartIds.map((id, index) => (
                   <div key={`misc-${index}`} className="misc-row">
                     <PartSelect
-                      label={`Misc ${index + 1}`}
+                      label={`Accessory ${index + 1}`}
                       value={id}
-                      options={available('Misc', id)}
+                      options={availableAccessory(id)}
                       onChange={(v) => setMiscAt(index, v)}
                       allowEmpty
                       onCreate={() => {
                         setCreateTarget({ misc: index })
-                        setCreatingType('Misc')
+                        setCreatingType(accessoryTypes[0] ?? 'Misc')
                       }}
                     />
                     <button
@@ -521,7 +666,9 @@ export function SystemFormModal({
         <PartFormModal
           trackValue={trackValue}
           defaultType={creatingType}
+          defaultPlatforms={[form.platform]}
           lockType
+          lockPlatforms={[form.platform]}
           onClose={() => {
             setCreatingType(null)
             setCreateTarget(null)

@@ -1,24 +1,41 @@
 /**
- * Complete-system helpers + factory rifle part synthesis (software-spec §7.1).
+ * Complete-system helpers + factory part synthesis (software-spec §7.1).
  *
- * Creating/updating a factory build synthesizes Action/Barrel/Chassis parts
+ * Creating/updating a factory build synthesizes core parts for the platform
+ * (bolt: Action/Barrel/Chassis; AR: Lower/Barrel/Upper; pistol: Frame/Barrel/Slide)
  * with ids `action-{sysId}`, `barrel-{sysId}`, `chassis-{sysId}`.
  * Deleting a factory build removes those synthesized parts.
  */
 
 import { randomUUID } from 'crypto'
 import type Database from 'better-sqlite3-multiple-ciphers'
-import type { CompleteSystem, CustomSystemInput, FactorySystemInput, PartStatus } from './types'
+import {
+  PLATFORM_CORE_SLOTS,
+  accessoryListTypes,
+  isValidPlatform,
+  type Platform
+} from '../../shared/platforms'
+import { getPart } from './parts'
+import type {
+  CompleteSystem,
+  CustomSystemInput,
+  FactorySystemInput,
+  PartStatus,
+  PartType
+} from './types'
 
 type SystemRow = {
   id: string
   name: string
   build_type: 'custom' | 'factory'
+  platform: string
   action_id: string
   barrel_id: string
   chassis_id: string
   optic_id: string | null
   suppressor_id: string | null
+  laser_ir_id: string | null
+  light_id: string | null
   image_url: string | null
   image_scale: number | null
   notes: string | null
@@ -33,6 +50,11 @@ type SystemRow = {
 
 function nowIso(): string {
   return new Date().toISOString()
+}
+
+function resolvePlatform(value: string | null | undefined): Platform {
+  if (value && isValidPlatform(value)) return value
+  return 'bolt_action'
 }
 
 export function factoryPartIds(systemId: string): {
@@ -59,11 +81,14 @@ function mapSystem(db: Database.Database, row: SystemRow): CompleteSystem {
     id: row.id,
     name: row.name,
     buildType: row.build_type,
+    platform: resolvePlatform(row.platform),
     actionId: row.action_id,
     barrelId: row.barrel_id,
     chassisId: row.chassis_id,
     opticId: row.optic_id,
     suppressorId: row.suppressor_id,
+    laserIrId: row.laser_ir_id,
+    lightId: row.light_id,
     miscPartIds: getMiscPartIds(db, row.id),
     imageUrl: row.image_url,
     imageScale: row.image_scale,
@@ -84,11 +109,15 @@ function allReferencedPartIds(system: {
   chassisId: string
   opticId?: string | null
   suppressorId?: string | null
+  laserIrId?: string | null
+  lightId?: string | null
   miscPartIds?: string[]
 }): string[] {
   const ids = [system.actionId, system.barrelId, system.chassisId]
   if (system.opticId) ids.push(system.opticId)
   if (system.suppressorId) ids.push(system.suppressorId)
+  if (system.laserIrId) ids.push(system.laserIrId)
+  if (system.lightId) ids.push(system.lightId)
   if (system.miscPartIds) ids.push(...system.miscPartIds)
   return [...new Set(ids)]
 }
@@ -114,12 +143,82 @@ function replaceMiscParts(db: Database.Database, systemId: string, miscPartIds: 
   })
 }
 
+function assertPartSlot(
+  db: Database.Database,
+  partId: string,
+  expectedType: PartType,
+  platform: Platform,
+  label: string
+): void {
+  const part = getPart(db, partId)
+  if (!part) throw new Error(`${label} part not found: ${partId}`)
+  if (part.type !== expectedType) {
+    throw new Error(`${label} must be a ${expectedType} part for this platform`)
+  }
+  if (!part.platforms.includes(platform)) {
+    throw new Error(`${label} is not compatible with this platform`)
+  }
+}
+
+function assertOptionalSlot(
+  db: Database.Database,
+  partId: string | null | undefined,
+  expectedType: PartType,
+  platform: Platform,
+  label: string
+): void {
+  if (!partId) return
+  assertPartSlot(db, partId, expectedType, platform, label)
+}
+
+function validateCustomParts(
+  db: Database.Database,
+  platform: Platform,
+  input: {
+    actionId: string
+    barrelId: string
+    chassisId: string
+    opticId?: string | null
+    suppressorId?: string | null
+    laserIrId?: string | null
+    lightId?: string | null
+    miscPartIds?: string[]
+  }
+): void {
+  const core = PLATFORM_CORE_SLOTS[platform]
+  assertPartSlot(db, input.actionId, core.primary, platform, 'Primary')
+  assertPartSlot(db, input.barrelId, core.barrel, platform, 'Barrel')
+  assertPartSlot(db, input.chassisId, core.furniture, platform, 'Furniture')
+  assertOptionalSlot(db, input.opticId, 'Optic', platform, 'Optic')
+  assertOptionalSlot(db, input.suppressorId, 'Suppressor', platform, 'Muzzle device')
+  if (platform === 'bolt_action') {
+    if (input.laserIrId) throw new Error('Laser/IR is not used on bolt-action builds')
+    if (input.lightId) throw new Error('Weapon lights are not used on bolt-action builds')
+  } else {
+    assertOptionalSlot(db, input.laserIrId, 'LaserIR', platform, 'Laser/IR')
+    assertOptionalSlot(db, input.lightId, 'Light', platform, 'Weapon light')
+  }
+
+  const allowedAccessory = new Set(accessoryListTypes(platform))
+  for (const miscId of input.miscPartIds ?? []) {
+    const part = getPart(db, miscId)
+    if (!part) throw new Error(`Accessory part not found: ${miscId}`)
+    if (!allowedAccessory.has(part.type)) {
+      throw new Error(`${part.type} is not a valid accessory for this platform`)
+    }
+    if (!part.platforms.includes(platform)) {
+      throw new Error(`Accessory is not compatible with this platform`)
+    }
+  }
+}
+
 function upsertFactoryPart(
   db: Database.Database,
   row: {
     id: string
     manufacturer: string
-    type: 'Action' | 'Barrel' | 'Chassis'
+    type: PartType
+    platforms: Platform
     model: string
     serialNumber: string | null
     maintenanceInterval: number | null
@@ -132,11 +231,14 @@ function upsertFactoryPart(
   const existing = db.prepare(`SELECT id FROM parts WHERE id = ?`).get(row.id) as
     { id: string } | undefined
   const updatedAt = nowIso()
+  const platformsJson = JSON.stringify([row.platforms])
 
   if (existing) {
     db.prepare(
       `UPDATE parts SET
         manufacturer = @manufacturer,
+        type = @type,
+        platforms = @platforms,
         model = @model,
         serial_number = @serialNumber,
         maintenance_interval = @maintenanceInterval,
@@ -147,32 +249,33 @@ function upsertFactoryPart(
         status = 'In Use',
         updated_at = @updatedAt
       WHERE id = @id`
-    ).run({ ...row, updatedAt })
+    ).run({ ...row, platforms: platformsJson, updatedAt })
     return
   }
 
   db.prepare(
     `INSERT INTO parts (
-      id, manufacturer, value, type, status, model, serial_number,
+      id, manufacturer, value, type, status, platforms, model, serial_number,
       total_round_count, rounds_after_cleaning, maintenance_interval,
       caliber, gunsmith, twist_rate, barrel_life, muzzle_type, notes,
       created_at, updated_at
     ) VALUES (
-      @id, @manufacturer, 0, @type, 'In Use', @model, @serialNumber,
+      @id, @manufacturer, 0, @type, 'In Use', @platforms, @model, @serialNumber,
       0, 0, @maintenanceInterval,
       @caliber, @gunsmith, @twistRate, @barrelLife, NULL, NULL,
       @createdAt, @updatedAt
     )`
-  ).run({ ...row, createdAt: updatedAt, updatedAt })
+  ).run({ ...row, platforms: platformsJson, createdAt: updatedAt, updatedAt })
 }
 
 /**
- * Upsert synthesized factory Action / Barrel / Chassis parts (§6.3 / §7.1).
+ * Upsert synthesized factory core parts for the given platform.
  */
 export function synthesizeFactoryParts(
   db: Database.Database,
   input: {
     systemId: string
+    platform: Platform
     manufacturer: string
     model: string
     cartridge: string
@@ -181,13 +284,19 @@ export function synthesizeFactoryParts(
   }
 ): { actionId: string; barrelId: string; chassisId: string } {
   const ids = factoryPartIds(input.systemId)
+  const core = PLATFORM_CORE_SLOTS[input.platform]
+  const serial =
+    core.primary === 'Action' || core.primary === 'Lower' || core.primary === 'Frame'
+      ? 'Factory Standard'
+      : null
 
   upsertFactoryPart(db, {
     id: ids.actionId,
     manufacturer: input.manufacturer,
-    type: 'Action',
+    type: core.primary,
+    platforms: input.platform,
     model: input.model,
-    serialNumber: 'Factory Standard',
+    serialNumber: serial,
     maintenanceInterval: input.actionMaintenance,
     caliber: null,
     gunsmith: null,
@@ -198,7 +307,8 @@ export function synthesizeFactoryParts(
   upsertFactoryPart(db, {
     id: ids.barrelId,
     manufacturer: input.manufacturer,
-    type: 'Barrel',
+    type: core.barrel,
+    platforms: input.platform,
     model: input.model,
     serialNumber: null,
     maintenanceInterval: input.barrelMaintenance,
@@ -211,7 +321,8 @@ export function synthesizeFactoryParts(
   upsertFactoryPart(db, {
     id: ids.chassisId,
     manufacturer: input.manufacturer,
-    type: 'Chassis',
+    type: core.furniture,
+    platforms: input.platform,
     model: input.model,
     serialNumber: null,
     maintenanceInterval: null,
@@ -256,17 +367,29 @@ export function createCustomSystem(
   const run = db.transaction(() => {
     const id = input.id ?? randomUUID()
     const createdAt = nowIso()
+    const platform = resolvePlatform(input.platform)
     const miscPartIds = input.miscPartIds ?? []
+    const laserIrId = platform === 'bolt_action' ? null : (input.laserIrId ?? null)
+    const lightId = platform === 'bolt_action' ? null : (input.lightId ?? null)
+
+    validateCustomParts(db, platform, {
+      ...input,
+      laserIrId,
+      lightId,
+      miscPartIds
+    })
 
     db.prepare(
       `INSERT INTO systems (
-        id, name, build_type, action_id, barrel_id, chassis_id, optic_id, suppressor_id,
+        id, name, build_type, platform, action_id, barrel_id, chassis_id,
+        optic_id, suppressor_id, laser_ir_id, light_id,
         image_url, image_scale, notes,
         factory_manufacturer, factory_model, factory_cartridge,
         factory_action_maintenance, factory_barrel_maintenance,
         created_at, updated_at
       ) VALUES (
-        @id, @name, 'custom', @actionId, @barrelId, @chassisId, @opticId, @suppressorId,
+        @id, @name, 'custom', @platform, @actionId, @barrelId, @chassisId,
+        @opticId, @suppressorId, @laserIrId, @lightId,
         @imageUrl, @imageScale, @notes,
         NULL, NULL, NULL, NULL, NULL,
         @createdAt, @updatedAt
@@ -274,11 +397,14 @@ export function createCustomSystem(
     ).run({
       id,
       name: input.name,
+      platform,
       actionId: input.actionId,
       barrelId: input.barrelId,
       chassisId: input.chassisId,
       opticId: input.opticId ?? null,
       suppressorId: input.suppressorId ?? null,
+      laserIrId,
+      lightId,
       imageUrl: input.imageUrl ?? null,
       imageScale: input.imageScale ?? 1,
       notes: input.notes ?? null,
@@ -287,7 +413,11 @@ export function createCustomSystem(
     })
 
     replaceMiscParts(db, id, miscPartIds)
-    setPartsStatus(db, allReferencedPartIds({ ...input, miscPartIds }), 'In Use')
+    setPartsStatus(
+      db,
+      allReferencedPartIds({ ...input, laserIrId, lightId, miscPartIds }),
+      'In Use'
+    )
 
     return getSystem(db, id)!
   })
@@ -302,12 +432,23 @@ export function createFactorySystem(
   const run = db.transaction(() => {
     const id = input.id ?? randomUUID()
     const createdAt = nowIso()
+    const platform = resolvePlatform(input.platform)
     const actionMaintenance = input.factoryActionMaintenance ?? 500
     const barrelMaintenance = input.factoryBarrelMaintenance ?? 300
     const miscPartIds = input.miscPartIds ?? []
+    const laserIrId = platform === 'bolt_action' ? null : (input.laserIrId ?? null)
+    const lightId = platform === 'bolt_action' ? null : (input.lightId ?? null)
+
+    assertOptionalSlot(db, input.opticId, 'Optic', platform, 'Optic')
+    assertOptionalSlot(db, input.suppressorId, 'Suppressor', platform, 'Muzzle device')
+    if (platform !== 'bolt_action') {
+      assertOptionalSlot(db, laserIrId, 'LaserIR', platform, 'Laser/IR')
+      assertOptionalSlot(db, lightId, 'Light', platform, 'Weapon light')
+    }
 
     const synthesized = synthesizeFactoryParts(db, {
       systemId: id,
+      platform,
       manufacturer: input.factoryManufacturer,
       model: input.factoryModel,
       cartridge: input.factoryCartridge,
@@ -317,13 +458,15 @@ export function createFactorySystem(
 
     db.prepare(
       `INSERT INTO systems (
-        id, name, build_type, action_id, barrel_id, chassis_id, optic_id, suppressor_id,
+        id, name, build_type, platform, action_id, barrel_id, chassis_id,
+        optic_id, suppressor_id, laser_ir_id, light_id,
         image_url, image_scale, notes,
         factory_manufacturer, factory_model, factory_cartridge,
         factory_action_maintenance, factory_barrel_maintenance,
         created_at, updated_at
       ) VALUES (
-        @id, @name, 'factory', @actionId, @barrelId, @chassisId, @opticId, @suppressorId,
+        @id, @name, 'factory', @platform, @actionId, @barrelId, @chassisId,
+        @opticId, @suppressorId, @laserIrId, @lightId,
         @imageUrl, @imageScale, @notes,
         @factoryManufacturer, @factoryModel, @factoryCartridge,
         @factoryActionMaintenance, @factoryBarrelMaintenance,
@@ -332,11 +475,14 @@ export function createFactorySystem(
     ).run({
       id,
       name: input.name,
+      platform,
       actionId: synthesized.actionId,
       barrelId: synthesized.barrelId,
       chassisId: synthesized.chassisId,
       opticId: input.opticId ?? null,
       suppressorId: input.suppressorId ?? null,
+      laserIrId,
+      lightId,
       imageUrl: input.imageUrl ?? null,
       imageScale: input.imageScale ?? 1,
       notes: input.notes ?? null,
@@ -358,6 +504,8 @@ export function createFactorySystem(
         chassisId: synthesized.chassisId,
         opticId: input.opticId,
         suppressorId: input.suppressorId,
+        laserIrId,
+        lightId,
         miscPartIds
       }),
       'In Use'
@@ -376,7 +524,6 @@ export function deleteSystem(db: Database.Database, id: string): void {
       throw new Error(`System not found: ${id}`)
     }
 
-    // Logs reference the system; refuse delete if any remain (callers should cascade later).
     const logCount = db
       .prepare(`SELECT COUNT(*) AS count FROM shooting_logs WHERE system_id = ?`)
       .get(id) as { count: number }
@@ -416,11 +563,19 @@ export function updateSystem(
     setPartsStatus(db, allReferencedPartIds(existing), 'In Stock')
 
     const buildType = patch.buildType ?? existing.buildType
+    const platform = resolvePlatform(patch.platform ?? existing.platform)
     const name = patch.name ?? existing.name
     const miscPartIds = patch.miscPartIds ?? existing.miscPartIds
     const opticId = patch.opticId !== undefined ? patch.opticId : existing.opticId
     const suppressorId =
       patch.suppressorId !== undefined ? patch.suppressorId : existing.suppressorId
+    let laserIrId =
+      patch.laserIrId !== undefined ? patch.laserIrId : existing.laserIrId
+    let lightId = patch.lightId !== undefined ? patch.lightId : existing.lightId
+    if (platform === 'bolt_action') {
+      laserIrId = null
+      lightId = null
+    }
     const updatedAt = nowIso()
 
     let actionId = patch.actionId ?? existing.actionId
@@ -445,8 +600,16 @@ export function updateSystem(
         throw new Error('Factory systems require manufacturer, model, and cartridge')
       }
 
+      assertOptionalSlot(db, opticId, 'Optic', platform, 'Optic')
+      assertOptionalSlot(db, suppressorId, 'Suppressor', platform, 'Muzzle device')
+      if (platform !== 'bolt_action') {
+        assertOptionalSlot(db, laserIrId, 'LaserIR', platform, 'Laser/IR')
+        assertOptionalSlot(db, lightId, 'Light', platform, 'Weapon light')
+      }
+
       const synthesized = synthesizeFactoryParts(db, {
         systemId: id,
+        platform,
         manufacturer: factoryManufacturer,
         model: factoryModel,
         cartridge: factoryCartridge,
@@ -456,31 +619,47 @@ export function updateSystem(
       actionId = synthesized.actionId
       barrelId = synthesized.barrelId
       chassisId = synthesized.chassisId
-    } else if (existing.buildType === 'factory' && buildType === 'custom') {
-      if (!patch.actionId || !patch.barrelId || !patch.chassisId) {
-        throw new Error(
-          'Switching a factory system to custom requires actionId, barrelId, and chassisId'
-        )
+    } else {
+      if (existing.buildType === 'factory' && buildType === 'custom') {
+        if (!patch.actionId || !patch.barrelId || !patch.chassisId) {
+          throw new Error(
+            'Switching a factory system to custom requires actionId, barrelId, and chassisId'
+          )
+        }
+        actionId = patch.actionId
+        barrelId = patch.barrelId
+        chassisId = patch.chassisId
+        factoryManufacturer = null
+        factoryModel = null
+        factoryCartridge = null
+        factoryActionMaintenance = null
+        factoryBarrelMaintenance = null
       }
-      actionId = patch.actionId
-      barrelId = patch.barrelId
-      chassisId = patch.chassisId
-      factoryManufacturer = null
-      factoryModel = null
-      factoryCartridge = null
-      factoryActionMaintenance = null
-      factoryBarrelMaintenance = null
+
+      validateCustomParts(db, platform, {
+        actionId,
+        barrelId,
+        chassisId,
+        opticId,
+        suppressorId,
+        laserIrId,
+        lightId,
+        miscPartIds
+      })
     }
 
     db.prepare(
       `UPDATE systems SET
         name = @name,
         build_type = @buildType,
+        platform = @platform,
         action_id = @actionId,
         barrel_id = @barrelId,
         chassis_id = @chassisId,
         optic_id = @opticId,
         suppressor_id = @suppressorId,
+        laser_ir_id = @laserIrId,
+        light_id = @lightId,
         image_url = @imageUrl,
         image_scale = @imageScale,
         notes = @notes,
@@ -495,11 +674,14 @@ export function updateSystem(
       id,
       name,
       buildType,
+      platform,
       actionId,
       barrelId,
       chassisId,
       opticId,
       suppressorId,
+      laserIrId,
+      lightId,
       imageUrl: patch.imageUrl !== undefined ? patch.imageUrl : existing.imageUrl,
       imageScale: patch.imageScale !== undefined ? patch.imageScale : existing.imageScale,
       notes: patch.notes !== undefined ? patch.notes : existing.notes,
@@ -511,7 +693,6 @@ export function updateSystem(
       updatedAt
     })
 
-    // Drop synthesized parts only after the system no longer references them.
     if (existing.buildType === 'factory' && buildType === 'custom') {
       deleteSynthesizedFactoryParts(db, id)
     }
@@ -525,6 +706,8 @@ export function updateSystem(
         chassisId,
         opticId,
         suppressorId,
+        laserIrId,
+        lightId,
         miscPartIds
       }),
       'In Use'

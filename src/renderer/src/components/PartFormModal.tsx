@@ -1,12 +1,20 @@
 import { useMemo, useState } from 'react'
 import type { PartInfo, PartInput, PartStatus, PartType, MuzzleType } from '../../../shared/parts'
-import { PART_TYPES } from '../../../shared/parts'
+import { isMaintenanceTracked, partTypeLabel, requiresSerialNumber } from '../../../shared/parts'
+import {
+  PLATFORMS,
+  PLATFORM_LABELS,
+  defaultPlatformsForPartType,
+  normalizePartPlatforms,
+  partTypesForPlatforms,
+  platformsForPartType,
+  type Platform
+} from '../../../shared/platforms'
 import {
   CARTRIDGE_OPTIONS,
   manufacturersForPartType,
   modelsForActionManufacturer
 } from '../../../shared/catalogs'
-import { partTypeLabel } from '../lib/format'
 import { Modal } from './Modal'
 
 type PartFormModalProps = {
@@ -14,13 +22,18 @@ type PartFormModalProps = {
   initial?: PartInfo | null
   /** Prefill type when creating (e.g. inline create from a barrel picker). */
   defaultType?: PartType
+  /** Prefill platforms when creating inline from a build of a known platform. */
+  defaultPlatforms?: Platform[]
   /** When true, type chips are disabled (inline create from a typed picker). */
   lockType?: boolean
+  /** When set, platform chips are limited/locked to these platforms. */
+  lockPlatforms?: Platform[]
   onClose: () => void
   onSave: (input: PartInput) => Promise<void>
 }
 
 type FormState = {
+  platforms: Platform[]
   type: PartType
   manufacturer: string
   model: string
@@ -36,9 +49,15 @@ type FormState = {
   notes: string
 }
 
-function blankForm(type: PartType = 'Action'): FormState {
+function blankForm(type: PartType = 'Action', platforms?: Platform[]): FormState {
+  const resolvedPlatforms = platforms?.length
+    ? normalizePartPlatforms(type, platforms)
+    : defaultPlatformsForPartType(type)
+  const allowedTypes = partTypesForPlatforms(resolvedPlatforms)
+  const resolvedType = allowedTypes.includes(type) ? type : (allowedTypes[0] ?? type)
   return {
-    type,
+    platforms: normalizePartPlatforms(resolvedType, resolvedPlatforms),
+    type: resolvedType,
     manufacturer: '',
     model: '',
     serialNumber: '',
@@ -56,6 +75,7 @@ function blankForm(type: PartType = 'Action'): FormState {
 
 function fromPart(part: PartInfo): FormState {
   return {
+    platforms: [...part.platforms],
     type: part.type,
     manufacturer: part.manufacturer,
     model: part.model ?? '',
@@ -77,16 +97,30 @@ export function PartFormModal({
   trackValue,
   initial,
   defaultType = 'Action',
+  defaultPlatforms,
   lockType = false,
+  lockPlatforms,
   onClose,
   onSave
 }: PartFormModalProps): React.JSX.Element {
   const editing = Boolean(initial)
   const [form, setForm] = useState<FormState>(() =>
-    initial ? fromPart(initial) : blankForm(defaultType)
+    initial ? fromPart(initial) : blankForm(defaultType, defaultPlatforms ?? lockPlatforms)
   )
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+
+  const availableTypes = useMemo(() => {
+    if (editing) return [form.type]
+    if (lockType) return [form.type]
+    return partTypesForPlatforms(form.platforms)
+  }, [editing, lockType, form.platforms, form.type])
+
+  const platformChoices = useMemo(() => {
+    if (lockPlatforms?.length) return lockPlatforms
+    if (editing) return platformsForPartType(form.type)
+    return PLATFORMS
+  }, [lockPlatforms, editing, form.type])
 
   const manufacturerSuggestions = useMemo(
     () => manufacturersForPartType(form.type, form.muzzleType),
@@ -101,6 +135,35 @@ export function PartFormModal({
     setForm((prev) => ({ ...prev, [key]: value }))
   }
 
+  function togglePlatform(platform: Platform): void {
+    if (editing || lockPlatforms?.length === 1) return
+    setForm((prev) => {
+      const has = prev.platforms.includes(platform)
+      let nextPlatforms: Platform[]
+      if (has) {
+        if (prev.platforms.length === 1) return prev
+        nextPlatforms = prev.platforms.filter((p) => p !== platform)
+      } else {
+        nextPlatforms = [...prev.platforms, platform]
+      }
+      const types = partTypesForPlatforms(nextPlatforms)
+      const nextType = types.includes(prev.type) ? prev.type : (types[0] ?? prev.type)
+      return {
+        ...prev,
+        platforms: normalizePartPlatforms(nextType, nextPlatforms),
+        type: nextType
+      }
+    })
+  }
+
+  function selectType(type: PartType): void {
+    setForm((prev) => ({
+      ...prev,
+      type,
+      platforms: normalizePartPlatforms(type, prev.platforms)
+    }))
+  }
+
   async function handleSubmit(event: React.FormEvent): Promise<void> {
     event.preventDefault()
     setError(null)
@@ -110,13 +173,14 @@ export function PartFormModal({
         manufacturer: form.manufacturer.trim(),
         type: form.type,
         status: form.status,
+        platforms: normalizePartPlatforms(form.type, form.platforms),
         model: form.model.trim() || null,
         notes: form.notes.trim() || null
       }
       if (trackValue && form.value.trim()) {
         input.value = Number(form.value)
       }
-      if (form.type === 'Action' || form.type === 'Optic') {
+      if (requiresSerialNumber(form.type)) {
         input.serialNumber = form.serialNumber.trim()
       }
       if (form.type === 'Barrel') {
@@ -126,7 +190,7 @@ export function PartFormModal({
         input.barrelLife = Number(form.barrelLife) || 2500
         input.maintenanceInterval = Number(form.maintenanceInterval) || 1000
       }
-      if (form.type === 'Action' || form.type === 'Suppressor') {
+      if (isMaintenanceTracked(form.type) && form.type !== 'Barrel') {
         input.maintenanceInterval = Number(form.maintenanceInterval) || 1000
       }
       if (form.type === 'Suppressor') {
@@ -163,15 +227,35 @@ export function PartFormModal({
       }
     >
       <form id="part-form" className="form-grid" onSubmit={(e) => void handleSubmit(e)}>
+        <fieldset className="type-picker" disabled={Boolean(editing || lockPlatforms?.length === 1)}>
+          <legend className="field-label">Platform</legend>
+          <div className="chip-row">
+            {platformChoices.map((platform) => (
+              <button
+                key={platform}
+                type="button"
+                className={`chip${form.platforms.includes(platform) ? ' active' : ''}`}
+                onClick={() => togglePlatform(platform)}
+              >
+                {PLATFORM_LABELS[platform]}
+              </button>
+            ))}
+          </div>
+          <p className="muted field-hint">
+            Categories update to match the selected platform
+            {form.platforms.length > 1 ? 's' : ''}.
+          </p>
+        </fieldset>
+
         <fieldset className="type-picker" disabled={editing || lockType}>
           <legend className="field-label">Part Type</legend>
           <div className="chip-row">
-            {PART_TYPES.map((type) => (
+            {availableTypes.map((type) => (
               <button
                 key={type}
                 type="button"
                 className={`chip${form.type === type ? ' active' : ''}`}
-                onClick={() => setField('type', type)}
+                onClick={() => selectType(type)}
               >
                 {partTypeLabel(type)}
               </button>
@@ -244,7 +328,7 @@ export function PartFormModal({
           </label>
         )}
 
-        {form.type === 'Action' || form.type === 'Optic' ? (
+        {requiresSerialNumber(form.type) ? (
           <label className="field">
             <span className="field-label">Serial Number</span>
             <input
@@ -288,7 +372,7 @@ export function PartFormModal({
           </>
         ) : null}
 
-        {form.type === 'Action' || form.type === 'Barrel' || form.type === 'Suppressor' ? (
+        {isMaintenanceTracked(form.type) ? (
           <label className="field">
             <span className="field-label">Maintenance Interval (rounds)</span>
             <input

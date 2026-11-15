@@ -4,6 +4,13 @@
 
 import { randomUUID } from 'crypto'
 import type Database from 'better-sqlite3-multiple-ciphers'
+import {
+  parsePlatformsJson,
+  serializePlatforms,
+  type Platform
+} from '../../shared/platforms'
+import { normalizePartPlatforms } from '../../shared/platforms'
+import { requiresSerialNumber } from '../../shared/parts'
 import type { MuzzleType, Part, PartStatus, PartType } from './types'
 
 type PartRow = {
@@ -12,6 +19,7 @@ type PartRow = {
   value: number
   type: PartType
   status: PartStatus
+  platforms: string
   model: string | null
   serial_number: string | null
   total_round_count: number
@@ -33,6 +41,7 @@ export type NewPartInput = {
   value?: number
   type: PartType
   status?: PartStatus
+  platforms?: Platform[]
   model?: string | null
   serialNumber?: string | null
   totalRoundCount?: number
@@ -51,6 +60,7 @@ export type UpdatePartInput = Partial<Omit<NewPartInput, 'id' | 'type'>>
 export type ListPartsOptions = {
   types?: PartType[]
   statuses?: PartStatus[]
+  platforms?: Platform[]
   search?: string
 }
 
@@ -65,6 +75,7 @@ function mapPart(row: PartRow): Part {
     value: row.value,
     type: row.type,
     status: row.status,
+    platforms: parsePlatformsJson(row.platforms),
     model: row.model,
     serialNumber: row.serial_number,
     totalRoundCount: row.total_round_count,
@@ -90,13 +101,14 @@ function validatePartFields(
     gunsmith?: string | null
     muzzleType?: MuzzleType | null
     status?: PartStatus
+    platforms?: Platform[] | null
   },
   requireCore: boolean
 ): void {
   if (requireCore || input.manufacturer !== undefined) {
     if (!input.manufacturer?.trim()) throw new Error('Manufacturer is required')
   }
-  if (type === 'Action' || type === 'Optic') {
+  if (requiresSerialNumber(type)) {
     if (requireCore || input.serialNumber !== undefined) {
       if (!String(input.serialNumber ?? '').trim()) {
         throw new Error(`Serial number is required for ${type}`)
@@ -118,6 +130,12 @@ function validatePartFields(
   }
   if (input.status === 'Retired' && type !== 'Barrel') {
     throw new Error('Only barrels may be Retired')
+  }
+  if (input.platforms !== undefined && input.platforms !== null) {
+    const normalized = normalizePartPlatforms(type, input.platforms)
+    if (normalized.length === 0) {
+      throw new Error(`No valid platforms for part type ${type}`)
+    }
   }
 }
 
@@ -153,7 +171,13 @@ export function listParts(db: Database.Database, options: ListPartsOptions = {})
        ORDER BY type ASC, manufacturer ASC, COALESCE(model, caliber, '') ASC`
     )
     .all(...params) as PartRow[]
-  return rows.map(mapPart)
+
+  let parts = rows.map(mapPart)
+  if (options.platforms && options.platforms.length > 0) {
+    const wanted = new Set(options.platforms)
+    parts = parts.filter((part) => part.platforms.some((p) => wanted.has(p)))
+  }
+  return parts
 }
 
 export function createPart(db: Database.Database, input: NewPartInput): Part {
@@ -162,19 +186,23 @@ export function createPart(db: Database.Database, input: NewPartInput): Part {
   const id = input.id ?? randomUUID()
   const createdAt = nowIso()
   const status = input.status ?? 'In Stock'
+  const platforms = normalizePartPlatforms(input.type, input.platforms)
   const maintenanceDefault =
-    input.type === 'Action' || input.type === 'Barrel' || input.type === 'Suppressor'
+    input.type === 'Action' ||
+    input.type === 'Barrel' ||
+    input.type === 'Suppressor' ||
+    input.type === 'BCG'
       ? (input.maintenanceInterval ?? 1000)
       : null
 
   db.prepare(
     `INSERT INTO parts (
-      id, manufacturer, value, type, status, model, serial_number,
+      id, manufacturer, value, type, status, platforms, model, serial_number,
       total_round_count, rounds_after_cleaning, maintenance_interval,
       caliber, gunsmith, twist_rate, barrel_life, muzzle_type, notes,
       created_at, updated_at
     ) VALUES (
-      @id, @manufacturer, @value, @type, @status, @model, @serialNumber,
+      @id, @manufacturer, @value, @type, @status, @platforms, @model, @serialNumber,
       @totalRoundCount, @roundsAfterCleaning, @maintenanceInterval,
       @caliber, @gunsmith, @twistRate, @barrelLife, @muzzleType, @notes,
       @createdAt, @updatedAt
@@ -185,6 +213,7 @@ export function createPart(db: Database.Database, input: NewPartInput): Part {
     value: input.value ?? 0,
     type: input.type,
     status,
+    platforms: serializePlatforms(platforms),
     model: input.model?.trim() || null,
     serialNumber: input.serialNumber?.trim() || null,
     totalRoundCount: input.totalRoundCount ?? 0,
@@ -215,12 +244,18 @@ export function updatePart(db: Database.Database, id: string, patch: UpdatePartI
     throw new Error('Only barrels may be Retired')
   }
 
+  const platforms =
+    patch.platforms !== undefined
+      ? normalizePartPlatforms(existing.type, patch.platforms)
+      : existing.platforms
+
   const updatedAt = nowIso()
   db.prepare(
     `UPDATE parts SET
       manufacturer = @manufacturer,
       value = @value,
       status = @status,
+      platforms = @platforms,
       model = @model,
       serial_number = @serialNumber,
       total_round_count = @totalRoundCount,
@@ -239,6 +274,7 @@ export function updatePart(db: Database.Database, id: string, patch: UpdatePartI
     manufacturer: (patch.manufacturer ?? existing.manufacturer).trim(),
     value: patch.value ?? existing.value,
     status: nextStatus,
+    platforms: serializePlatforms(platforms),
     model: patch.model !== undefined ? patch.model?.trim() || null : existing.model,
     serialNumber:
       patch.serialNumber !== undefined ? patch.serialNumber?.trim() || null : existing.serialNumber,
@@ -269,12 +305,17 @@ export function setPartStatus(db: Database.Database, id: string, status: PartSta
   return updatePart(db, id, { status })
 }
 
-/** Reset roundsAfterCleaning to 0 for Action / Barrel / Muzzle. */
+/** Reset roundsAfterCleaning to 0 for Action / Barrel / Muzzle / BCG. */
 export function resetPartMaintenance(db: Database.Database, id: string): Part {
   const existing = getPart(db, id)
   if (!existing) throw new Error(`Part not found: ${id}`)
-  if (existing.type !== 'Action' && existing.type !== 'Barrel' && existing.type !== 'Suppressor') {
-    throw new Error('Maintenance reset applies only to Action, Barrel, and Muzzle Device')
+  if (
+    existing.type !== 'Action' &&
+    existing.type !== 'Barrel' &&
+    existing.type !== 'Suppressor' &&
+    existing.type !== 'BCG'
+  ) {
+    throw new Error('Maintenance reset applies only to Action, Barrel, Muzzle Device, and BCG')
   }
   return updatePart(db, id, { roundsAfterCleaning: 0 })
 }
@@ -283,10 +324,11 @@ function partIsReferenced(db: Database.Database, id: string): boolean {
   const systemRef = db
     .prepare(
       `SELECT id FROM systems
-       WHERE action_id = ? OR barrel_id = ? OR chassis_id = ? OR optic_id = ? OR suppressor_id = ?
+       WHERE action_id = ? OR barrel_id = ? OR chassis_id = ? OR optic_id = ?
+          OR suppressor_id = ? OR laser_ir_id = ? OR light_id = ?
        LIMIT 1`
     )
-    .get(id, id, id, id, id) as { id: string } | undefined
+    .get(id, id, id, id, id, id, id) as { id: string } | undefined
   if (systemRef) return true
 
   const miscRef = db

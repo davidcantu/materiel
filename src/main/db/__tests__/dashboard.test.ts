@@ -96,6 +96,7 @@ test('getDashboardSummary: KPIs, alerts, hides value when trackValue false', () 
 
   const system = createCustomSystem(db, {
     name: 'Match 6.5',
+    platform: 'bolt_action',
     actionId: action.id,
     barrelId: barrel.id,
     chassisId: chassis.id,

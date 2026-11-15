@@ -175,7 +175,7 @@ export const POWDER_MANUFACTURERS = Object.keys(POWDER_PRODUCTS)
 export const PRIMER_MANUFACTURERS = Object.keys(PRIMER_PRODUCTS)
 
 export function manufacturersForPartType(
-  type: 'Action' | 'Barrel' | 'Chassis' | 'Optic' | 'Suppressor' | 'Misc',
+  type: string,
   muzzleType?: 'Suppressor' | 'Brake'
 ): string[] {
   if (type === 'Action') return Object.keys(ACTION_PRODUCTS)

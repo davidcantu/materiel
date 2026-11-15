@@ -1,15 +1,19 @@
 import type { LicenseGateDenial, LicenseStatusInfo } from './license'
+import type { Platform } from './platforms'
 
 /** Mirrors main-process CompleteSystem for preload typing (subset is fine for IPC). */
 export type CompleteSystemInfo = {
   id: string
   name: string
   buildType: 'custom' | 'factory'
+  platform: Platform
   actionId: string
   barrelId: string
   chassisId: string
   opticId: string | null
   suppressorId: string | null
+  laserIrId: string | null
+  lightId: string | null
   miscPartIds: string[]
   imageUrl: string | null
   imageScale: number | null
@@ -26,11 +30,14 @@ export type CompleteSystemInfo = {
 export type CustomSystemInputInfo = {
   id?: string
   name: string
+  platform: Platform
   actionId: string
   barrelId: string
   chassisId: string
   opticId?: string | null
   suppressorId?: string | null
+  laserIrId?: string | null
+  lightId?: string | null
   miscPartIds?: string[]
   imageUrl?: string | null
   imageScale?: number | null
@@ -40,6 +47,7 @@ export type CustomSystemInputInfo = {
 export type FactorySystemInputInfo = {
   id?: string
   name: string
+  platform: Platform
   factoryManufacturer: string
   factoryModel: string
   factoryCartridge: string
@@ -47,6 +55,8 @@ export type FactorySystemInputInfo = {
   factoryBarrelMaintenance?: number
   opticId?: string | null
   suppressorId?: string | null
+  laserIrId?: string | null
+  lightId?: string | null
   miscPartIds?: string[]
   imageUrl?: string | null
   imageScale?: number | null
