@@ -3,6 +3,12 @@ import type { AppInfo } from '../../shared/app-info'
 import type { LicenseStatusInfo } from '../../shared/license'
 import { hasLocalIdentity, type ProfileInfo } from '../../shared/profile'
 import { ToastProvider } from './components/Toast'
+import {
+  applyThemePreference,
+  getStoredThemePreference,
+  subscribeSystemTheme,
+  type ThemePreference
+} from './lib/theme'
 import { AmmoPage } from './pages/AmmoPage'
 import { BuildsPage } from './pages/BuildsPage'
 import { DashboardPage } from './pages/DashboardPage'
@@ -21,10 +27,21 @@ function AppShell(): React.JSX.Element {
   const [profile, setProfile] = useState<ProfileInfo | null>(null)
   const [active, setActive] = useState<NavId>('dashboard')
   const [bootstrapped, setBootstrapped] = useState(false)
+  const [themePreference, setThemePreference] = useState<ThemePreference>(() =>
+    getStoredThemePreference()
+  )
 
   const trackAmmo = profile?.trackAmmo ?? true
   const view: NavId = !trackAmmo && active === 'ammo' ? 'dashboard' : active
   const needsSetup = bootstrapped && !hasLocalIdentity(profile)
+
+  useEffect(() => {
+    applyThemePreference(themePreference)
+    if (themePreference !== 'system') return undefined
+    return subscribeSystemTheme(() => {
+      applyThemePreference('system')
+    })
+  }, [themePreference])
 
   const navItems = useMemo<NavItem[]>(
     () => [
@@ -148,7 +165,13 @@ function AppShell(): React.JSX.Element {
         {view === 'logs' ? <LogsPage onNavigateBuilds={() => setActive('builds')} /> : null}
         {view === 'ammo' && trackAmmo ? <AmmoPage /> : null}
         {view === 'settings' ? (
-          <SettingsPage license={license} profile={profile} onRefresh={() => void refresh()} />
+          <SettingsPage
+            license={license}
+            profile={profile}
+            onRefresh={() => void refresh()}
+            themePreference={themePreference}
+            onThemePreferenceChange={setThemePreference}
+          />
         ) : null}
       </main>
     </div>

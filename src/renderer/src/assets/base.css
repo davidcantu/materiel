@@ -1,15 +1,44 @@
+/*
+  Locked Magpul OD brand + light/dark surfaces.
+  Source of truth: docs/materiel-grok-brand-prompt.md / preferences.md
+
+  Typography:
+  - UI: clear system sans (--font-ui)
+  - Wordmark “Materiel” only: military/stencil stack (--font-display)
+    Intended face when bundled: Stardos Stencil (or similar industrial stencil).
+    Until then: Black Ops One → Arial Black → Impact → condensed sans fallbacks.
+*/
+
 :root {
-  /* Brand tokens — software-spec §2.1 */
-  --brand-primary: #70a060;
-  --brand-secondary: #d0d0a0;
-  --brand-neutral: #a0a0a0;
-  --brand-dark: #505040;
-  --brand-deep: #303020;
-  --page-canvas: #f7f7f2;
-  --surface: #ffffff;
-  --border-subtle: color-mix(in srgb, var(--brand-neutral) 20%, transparent);
-  --danger: #dc2626;
-  --success: #059669;
+  /* —— Locked brand (mode-invariant) —— */
+  --brand-od: #556b2f;
+  --brand-od-deep: #4b5320;
+  --brand-od-muted: #6b7f3a;
+  --brand-sand: #c4b896;
+  --brand-danger: #8b3a3a;
+
+  /* —— Light surfaces (default) —— */
+  --bg: #f4f1e8;
+  --bg-elevated: #ffffff;
+  --text: #2f3520;
+  --text-muted: #5c6348;
+  --border: #d4d0c4;
+
+  /* —— Semantic aliases (existing CSS) —— */
+  --brand-primary: var(--brand-od);
+  --brand-secondary: var(--brand-sand);
+  --brand-neutral: var(--text-muted);
+  /* Mid emphasis text — mode-aware, not raw OD-deep (fails on dark canvases) */
+  --brand-dark: #3a4228;
+  --brand-deep: var(--text);
+  /* Wordmark “Materiel” — OD-deep on light; sand on dark for contrast */
+  --brand-wordmark: var(--brand-od-deep);
+  --page-canvas: var(--bg);
+  --surface: var(--bg-elevated);
+  --surface-raised: var(--bg);
+  --border-subtle: var(--border);
+  --danger: var(--brand-danger);
+  --success: var(--brand-od-muted);
 
   --sidebar-width: 288px;
   --radius: 16px;
@@ -19,10 +48,68 @@
   --space-3: 1rem;
   --space-4: 1.25rem;
   --space-5: 1.75rem;
-  --focus-ring: 2px solid color-mix(in srgb, var(--brand-primary) 65%, transparent);
+  --focus-ring: 2px solid color-mix(in srgb, var(--brand-od) 65%, transparent);
   --focus-offset: 2px;
 
+  --font-ui:
+    system-ui,
+    'Segoe UI',
+    'Helvetica Neue',
+    'Noto Sans',
+    Arial,
+    sans-serif;
+  /* Intended: Stardos Stencil (bundle later). Web-safe stencil-ish stack for now. */
+  --font-display:
+    'Black Ops One',
+    'Arial Black',
+    'Arial Narrow',
+    Impact,
+    'Haettenschweiler',
+    'Franklin Gothic Heavy',
+    sans-serif;
+
   color-scheme: light;
+}
+
+html[data-theme='dark'] {
+  --bg: #1c1f16;
+  --bg-elevated: #2a2f22;
+  --text: #e8e4d8;
+  --text-muted: #a8a890;
+  --border: #3d4334;
+
+  --brand-dark: #c8c4b0;
+  --brand-deep: var(--text);
+  --brand-wordmark: var(--brand-sand);
+  --page-canvas: var(--bg);
+  --surface: var(--bg-elevated);
+  --surface-raised: color-mix(in srgb, var(--bg-elevated) 85%, var(--brand-od) 15%);
+  --border-subtle: var(--border);
+  --success: var(--brand-od-muted);
+
+  color-scheme: dark;
+}
+
+/* System preference before JS applies data-theme (first paint) */
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme='light']):not([data-theme='dark']) {
+    --bg: #1c1f16;
+    --bg-elevated: #2a2f22;
+    --text: #e8e4d8;
+    --text-muted: #a8a890;
+    --border: #3d4334;
+
+    --brand-dark: #c8c4b0;
+    --brand-deep: var(--text);
+    --brand-wordmark: var(--brand-sand);
+    --page-canvas: var(--bg);
+    --surface: var(--bg-elevated);
+    --surface-raised: color-mix(in srgb, var(--bg-elevated) 85%, var(--brand-od) 15%);
+    --border-subtle: var(--border);
+    --success: var(--brand-od-muted);
+
+    color-scheme: dark;
+  }
 }
 
 *,
@@ -40,17 +127,21 @@ body,
 
 body {
   min-height: 100vh;
-  color: var(--brand-deep);
+  color: var(--text);
   background:
-    radial-gradient(ellipse 80% 60% at 10% 0%, color-mix(in srgb, var(--brand-secondary) 28%, transparent), transparent 55%),
-    radial-gradient(ellipse 70% 50% at 100% 100%, color-mix(in srgb, var(--brand-primary) 12%, transparent), transparent 50%),
-    var(--page-canvas);
+    radial-gradient(
+      ellipse 80% 60% at 10% 0%,
+      color-mix(in srgb, var(--brand-sand) 28%, transparent),
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse 70% 50% at 100% 100%,
+      color-mix(in srgb, var(--brand-od) 12%, transparent),
+      transparent 50%
+    ),
+    var(--bg);
   line-height: 1.5;
-  font-family:
-    'Avenir Next',
-    'Segoe UI',
-    'Helvetica Neue',
-    sans-serif;
+  font-family: var(--font-ui);
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
