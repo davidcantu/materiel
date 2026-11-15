@@ -70,3 +70,28 @@ test('legacy username patch that looks like email becomes identity', () => {
     db.close()
   }
 })
+
+test('updateProfile stores profile image data URI', () => {
+  const db = openTestDatabase(tempDbPath())
+  try {
+    ensureLocalProfile(db)
+    const dataUri = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBD'
+    const updated = updateProfile(db, {
+      firstName: 'David',
+      lastName: 'Cantu',
+      email: 'david@example.com',
+      city: 'Austin',
+      state: 'TX',
+      country: 'USA',
+      profileImageUrl: dataUri
+    })
+    assert.equal(updated.firstName, 'David')
+    assert.equal(updated.profileImageUrl, dataUri)
+
+    const cleared = updateProfile(db, { profileImageUrl: null })
+    assert.equal(cleared.profileImageUrl, null)
+    assert.equal(cleared.firstName, 'David')
+  } finally {
+    db.close()
+  }
+})

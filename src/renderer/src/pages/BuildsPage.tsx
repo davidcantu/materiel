@@ -237,8 +237,19 @@ export function BuildsPage({
                 return (
                   <tr key={system.id}>
                     <td>
-                      <div className="cell-title">{system.name}</div>
-                      <div className="cell-sub">{caliber ?? 'No cartridge set'}</div>
+                      <div className="build-name-cell">
+                        {system.imageUrl ? (
+                          <div className="build-thumb" aria-hidden="true">
+                            <img src={system.imageUrl} alt="" />
+                          </div>
+                        ) : (
+                          <div className="build-thumb build-thumb-empty" aria-hidden="true" />
+                        )}
+                        <div>
+                          <div className="cell-title">{system.name}</div>
+                          <div className="cell-sub">{caliber ?? 'No cartridge set'}</div>
+                        </div>
+                      </div>
                     </td>
                     <td>
                       <span className="type-pill">{PLATFORM_LABELS[system.platform]}</span>
