@@ -1,9 +1,10 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
-import type { AppInfo } from '../shared/app-info'
+import type { AppInfo, DatabaseHealthInfo } from '../shared/app-info'
 
 const api = {
-  getAppInfo: (): Promise<AppInfo> => ipcRenderer.invoke('app:get-info')
+  getAppInfo: (): Promise<AppInfo> => ipcRenderer.invoke('app:get-info'),
+  getDatabaseHealth: (): Promise<DatabaseHealthInfo> => ipcRenderer.invoke('db:health')
 }
 
 if (process.contextIsolated) {

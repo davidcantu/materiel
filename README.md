@@ -27,11 +27,11 @@ Runs Electron with Vite HMR. Uses `.env.development` (mock cloud backup, unlocke
 
 ## Build gates
 
-| Script | Mode | Notes |
-|--------|------|--------|
-| `npm run dev` | development | Local app + mock backup provider |
-| `npm run build:test` | test | Typecheck, Vite build (`--mode test`), electron-builder (no publish) |
-| `npm run build:prod` | production | Typecheck, Vite build (`--mode production`), electron-builder for GitHub Releases packaging |
+| Script               | Mode        | Notes                                                                                       |
+| -------------------- | ----------- | ------------------------------------------------------------------------------------------- |
+| `npm run dev`        | development | Local app + mock backup provider                                                            |
+| `npm run build:test` | test        | Typecheck, Vite build (`--mode test`), electron-builder (no publish)                        |
+| `npm run build:prod` | production  | Typecheck, Vite build (`--mode production`), electron-builder for GitHub Releases packaging |
 
 Platform helpers: `npm run build:mac`, `npm run build:win`, `npm run build:linux` (run on the matching OS or CI).
 
@@ -42,25 +42,33 @@ Packaging targets **`.dmg`** (mac) and **`.exe`** / NSIS (win) via `electron-bui
 ```bash
 npm run typecheck
 npm run lint
+npm run test
 ```
+
+## Database
+
+Encrypted SQLite (`sqlcipher` / AES-256) with forward migrations. Default key is stored via Electron `safeStorage`; see [docs/database.md](./docs/database.md).
+
+Dev can seed demo data with `MAIN_VITE_SEED_DEMO=true` (already set in `.env.development`).
 
 ## Project layout
 
 ```
 src/
   main/           # Electron main process
-    db/           # SQLite + better-sqlite3-multiple-ciphers (stub)
+    db/           # Encrypted SQLite + migrations + §7 helpers
     backup/       # Drive / OneDrive / mock + hourly/quit hooks (stub)
     license/      # Free-tier rifle gate (stub)
   preload/        # Typed contextBridge
   renderer/       # React UI shell
+docs/
+  database.md     # Key supply, migrations, schema map
 ```
 
 Env templates: `.env.development`, `.env.test`, `.env.production`, and `.env.example` (no secrets).
 
 ## Follow-ups
 
-- Encrypted SQLite schema + migrations
 - Real Google Drive / OneDrive OAuth backup
 - License key persistence + create-build gate
 - Inventory, Builds, Logs, Ammo, Dashboard modules

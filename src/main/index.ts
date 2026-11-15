@@ -2,7 +2,7 @@ import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
-import { closeDatabase, initDatabase } from './db'
+import { closeDatabase, getHealth, initDatabase } from './db'
 import { initBackupSubsystem } from './backup'
 import { getLicenseStatus } from './license'
 
@@ -56,6 +56,8 @@ app.whenReady().then(() => {
     backupProvider: backupProvider.id,
     license
   }))
+
+  ipcMain.handle('db:health', () => getHealth())
 
   createWindow()
 
