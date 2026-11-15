@@ -8,8 +8,10 @@ import type {
   ShootingLogInfo
 } from '../../../shared/shooting-logs'
 import type { CompleteSystemInfo } from '../../../shared/systems'
+import { systemHasDueMaintenance } from '../../../shared/system-maintenance'
 import { EmptyState } from '../components/EmptyState'
 import { LogSessionModal } from '../components/LogSessionModal'
+import { MaintenanceDueModal } from '../components/MaintenanceDueModal'
 import { PageFeedback } from '../components/PageFeedback'
 import { PageHeader } from '../components/PageHeader'
 import { useToast } from '../components/toast-context'
@@ -57,6 +59,7 @@ export function LogsPage(): React.JSX.Element {
   const [timeRange, setTimeRange] = useState<LogsTimeRange>('all')
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<ShootingLogInfo | null>(null)
+  const [maintenanceSystemId, setMaintenanceSystemId] = useState<string | null>(null)
 
   const systemsById = useMemo(() => {
     const map = new Map<string, CompleteSystemInfo>()
@@ -153,6 +156,30 @@ export function LogsPage(): React.JSX.Element {
       toast.success('Session logged.')
     }
     await load()
+
+    // After a new session, scope due maintenance to that rifle (no system picker).
+    if (!editingId) {
+      const system = systemsById.get(input.systemId)
+      if (system) {
+        const nextParts = await window.api.listParts()
+        setParts(nextParts)
+        const nextById = new Map(nextParts.map((part) => [part.id, part]))
+        if (systemHasDueMaintenance(system, nextById)) {
+          setMaintenanceSystemId(system.id)
+        }
+      }
+    }
+  }
+
+  async function handleMaintenanceReset(partId: string): Promise<void> {
+    try {
+      await window.api.resetPartMaintenance(partId)
+      toast.success('Maintenance reset.')
+      const nextParts = await window.api.listParts()
+      setParts(nextParts)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Maintenance reset failed')
+    }
   }
 
   async function handleDelete(log: ShootingLogInfo): Promise<void> {
@@ -325,6 +352,16 @@ export function LogsPage(): React.JSX.Element {
             setEditing(null)
           }}
           onSave={handleSave}
+        />
+      ) : null}
+
+      {maintenanceSystemId && systemsById.get(maintenanceSystemId) ? (
+        <MaintenanceDueModal
+          system={systemsById.get(maintenanceSystemId)!}
+          parts={parts}
+          afterLog
+          onClose={() => setMaintenanceSystemId(null)}
+          onReset={handleMaintenanceReset}
         />
       ) : null}
     </div>

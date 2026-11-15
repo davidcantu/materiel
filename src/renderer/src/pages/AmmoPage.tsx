@@ -126,11 +126,13 @@ function AmmoCard({
 function LoadCard({
   load,
   onEdit,
-  onDelete
+  onDelete,
+  onMoveToPractice
 }: {
   load: LoadDevelopmentInfo
   onEdit: () => void
   onDelete: () => void
+  onMoveToPractice: () => void
 }): React.JSX.Element {
   return (
     <article className="ammo-card">
@@ -194,6 +196,12 @@ function LoadCard({
       </div>
 
       {load.notes ? <p className="ammo-notes">{load.notes}</p> : null}
+
+      <footer className="ammo-card-footer">
+        <button type="button" className="btn-ghost" onClick={onMoveToPractice}>
+          Move to practice
+        </button>
+      </footer>
     </article>
   )
 }
@@ -209,6 +217,7 @@ export function AmmoPage(): React.JSX.Element {
   const [loadModalOpen, setLoadModalOpen] = useState(false)
   const [editingAmmo, setEditingAmmo] = useState<AmmoInventoryInfo | null>(null)
   const [editingLoad, setEditingLoad] = useState<LoadDevelopmentInfo | null>(null)
+  const [practiceFromLoad, setPracticeFromLoad] = useState<LoadDevelopmentInfo | null>(null)
 
   const loadsById = useMemo(() => {
     const map = new Map<string, LoadDevelopmentInfo>()
@@ -255,6 +264,13 @@ export function AmmoPage(): React.JSX.Element {
 
   function openCreateAmmo(): void {
     setEditingAmmo(null)
+    setPracticeFromLoad(null)
+    setAmmoModalOpen(true)
+  }
+
+  function openMoveLoadToPractice(load: LoadDevelopmentInfo): void {
+    setEditingAmmo(null)
+    setPracticeFromLoad(load)
     setAmmoModalOpen(true)
   }
 
@@ -267,6 +283,13 @@ export function AmmoPage(): React.JSX.Element {
     if (editingAmmo) {
       await window.api.updateAmmo(editingAmmo.id, input)
       toast.success('Ammo updated.')
+    } else if (practiceFromLoad) {
+      // Create a batch from the load, then consolidate into Practice Ammo (§7.3).
+      const batchName =
+        input.name.trim() === 'Practice Ammo' ? `${practiceFromLoad.name} batch` : input.name.trim()
+      const created = await window.api.createAmmo({ ...input, name: batchName })
+      await window.api.moveAmmoToPractice(created.id)
+      toast.success('Moved load batch to practice ammo.')
     } else {
       await window.api.createAmmo(input)
       toast.success('Ammo added.')
@@ -425,6 +448,7 @@ export function AmmoPage(): React.JSX.Element {
                     setLoadModalOpen(true)
                   }}
                   onDelete={() => void handleDeleteLoad(item)}
+                  onMoveToPractice={() => openMoveLoadToPractice(item)}
                 />
               ))}
             </div>
@@ -435,10 +459,12 @@ export function AmmoPage(): React.JSX.Element {
       {ammoModalOpen ? (
         <AmmoFormModal
           initial={editingAmmo}
+          fromLoad={practiceFromLoad}
           loads={loads}
           onClose={() => {
             setAmmoModalOpen(false)
             setEditingAmmo(null)
+            setPracticeFromLoad(null)
           }}
           onSave={handleSaveAmmo}
         />

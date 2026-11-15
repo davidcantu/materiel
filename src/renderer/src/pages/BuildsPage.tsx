@@ -3,6 +3,7 @@ import type { PartInfo } from '../../../shared/parts'
 import type { CompleteSystemInfo } from '../../../shared/systems'
 import type { LicenseGateDenial, LicenseStatusInfo } from '../../../shared/license'
 import { EmptyState } from '../components/EmptyState'
+import { MaintenanceDueModal } from '../components/MaintenanceDueModal'
 import { PageFeedback } from '../components/PageFeedback'
 import { PageHeader } from '../components/PageHeader'
 import { SystemFormModal } from '../components/SystemFormModal'
@@ -28,6 +29,7 @@ export function BuildsPage({
   const [licenseBanner, setLicenseBanner] = useState<LicenseGateDenial | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<CompleteSystemInfo | null>(null)
+  const [maintenanceSystem, setMaintenanceSystem] = useState<CompleteSystemInfo | null>(null)
 
   const partsById = useMemo(() => {
     const map = new Map<string, PartInfo>()
@@ -141,6 +143,16 @@ export function BuildsPage({
     }
   }
 
+  async function handleMaintenanceReset(partId: string): Promise<void> {
+    try {
+      await window.api.resetPartMaintenance(partId)
+      toast.success('Maintenance reset.')
+      await load()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Maintenance reset failed')
+    }
+  }
+
   return (
     <div className="page">
       <PageHeader
@@ -244,6 +256,13 @@ export function BuildsPage({
                         <button
                           type="button"
                           className="btn-ghost btn-sm"
+                          onClick={() => setMaintenanceSystem(system)}
+                        >
+                          Maintenance
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-ghost btn-sm"
                           onClick={() => {
                             setLicenseBanner(null)
                             setEditing(system)
@@ -280,6 +299,15 @@ export function BuildsPage({
           onCreateCustom={handleCreateCustom}
           onCreateFactory={handleCreateFactory}
           onUpdate={handleUpdate}
+        />
+      ) : null}
+
+      {maintenanceSystem ? (
+        <MaintenanceDueModal
+          system={maintenanceSystem}
+          parts={parts}
+          onClose={() => setMaintenanceSystem(null)}
+          onReset={handleMaintenanceReset}
         />
       ) : null}
     </div>

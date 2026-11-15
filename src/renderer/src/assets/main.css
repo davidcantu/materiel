@@ -643,6 +643,19 @@
   color: var(--brand-neutral);
 }
 
+.field-hint {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.field input[readonly] {
+  opacity: 0.85;
+  cursor: default;
+  background: color-mix(in srgb, var(--surface-raised, #f4f4ec) 80%, transparent);
+}
+
 .banner {
   border-radius: 14px;
   padding: 0.9rem 1rem;
@@ -822,7 +835,9 @@
   border: 1px solid var(--border-subtle);
   border-radius: 16px;
   background: var(--surface);
-  transition: box-shadow 160ms ease, border-color 160ms ease;
+  transition:
+    box-shadow 160ms ease,
+    border-color 160ms ease;
 }
 
 .ammo-card:hover {
@@ -1338,8 +1353,16 @@
   place-items: center;
   padding: 2rem 1.25rem;
   background:
-    radial-gradient(ellipse 90% 70% at 0% 0%, color-mix(in srgb, var(--brand-secondary) 40%, transparent), transparent 55%),
-    radial-gradient(ellipse 80% 60% at 100% 100%, color-mix(in srgb, var(--brand-primary) 22%, transparent), transparent 50%),
+    radial-gradient(
+      ellipse 90% 70% at 0% 0%,
+      color-mix(in srgb, var(--brand-secondary) 40%, transparent),
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse 80% 60% at 100% 100%,
+      color-mix(in srgb, var(--brand-primary) 22%, transparent),
+      transparent 50%
+    ),
     linear-gradient(160deg, #e8ebe0 0%, var(--page-canvas) 45%, #dfe6d4 100%);
   animation: welcome-fade 500ms ease-out both;
 }
