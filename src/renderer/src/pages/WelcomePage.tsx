@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { buildShareMailto, MATERIEL_DOWNLOAD_URL } from '../../../shared/config'
-import { isValidUsername } from '../../../shared/profile'
+import { isValidEmailIdentity } from '../../../shared/profile'
 
 type WelcomePageProps = {
   onComplete: () => void
@@ -10,7 +10,6 @@ type Mode = 'start' | 'restore'
 
 export function WelcomePage({ onComplete }: WelcomePageProps): React.JSX.Element {
   const [mode, setMode] = useState<Mode>('start')
-  const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [key, setKey] = useState('')
   const [busy, setBusy] = useState(false)
@@ -19,20 +18,15 @@ export function WelcomePage({ onComplete }: WelcomePageProps): React.JSX.Element
   async function handleContinue(event: React.FormEvent): Promise<void> {
     event.preventDefault()
     setError(null)
-    const nextUsername = username.trim()
     const nextEmail = email.trim()
-    if (!isValidUsername(nextUsername)) {
-      setError('Choose a username (2–64 characters).')
-      return
-    }
-    if (!nextEmail.includes('@')) {
-      setError('Enter your email address.')
+    if (!isValidEmailIdentity(nextEmail)) {
+      setError('Enter a valid email address.')
       return
     }
 
     setBusy(true)
     try {
-      await window.api.updateProfile({ username: nextUsername, email: nextEmail })
+      await window.api.updateProfile({ email: nextEmail })
       onComplete()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save your profile')
@@ -44,14 +38,9 @@ export function WelcomePage({ onComplete }: WelcomePageProps): React.JSX.Element
   async function handleRestore(event: React.FormEvent): Promise<void> {
     event.preventDefault()
     setError(null)
-    const nextUsername = username.trim()
     const nextEmail = email.trim()
     const nextKey = key.trim()
-    if (!isValidUsername(nextUsername)) {
-      setError('Enter the username you used before.')
-      return
-    }
-    if (!nextEmail.includes('@') || !nextKey) {
+    if (!isValidEmailIdentity(nextEmail) || !nextKey) {
       setError('Email and license key are required to restore paid access.')
       return
     }
@@ -60,8 +49,7 @@ export function WelcomePage({ onComplete }: WelcomePageProps): React.JSX.Element
     try {
       const result = await window.api.activateLicense({
         email: nextEmail,
-        key: nextKey,
-        username: nextUsername
+        key: nextKey
       })
       if (!result.ok) {
         setError(`${result.code}: ${result.message}`)
@@ -86,13 +74,13 @@ export function WelcomePage({ onComplete }: WelcomePageProps): React.JSX.Element
         <div className="welcome-brand">
           <div className="brand-mark welcome-mark" aria-hidden="true" />
           <h1 className="welcome-title">Materiel</h1>
-          <p className="welcome-tagline">Precision rifle gear, tracked locally</p>
+          <p className="welcome-tagline">Firearms tracker — gear, tracked locally</p>
         </div>
 
         <p className="welcome-pitch">
           Inventory every part, lock in complete builds, log range days, track ammo and maintenance
-          — all encrypted on your machine. No cloud lock-in. Free for two rifles; unlock more with a
-          license key.
+          — all encrypted on your machine. No cloud lock-in. Free for two firearms; unlock more with
+          a license key.
         </p>
 
         <div className="welcome-mode-tabs" role="tablist" aria-label="Get started">
@@ -125,18 +113,6 @@ export function WelcomePage({ onComplete }: WelcomePageProps): React.JSX.Element
         {mode === 'start' ? (
           <form className="welcome-form" onSubmit={(e) => void handleContinue(e)}>
             <label className="field">
-              <span className="field-label">Username</span>
-              <input
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                autoComplete="username"
-                placeholder="e.g. range-day"
-                required
-                minLength={2}
-                maxLength={64}
-              />
-            </label>
-            <label className="field">
               <span className="field-label">Email</span>
               <input
                 type="email"
@@ -148,8 +124,8 @@ export function WelcomePage({ onComplete }: WelcomePageProps): React.JSX.Element
               />
             </label>
             <p className="welcome-hint">
-              No password — this is a single-user local install. Your username pairs with a license
-              key so paid access survives reinstall.
+              No password — this is a single-user local install. Your email is your username and
+              pairs with a license key so paid access survives reinstall.
             </p>
             <div className="welcome-actions">
               <button type="submit" className="btn-primary" disabled={busy}>
@@ -162,18 +138,6 @@ export function WelcomePage({ onComplete }: WelcomePageProps): React.JSX.Element
           </form>
         ) : (
           <form className="welcome-form" onSubmit={(e) => void handleRestore(e)}>
-            <label className="field">
-              <span className="field-label">Username</span>
-              <input
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                autoComplete="username"
-                placeholder="Same username as before"
-                required
-                minLength={2}
-                maxLength={64}
-              />
-            </label>
             <label className="field">
               <span className="field-label">License email</span>
               <input
@@ -196,7 +160,7 @@ export function WelcomePage({ onComplete }: WelcomePageProps): React.JSX.Element
               />
             </label>
             <p className="welcome-hint">
-              After reinstall, enter your username and paste the email-bound key to restore paid
+              After reinstall, enter the same email and paste the email-bound key to restore paid
               status.
             </p>
             <div className="welcome-actions">

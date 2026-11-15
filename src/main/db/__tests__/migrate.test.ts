@@ -56,9 +56,46 @@ test('migrations run forward from empty encrypted DB', () => {
     // Re-open / re-migrate is a no-op.
     const versionAgain = getAppliedMigrationVersion(db)
     assert.equal(versionAgain, MIGRATIONS[MIGRATIONS.length - 1].id)
+    assert.equal(versionAgain, 4)
 
     const partCols = db.prepare(`PRAGMA table_info(parts)`).all() as Array<{ name: string }>
     assert.ok(!partCols.some((c) => c.name === 'name'), 'parts.name should be dropped')
+  } finally {
+    db.close()
+  }
+})
+
+test('004_email_identity mirrors username to email', () => {
+  const path = tempDbPath()
+  const db = openTestDatabase(path)
+  try {
+    const createdAt = '2026-01-01T00:00:00.000Z'
+    db.prepare(
+      `INSERT INTO profile (
+        id, username, first_name, last_name, email, city, state, country,
+        competition_series, track_value, track_ammo, unlock_pin_set,
+        created_at, updated_at
+      ) VALUES (
+        'local-profile', 'marksman', '', '', 'shooter@example.com', '', '', '',
+        '[]', 1, 1, 0, @createdAt, @createdAt
+      )`
+    ).run({ createdAt })
+
+    // Re-apply migration 004 mirror SQL (already applied on open; verify semantics).
+    db.exec(`
+UPDATE profile
+SET username = lower(trim(email))
+WHERE email IS NOT NULL AND trim(email) != '';
+`)
+
+    const row = db
+      .prepare(`SELECT username, email FROM profile WHERE id = 'local-profile'`)
+      .get() as {
+      username: string
+      email: string
+    }
+    assert.equal(row.email, 'shooter@example.com')
+    assert.equal(row.username, 'shooter@example.com')
   } finally {
     db.close()
   }

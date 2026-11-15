@@ -4,7 +4,7 @@ Local-first paid unlock. **No server** is required to activate: the app verifies
 
 ## Free tier
 
-Without a paid key, the app allows at most **2** complete rifle systems (`systems` rows).
+Without a paid key, the app allows at most **2** complete firearms (`systems` rows).
 
 Creating a third system (custom or factory) returns a clear IPC error:
 
@@ -13,7 +13,7 @@ Creating a third system (custom or factory) returns a clear IPC error:
   ok: false,
   error: {
     code: 'LICENSE_RIFLE_LIMIT',
-    message: 'Free tier allows up to 2 complete rifle systems (you have 2). …',
+    message: 'Free tier allows up to 2 complete firearms (you have 2). …',
     license: { /* LicenseStatusInfo */ }
   }
 }
@@ -23,30 +23,28 @@ Channels: `systems:create-custom`, `systems:create-factory`. Status: `license:ge
 
 Restore preflight: `systems:assert-restore-allowed` with the backup’s system count — blocked when a free-tier install would restore more than 2 systems.
 
-## Local username + email-bound keys
+## Email identity + email-bound keys
 
-First launch collects a **username** (no password) and an email. The username is the local identity shown in Settings and the sidebar.
+First launch collects a single **email** (no password). That email **is** the username for license pairing and is shown in Settings and the sidebar.
 
-License keys remain **email-bound** (`MAT-1.…` HMAC over the normalized email). Activation also requires a username:
+License keys are **email-bound** (`MAT-1.…` HMAC over the normalized email). Activation uses email + key only:
 
-- Already set on first-run, **or**
-- Passed together on the welcome “Restore license” form / `activateLicense({ email, key, username })`.
+- Set on first-run (“Get started”), **or**
+- Entered together on the welcome “Restore license” form / `activateLicense({ email, key })`.
 
-On success the app stores `{ email, key, activatedAt, username }` in `license.dat` and syncs the profile username + email.
+On success the app stores `{ email, key, activatedAt, username }` in `license.dat` where `username` mirrors the verified email, and syncs the profile email (and username mirror).
 
 ### Reinstall recovery
 
-1. Enter the **same username** you used before.
-2. Enter the **email the key was issued for**.
-3. Paste the `MAT-1.…` key.
+1. Enter the **email the key was issued for**.
+2. Paste the `MAT-1.…` key.
 
-The app verifies the key offline and restores paid status. Username is not part of the cryptographic key; it is the local handle you must re-enter so paid installs stay intentional after a wipe.
+The app verifies the key offline and restores paid status. The cryptographic key covers email only; the same email is your local identity after restore.
 
 ### Email mismatch UX
 
 - Keys are verified against the email you enter (must match the email embedded in the key) → `LICENSE_EMAIL_MISMATCH` when they differ.
 - If Settings shows a profile email that differs from the activated license email, a clear warning is shown. Activating with the issued email updates the local profile email to match.
-- If this install already has a username and you try to activate with a different username → `LICENSE_USERNAME_MISMATCH`.
 
 ## Paid key (after Venmo)
 
@@ -75,12 +73,11 @@ The HMAC covers the canonical string `v1|<normalized-email>` (email trimmed + lo
 
 On first launch (welcome) or in Settings:
 
-1. Ensure a **username** is set (first-run) or enter it with the key (restore).
-2. Enter the **same email** the key was issued for.
-3. Paste the `MAT-1.…` key.
-4. Call `license:activate` / `window.api.activateLicense({ email, key, username })`.
+1. Enter the **same email** the key was issued for (first-run or restore).
+2. Paste the `MAT-1.…` key.
+3. Call `license:activate` / `window.api.activateLicense({ email, key })`.
 
-On success the payload `{ email, key, activatedAt, username }` is written to `{userData}/license.dat` via Electron `safeStorage` when available (plaintext fallback only in headless/dev). The `license_state` DB row is updated to `tier=paid`.
+On success the payload `{ email, key, activatedAt, username }` is written to `{userData}/license.dat` via Electron `safeStorage` when available (plaintext fallback only in headless/dev). The `username` field mirrors the email. The `license_state` DB row is updated to `tier=paid`.
 
 ## Dev unlock
 
@@ -98,8 +95,8 @@ When `unlocked` (aliases: `always-allow`, `dev`), create/restore gates always al
 
 | Channel | Purpose |
 | ------- | ------- |
-| `license:get-status` | `LicenseStatusInfo` (tier, counts, `canCreateRifle`, mode, username, …) |
-| `license:activate` | `{ email, key, username? }` → activate result |
+| `license:get-status` | `LicenseStatusInfo` (tier, counts, `canCreateRifle`, mode, activated email, …) |
+| `license:activate` | `{ email, key }` → activate result |
 | `license:clear` | Remove local key (dev / support) |
 | `systems:create-custom` | Gated create |
 | `systems:create-factory` | Gated create |

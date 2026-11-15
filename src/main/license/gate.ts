@@ -58,7 +58,7 @@ export function assertLicenseAllowsSystemCount(
     ...license,
     canCreateRifle: false,
     blockReason:
-      `Free tier allows up to ${license.freeRifleLimit} complete rifle systems ` +
+      `Free tier allows up to ${license.freeRifleLimit} complete firearms ` +
       `(restore has ${systemCount}). Activate a paid license key before restoring a larger library.`
   }
   throw new LicenseLimitError(buildRifleLimitDenial(blocked))

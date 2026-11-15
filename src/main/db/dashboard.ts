@@ -104,7 +104,7 @@ export function getDashboardSummary(db: Database.Database): DashboardSummary {
   const inventoryItems = parts.length
   const totalValue = parts.reduce((sum, part) => sum + part.value, 0)
 
-  const firstName = profile.firstName.trim() || profile.username.trim()
+  const firstName = profile.firstName.trim() || profile.email?.trim() || profile.username.trim()
 
   return {
     firstName,

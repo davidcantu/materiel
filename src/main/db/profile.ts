@@ -1,9 +1,10 @@
 /**
- * Single local profile row (settings: username, trackValue, trackAmmo, identity).
+ * Single local profile row (settings: email identity, trackValue, trackAmmo).
+ * Email is the username for license pairing; `username` column mirrors email.
  */
 
 import type Database from 'better-sqlite3-multiple-ciphers'
-import { isValidUsername, normalizeUsername } from '../../shared/profile'
+import { isValidEmailIdentity, normalizeEmailIdentity } from '../../shared/profile'
 import type { CompetitionSeries, Profile } from './types'
 
 type ProfileRow = {
@@ -107,12 +108,28 @@ export function updateProfile(db: Database.Database, patch: ProfilePatch): Profi
   const existing = ensureLocalProfile(db)
   const updatedAt = nowIso()
 
+  let nextEmail = existing.email
   let nextUsername = existing.username
-  if (patch.username !== undefined) {
-    const normalized = normalizeUsername(patch.username)
-    if (!isValidUsername(normalized)) {
-      throw new Error('Username must be 2–64 characters (no line breaks).')
+
+  if (patch.email !== undefined) {
+    if (patch.email === null || patch.email.trim() === '') {
+      nextEmail = null
+      nextUsername = ''
+    } else {
+      const normalized = normalizeEmailIdentity(patch.email)
+      if (!isValidEmailIdentity(normalized)) {
+        throw new Error('Enter a valid email address.')
+      }
+      nextEmail = normalized
+      nextUsername = normalized
     }
+  } else if (patch.username !== undefined) {
+    // Legacy: username patch — if email-shaped, treat as identity email.
+    const normalized = normalizeEmailIdentity(patch.username)
+    if (!isValidEmailIdentity(normalized)) {
+      throw new Error('Enter a valid email address (email is your username).')
+    }
+    nextEmail = normalized
     nextUsername = normalized
   }
 
@@ -134,7 +151,7 @@ export function updateProfile(db: Database.Database, patch: ProfilePatch): Profi
     username: nextUsername,
     firstName: patch.firstName ?? existing.firstName,
     lastName: patch.lastName ?? existing.lastName,
-    email: patch.email !== undefined ? patch.email : existing.email,
+    email: nextEmail,
     city: patch.city ?? existing.city,
     state: patch.state ?? existing.state,
     country: patch.country ?? existing.country,

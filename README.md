@@ -1,9 +1,9 @@
 # Materiel
 
-Local-first Electron desktop app for precision rifle shooters: component inventory, complete builds, session logs, ammo/reloading, and maintenance — with optional encrypted cloud backup.
+Local-first Electron desktop **firearms tracker**: component inventory, complete builds, session logs, ammo/reloading, and maintenance — with optional encrypted cloud backup.
 
 **Display name:** Materiel  
-**Free tier:** 2 complete rifles (license key unlocks more)  
+**Free tier:** 2 complete firearms (license key unlocks more)  
 **Stack:** Electron + React + TypeScript via [electron-vite](https://electron-vite.org/)
 
 ## Prerequisites
@@ -64,7 +64,7 @@ Set `MAIN_VITE_GOOGLE_CLIENT_ID` / `MAIN_VITE_ONEDRIVE_CLIENT_ID` in the matchin
 
 ## License
 
-Free tier: **2** complete rifles. Paid: HMAC `MAT-1-…` key bound to an email (issued manually after Venmo). Activation is offline; key stored via `safeStorage`. See [docs/license.md](./docs/license.md).
+Free tier: **2** complete firearms. Paid: HMAC `MAT-1-…` key bound to an email (issued manually after Venmo). Email is the username for license pairing. Activation is offline; key stored via `safeStorage`. See [docs/license.md](./docs/license.md).
 
 ```bash
 LICENSE_SIGNING_SECRET='…' npm run license:issue -- --email customer@example.com

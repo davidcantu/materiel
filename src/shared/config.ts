@@ -5,13 +5,13 @@
 /** Public download page — update when packaging moves off GitHub Releases. */
 export const MATERIEL_DOWNLOAD_URL = 'https://github.com/davidcantu/materiel/releases'
 
-export const SHARE_EMAIL_SUBJECT = 'Check out Materiel — local rifle inventory & logs'
+export const SHARE_EMAIL_SUBJECT = 'Check out Materiel — local firearms inventory & logs'
 
 export const SHARE_EMAIL_BODY = [
   'Hey —',
   '',
-  'I found Materiel: a local-first desktop app for precision rifle shooters.',
-  'Inventory and builds, range logs, ammo, maintenance alerts, and encrypted data on your machine.',
+  'I found Materiel: a local-first desktop firearms tracker.',
+  'Inventory and builds, session logs, ammo, maintenance alerts, and encrypted data on your machine.',
   'This is cool — worth a look.',
   '',
   `Download: ${MATERIEL_DOWNLOAD_URL}`,

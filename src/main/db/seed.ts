@@ -34,7 +34,7 @@ export function seedDemoIfEmpty(db: Database.Database): boolean {
         competition_series, track_value, track_ammo, unlock_pin_set,
         created_at, updated_at
       ) VALUES (
-        'local-profile', 'david', 'David', 'Cantu', 'david@local', 'Austin', 'TX', 'USA',
+        'local-profile', 'david@example.local', 'David', 'Cantu', 'david@example.local', 'Austin', 'TX', 'USA',
         '["PRS","NRL"]', 1, 1, 0, @createdAt, @createdAt
       )`
     ).run({ createdAt })

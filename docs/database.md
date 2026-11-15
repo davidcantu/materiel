@@ -24,12 +24,14 @@ Never log raw keys; `keyFingerprint` (12-char SHA-256 prefix) is safe for diagno
 
 Forward-only migrations live in `src/main/db/migrations/`. Runner: `migrate(db)` in `src/main/db/migrate.ts`.
 
-| Version | Name                | Notes                                                                                                                                                        |
-| ------: | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-|       1 | `001_initial`       | profile, parts, systems, system_misc_parts, load_developments, ammo_inventory, shooting_logs, backup_settings, backup_logs, license_state, schema_migrations |
-|       2 | `002_drop_part_name`| Drops `parts.name` — parts are identified by `id`; UI labels use manufacturer/model/caliber                                                                  |
+| Version | Name                  | Notes                                                                                                                                                        |
+| ------: | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+|       1 | `001_initial`         | profile, parts, systems, system_misc_parts, load_developments, ammo_inventory, shooting_logs, backup_settings, backup_logs, license_state, schema_migrations |
+|       2 | `002_drop_part_name`  | Drops `parts.name` — parts are identified by `id`; UI labels use manufacturer/model/caliber                                                                  |
+|       3 | `003_profile_username`| Adds `profile.username` (legacy local identity column)                                                                                                       |
+|       4 | `004_email_identity`  | Email is identity: promote email-shaped username → email; mirror `username` ← email                                                                          |
 
-Empty DB → apply all pending versions in a transaction.
+Empty DB → apply all pending versions in a transaction. Profile identity is **email** (username column mirrors email for license pairing).
 
 ## Schema map (spec §3 → local-first)
 

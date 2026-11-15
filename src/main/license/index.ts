@@ -1,7 +1,7 @@
 /**
  * Local license gate for Materiel.
  *
- * Free tier: up to FREE_RIFLE_LIMIT complete rifle systems.
+ * Free tier: up to FREE_RIFLE_LIMIT complete firearms.
  * Paid: MAT-1-… HMAC key bound to an email, stored via safeStorage.
  * Dev: MAIN_VITE_LICENSE_MODE=unlocked always allows creates.
  */

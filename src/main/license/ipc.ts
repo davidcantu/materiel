@@ -17,8 +17,7 @@ export function registerLicenseIpc(): void {
     }
     return activateLicense({
       email: request.email,
-      key: request.key,
-      username: typeof request.username === 'string' ? request.username : undefined
+      key: request.key
     })
   })
 

@@ -1,4 +1,4 @@
-/** Free tier: max complete rifle systems without a paid license key. */
+/** Free tier: max complete firearm systems without a paid license key. */
 export const FREE_RIFLE_LIMIT = 2
 
 /** Human-facing prefix; full keys look like `MAT-1.<emailB64>.<sigB64>`. */
@@ -15,7 +15,10 @@ export type LicenseStatusInfo = {
   canCreateRifle: boolean
   keyPresent: boolean
   activatedEmail: string | null
-  /** Username stored with the activated key (local pairing for reinstall). */
+  /**
+   * Identity stored with the activated key (always the license email).
+   * Kept for compatibility with older license.dat payloads that had a separate username.
+   */
   activatedUsername: string | null
   mode: LicenseMode
   /** Present when create/restore would be blocked under enforced free tier. */
@@ -26,8 +29,7 @@ export type LicenseActivateRequest = {
   email: string
   key: string
   /**
-   * Local username required for activation. Sets / updates the profile username
-   * when provided (first-run or reinstall recovery).
+   * @deprecated Email is the username. Ignored when present; kept for older clients.
    */
   username?: string
 }
@@ -40,7 +42,9 @@ export type LicenseErrorCode =
   | 'LICENSE_RIFLE_LIMIT'
   | 'LICENSE_INVALID_KEY'
   | 'LICENSE_EMAIL_MISMATCH'
+  /** @deprecated Email is the username; no longer returned. */
   | 'LICENSE_USERNAME_REQUIRED'
+  /** @deprecated Email is the username; no longer returned. */
   | 'LICENSE_USERNAME_MISMATCH'
   | 'LICENSE_SECRET_MISSING'
   | 'LICENSE_STORAGE_UNAVAILABLE'

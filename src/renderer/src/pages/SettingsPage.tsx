@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { LicenseStatusInfo } from '../../../shared/license'
 import type { MilestoneStatus, MilestonesSummary } from '../../../shared/milestones'
-import { normalizeUsername, type ProfileInfo } from '../../../shared/profile'
+import { hasLocalIdentity, type ProfileInfo } from '../../../shared/profile'
 import { PageHeader } from '../components/PageHeader'
 import { useToast } from '../components/toast-context'
 
@@ -75,6 +75,7 @@ export function SettingsPage({
       profileEmail !== emailDraft.trim().toLowerCase() &&
       key.trim()
     )
+  const identityReady = hasLocalIdentity(profile)
 
   async function handleActivate(event: React.FormEvent): Promise<void> {
     event.preventDefault()
@@ -82,11 +83,9 @@ export function SettingsPage({
     setMessage(null)
     setError(null)
     try {
-      const username = profile?.username ? normalizeUsername(profile.username) : undefined
       const result = await window.api.activateLicense({
         email: email.trim(),
-        key: key.trim(),
-        username
+        key: key.trim()
       })
       if (!result.ok) {
         setError(`${result.code}: ${result.message}`)
@@ -156,10 +155,6 @@ export function SettingsPage({
         {profile ? (
           <dl className="meta-list">
             <div>
-              <dt>Username</dt>
-              <dd>{profile.username || '—'}</dd>
-            </div>
-            <div>
               <dt>Email</dt>
               <dd>{profile.email || '—'}</dd>
             </div>
@@ -178,8 +173,9 @@ export function SettingsPage({
           <p className="muted">Loading profile…</p>
         )}
         <p className="muted settings-note">
-          Username is local identity (no password). After reinstall, enter the same username with
-          your email-bound license key to restore paid access.
+          Email is your local identity (no password) and the username paired with your license.
+          After reinstall, enter the same email with your email-bound license key to restore paid
+          access.
         </p>
       </section>
 
@@ -215,7 +211,7 @@ export function SettingsPage({
               </dd>
             </div>
             <div>
-              <dt>Rifles</dt>
+              <dt>Firearms</dt>
               <dd>
                 {license.completeRifleCount} / {license.freeRifleLimit} free
               </dd>
@@ -224,12 +220,6 @@ export function SettingsPage({
               <dt>Key</dt>
               <dd>{license.keyPresent ? (license.activatedEmail ?? 'Present') : 'None'}</dd>
             </div>
-            {license.activatedUsername ? (
-              <div>
-                <dt>Licensed as</dt>
-                <dd>{license.activatedUsername}</dd>
-              </div>
-            ) : null}
           </dl>
         ) : (
           <p className="muted">Loading license…</p>
@@ -264,7 +254,7 @@ export function SettingsPage({
             </p>
           ) : null}
           <div className="row-actions field-span">
-            <button type="submit" className="btn-primary" disabled={busy || !profile?.username}>
+            <button type="submit" className="btn-primary" disabled={busy || !identityReady}>
               Activate
             </button>
             <button
@@ -277,8 +267,8 @@ export function SettingsPage({
             </button>
           </div>
         </form>
-        {!profile?.username ? (
-          <p className="form-error">Set a username on first launch before activating a license.</p>
+        {!identityReady ? (
+          <p className="form-error">Set your email on first launch before activating a license.</p>
         ) : null}
         {message ? <p className="form-success">{message}</p> : null}
         {error ? <p className="form-error">{error}</p> : null}
