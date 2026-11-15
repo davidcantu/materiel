@@ -34,6 +34,7 @@ import type {
   ShootingLogInfo,
   UpdateShootingLogInputInfo
 } from '../shared/shooting-logs'
+import type { DashboardSummary } from '../shared/dashboard'
 
 declare global {
   interface Window {
@@ -89,6 +90,7 @@ declare global {
       createLoad: (input: LoadInput) => Promise<LoadDevelopmentInfo>
       updateLoad: (id: string, patch: LoadUpdateInput) => Promise<LoadDevelopmentInfo>
       deleteLoad: (id: string) => Promise<{ ok: true }>
+      getDashboard: () => Promise<DashboardSummary>
     }
   }
 }
