@@ -118,7 +118,6 @@ function upsertFactoryPart(
   db: Database.Database,
   row: {
     id: string
-    name: string
     manufacturer: string
     type: 'Action' | 'Barrel' | 'Chassis'
     model: string
@@ -137,7 +136,6 @@ function upsertFactoryPart(
   if (existing) {
     db.prepare(
       `UPDATE parts SET
-        name = @name,
         manufacturer = @manufacturer,
         model = @model,
         serial_number = @serialNumber,
@@ -155,12 +153,12 @@ function upsertFactoryPart(
 
   db.prepare(
     `INSERT INTO parts (
-      id, name, manufacturer, value, type, status, model, serial_number,
+      id, manufacturer, value, type, status, model, serial_number,
       total_round_count, rounds_after_cleaning, maintenance_interval,
       caliber, gunsmith, twist_rate, barrel_life, muzzle_type, notes,
       created_at, updated_at
     ) VALUES (
-      @id, @name, @manufacturer, 0, @type, 'In Use', @model, @serialNumber,
+      @id, @manufacturer, 0, @type, 'In Use', @model, @serialNumber,
       0, 0, @maintenanceInterval,
       @caliber, @gunsmith, @twistRate, @barrelLife, NULL, NULL,
       @createdAt, @updatedAt
@@ -186,7 +184,6 @@ export function synthesizeFactoryParts(
 
   upsertFactoryPart(db, {
     id: ids.actionId,
-    name: `${input.manufacturer} ${input.model} Action`,
     manufacturer: input.manufacturer,
     type: 'Action',
     model: input.model,
@@ -200,7 +197,6 @@ export function synthesizeFactoryParts(
 
   upsertFactoryPart(db, {
     id: ids.barrelId,
-    name: `${input.manufacturer} ${input.model} Barrel`,
     manufacturer: input.manufacturer,
     type: 'Barrel',
     model: input.model,
@@ -214,7 +210,6 @@ export function synthesizeFactoryParts(
 
   upsertFactoryPart(db, {
     id: ids.chassisId,
-    name: `${input.manufacturer} ${input.model} Chassis`,
     manufacturer: input.manufacturer,
     type: 'Chassis',
     model: input.model,

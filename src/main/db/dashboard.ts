@@ -21,12 +21,11 @@ function partTitle(part: {
   manufacturer: string
   model: string | null
   caliber: string | null
-  name: string
 }): string {
   if (part.type === 'Barrel') {
     return [part.manufacturer, part.caliber].filter(Boolean).join(' ')
   }
-  return [part.manufacturer, part.model].filter(Boolean).join(' ') || part.name
+  return [part.manufacturer, part.model].filter(Boolean).join(' ') || part.manufacturer
 }
 
 function buildMaintenanceAlerts(parts: ReturnType<typeof listParts>): MaintenanceAlertItem[] {

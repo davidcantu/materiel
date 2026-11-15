@@ -6,7 +6,6 @@ export type MuzzleType = 'Suppressor' | 'Brake'
 
 export type PartInfo = {
   id: string
-  name: string
   manufacturer: string
   value: number
   type: PartType
@@ -28,7 +27,6 @@ export type PartInfo = {
 
 export type PartInput = {
   id?: string
-  name: string
   manufacturer: string
   value?: number
   type: PartType
