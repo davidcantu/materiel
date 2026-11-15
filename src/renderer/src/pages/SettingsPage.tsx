@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import type { LicenseStatusInfo } from '../../../shared/license'
 import type { ProfileInfo } from '../../../shared/profile'
+import { PageHeader } from '../components/PageHeader'
+import { useToast } from '../components/toast-context'
 
 type SettingsPageProps = {
   license: LicenseStatusInfo | null
@@ -13,7 +15,9 @@ export function SettingsPage({
   profile,
   onRefresh
 }: SettingsPageProps): React.JSX.Element {
-  const [email, setEmail] = useState(profile?.email ?? '')
+  const toast = useToast()
+  const [emailDraft, setEmailDraft] = useState<string | null>(null)
+  const email = emailDraft ?? profile?.email ?? ''
   const [key, setKey] = useState('')
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -28,13 +32,17 @@ export function SettingsPage({
       const result = await window.api.activateLicense({ email: email.trim(), key: key.trim() })
       if (!result.ok) {
         setError(`${result.code}: ${result.message}`)
+        toast.error(result.message)
       } else {
         setMessage('License activated.')
+        toast.success('License activated.')
         setKey('')
         onRefresh()
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Activation failed')
+      const text = err instanceof Error ? err.message : 'Activation failed'
+      setError(text)
+      toast.error(text)
     } finally {
       setBusy(false)
     }
@@ -47,9 +55,12 @@ export function SettingsPage({
     try {
       await window.api.clearLicense()
       setMessage('License cleared — free tier restored.')
+      toast.success('License cleared.')
       onRefresh()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Clear failed')
+      const text = err instanceof Error ? err.message : 'Clear failed'
+      setError(text)
+      toast.error(text)
     } finally {
       setBusy(false)
     }
@@ -57,24 +68,27 @@ export function SettingsPage({
 
   async function toggleTrackValue(): Promise<void> {
     if (!profile) return
-    await window.api.updateProfile({ trackValue: !profile.trackValue })
-    onRefresh()
+    try {
+      await window.api.updateProfile({ trackValue: !profile.trackValue })
+      onRefresh()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not update preference')
+    }
   }
 
   async function toggleTrackAmmo(): Promise<void> {
     if (!profile) return
-    await window.api.updateProfile({ trackAmmo: !profile.trackAmmo })
-    onRefresh()
+    try {
+      await window.api.updateProfile({ trackAmmo: !profile.trackAmmo })
+      onRefresh()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not update preference')
+    }
   }
 
   return (
     <div className="page">
-      <header className="page-header">
-        <div>
-          <h1>Settings</h1>
-          <p>License and local preferences.</p>
-        </div>
-      </header>
+      <PageHeader title="Settings" description="License and local preferences." />
 
       <section className="settings-panel">
         <h2>License</h2>
@@ -105,14 +119,14 @@ export function SettingsPage({
         <form className="form-grid settings-form" onSubmit={(e) => void handleActivate(e)}>
           <label className="field">
             <span className="field-label">Email</span>
-            <input value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <input value={email} onChange={(e) => setEmailDraft(e.target.value)} required />
           </label>
           <label className="field">
             <span className="field-label">License key</span>
             <input
               value={key}
               onChange={(e) => setKey(e.target.value)}
-              placeholder="MAT-1...."
+              placeholder="MAT-XXXX-XXXX-XXXX"
               required
             />
           </label>
@@ -150,7 +164,7 @@ export function SettingsPage({
             checked={profile?.trackAmmo ?? true}
             onChange={() => void toggleTrackAmmo()}
           />
-          <span>Track ammo — enable detailed ammunition inventory and consumption tracking.</span>
+          <span>Track ammo — show ammunition inventory and consumption.</span>
         </label>
       </section>
     </div>

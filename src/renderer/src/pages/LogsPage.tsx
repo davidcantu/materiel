@@ -10,6 +10,9 @@ import type {
 import type { CompleteSystemInfo } from '../../../shared/systems'
 import { EmptyState } from '../components/EmptyState'
 import { LogSessionModal } from '../components/LogSessionModal'
+import { PageFeedback } from '../components/PageFeedback'
+import { PageHeader } from '../components/PageHeader'
+import { useToast } from '../components/toast-context'
 
 function daysAgoIso(days: number): string {
   const d = new Date()
@@ -37,10 +40,11 @@ function cartridgeLabel(log: ShootingLogInfo, ammoById: Map<string, AmmoInventor
     const ammo = ammoById.get(log.ammoId)
     if (ammo?.name) return ammo.name
   }
-  return 'Manual Entry'
+  return 'Manual entry'
 }
 
 export function LogsPage(): React.JSX.Element {
+  const toast = useToast()
   const [logs, setLogs] = useState<ShootingLogInfo[]>([])
   const [systems, setSystems] = useState<CompleteSystemInfo[]>([])
   const [parts, setParts] = useState<PartInfo[]>([])
@@ -143,8 +147,10 @@ export function LogsPage(): React.JSX.Element {
   async function handleSave(input: NewShootingLogInputInfo, editingId?: string): Promise<void> {
     if (editingId) {
       await window.api.updateLog({ id: editingId, ...input })
+      toast.success('Session updated.')
     } else {
       await window.api.addLog(input)
+      toast.success('Session logged.')
     }
     await load()
   }
@@ -156,30 +162,32 @@ export function LogsPage(): React.JSX.Element {
     }
     try {
       await window.api.deleteLog(log.id)
+      toast.success('Session deleted.')
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Delete failed')
+      toast.error(err instanceof Error ? err.message : 'Delete failed')
     }
   }
 
   return (
     <div className="page">
-      <header className="page-header">
-        <div>
-          <h1>Shooting Logs</h1>
-          <p>Record practice and match sessions; rounds update builds and ammo.</p>
-        </div>
-        <button type="button" className="btn-primary" onClick={openCreate}>
-          + Log Session
-        </button>
-      </header>
+      <PageHeader
+        title="Shooting Logs"
+        description="Record practice and match sessions; rounds update builds and ammo."
+        actions={
+          <button type="button" className="btn-primary" onClick={openCreate}>
+            + Log Session
+          </button>
+        }
+      />
 
       <div className="toolbar">
         <input
           className="search-input"
-          placeholder="Search logs..."
+          placeholder="Search logs…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          aria-label="Search logs"
         />
         <div className="toolbar-filters">
           <label className="filter-select">
@@ -226,20 +234,27 @@ export function LogsPage(): React.JSX.Element {
         </div>
       </div>
 
-      {error ? <p className="form-error">{error}</p> : null}
+      <PageFeedback
+        loading={loading}
+        loadingLabel="Loading logs…"
+        error={error}
+        onRetry={() => void load()}
+      />
 
-      {loading ? (
-        <p className="muted">Loading logs…</p>
-      ) : logs.length === 0 ? (
+      {!loading && logs.length === 0 ? (
         <EmptyState
-          title="No Shooting Logs"
+          title="No shooting logs yet"
           description="Log your first practice or match session to start tracking rounds."
-          actionLabel="Log First Session"
+          actionLabel="Log first session"
           onAction={openCreate}
         />
-      ) : filtered.length === 0 ? (
-        <p className="muted">No shooting logs found for this period.</p>
-      ) : (
+      ) : null}
+
+      {!loading && logs.length > 0 && filtered.length === 0 ? (
+        <p className="filter-empty">No shooting logs found for this period.</p>
+      ) : null}
+
+      {!loading && filtered.length > 0 ? (
         <div className="table-wrap">
           <table className="data-table">
             <thead>
@@ -296,7 +311,7 @@ export function LogsPage(): React.JSX.Element {
             </tbody>
           </table>
         </div>
-      )}
+      ) : null}
 
       {modalOpen ? (
         <LogSessionModal

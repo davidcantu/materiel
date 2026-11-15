@@ -2,8 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { PartInfo, PartInput, PartStatus, PartType } from '../../../shared/parts'
 import { PART_TYPES, PART_STATUSES } from '../../../shared/parts'
 import { EmptyState } from '../components/EmptyState'
+import { PageFeedback } from '../components/PageFeedback'
+import { PageHeader } from '../components/PageHeader'
 import { PartFormModal } from '../components/PartFormModal'
 import { StatusBadge } from '../components/StatusBadge'
+import { useToast } from '../components/toast-context'
 import {
   formatCurrency,
   isMaintenanceTracked,
@@ -21,6 +24,7 @@ type InventoryPageProps = {
 }
 
 export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Element {
+  const toast = useToast()
   const [parts, setParts] = useState<PartInfo[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -87,11 +91,18 @@ export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Ele
     })
   }
 
+  function openCreate(): void {
+    setEditing(null)
+    setModalOpen(true)
+  }
+
   async function handleSave(input: PartInput): Promise<void> {
     if (editing) {
       await window.api.updatePart(editing.id, input)
+      toast.success('Part updated.')
     } else {
       await window.api.createPart(input)
+      toast.success('Part added.')
     }
     await load()
   }
@@ -100,9 +111,10 @@ export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Ele
     if (!window.confirm(`Delete ${part.name}?`)) return
     try {
       await window.api.deletePart(part.id)
+      toast.success('Part deleted.')
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Delete failed')
+      toast.error(err instanceof Error ? err.message : 'Delete failed')
     }
   }
 
@@ -111,44 +123,39 @@ export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Ele
       await window.api.setPartStatus(part.id, status)
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Status update failed')
+      toast.error(err instanceof Error ? err.message : 'Status update failed')
     }
   }
 
   async function handleReset(part: PartInfo): Promise<void> {
     try {
       await window.api.resetPartMaintenance(part.id)
+      toast.success('Maintenance reset.')
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Maintenance reset failed')
+      toast.error(err instanceof Error ? err.message : 'Maintenance reset failed')
     }
   }
 
   return (
     <div className="page">
-      <header className="page-header">
-        <div>
-          <h1>Parts Inventory</h1>
-          <p>Track components, status, and maintenance intervals.</p>
-        </div>
-        <button
-          type="button"
-          className="btn-primary"
-          onClick={() => {
-            setEditing(null)
-            setModalOpen(true)
-          }}
-        >
-          + Add Part
-        </button>
-      </header>
+      <PageHeader
+        title="Parts Inventory"
+        description="Track components, status, and maintenance intervals."
+        actions={
+          <button type="button" className="btn-primary" onClick={openCreate}>
+            + Add Part
+          </button>
+        }
+      />
 
       <div className="toolbar">
         <input
           className="search-input"
-          placeholder="Search parts by name, manufacturer, or caliber..."
+          placeholder="Search parts by name, manufacturer, or cartridge…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          aria-label="Search parts"
         />
         <div className="chip-row" role="group" aria-label="Type filter">
           {(['All', ...PART_TYPES] as const).map((type) => (
@@ -176,23 +183,27 @@ export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Ele
         </div>
       </div>
 
-      {error ? <p className="form-error">{error}</p> : null}
+      <PageFeedback
+        loading={loading}
+        loadingLabel="Loading inventory…"
+        error={error}
+        onRetry={() => void load()}
+      />
 
-      {loading ? (
-        <p className="muted">Loading inventory…</p>
-      ) : parts.length === 0 ? (
+      {!loading && parts.length === 0 ? (
         <EmptyState
-          title="Your Armory is Empty"
+          title="Your armory is empty"
           description="Add your first action, barrel, or optic to get started."
-          actionLabel="Add Your First Part"
-          onAction={() => {
-            setEditing(null)
-            setModalOpen(true)
-          }}
+          actionLabel="Add your first part"
+          onAction={openCreate}
         />
-      ) : filtered.length === 0 ? (
-        <p className="muted">No parts match the current filters.</p>
-      ) : (
+      ) : null}
+
+      {!loading && parts.length > 0 && filtered.length === 0 ? (
+        <p className="filter-empty">No parts match the current filters.</p>
+      ) : null}
+
+      {!loading && filtered.length > 0 ? (
         <div className="table-wrap">
           <table className="data-table">
             <thead>
@@ -287,7 +298,7 @@ export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Ele
                             className="btn-link"
                             onClick={() => void handleStatus(part, 'Sold')}
                           >
-                            Mark Sold
+                            Mark sold
                           </button>
                         ) : null}
                         {part.type === 'Barrel' && part.status !== 'Retired' ? (
@@ -305,7 +316,7 @@ export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Ele
                             className="btn-link"
                             onClick={() => void handleStatus(part, 'In Stock')}
                           >
-                            Return to Stock
+                            Return to stock
                           </button>
                         ) : null}
                       </div>
@@ -316,7 +327,7 @@ export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Ele
             </tbody>
           </table>
         </div>
-      )}
+      ) : null}
 
       {modalOpen ? (
         <PartFormModal

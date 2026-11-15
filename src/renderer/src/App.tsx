@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { AppInfo } from '../../shared/app-info'
 import type { LicenseStatusInfo } from '../../shared/license'
 import type { ProfileInfo } from '../../shared/profile'
+import { ToastProvider } from './components/Toast'
 import { AmmoPage } from './pages/AmmoPage'
 import { BuildsPage } from './pages/BuildsPage'
 import { DashboardPage } from './pages/DashboardPage'
@@ -13,7 +14,7 @@ type NavId = 'dashboard' | 'inventory' | 'builds' | 'logs' | 'ammo' | 'settings'
 
 type NavItem = { id: NavId; label: string; enabled: boolean; visible?: boolean }
 
-function App(): React.JSX.Element {
+function AppShell(): React.JSX.Element {
   const [info, setInfo] = useState<AppInfo | null>(null)
   const [license, setLicense] = useState<LicenseStatusInfo | null>(null)
   const [profile, setProfile] = useState<ProfileInfo | null>(null)
@@ -26,9 +27,9 @@ function App(): React.JSX.Element {
     () => [
       { id: 'dashboard', label: 'Dashboard', enabled: true },
       { id: 'inventory', label: 'Inventory', enabled: true },
-      { id: 'builds', label: 'Complete Builds', enabled: true },
-      { id: 'logs', label: 'Shooting Logs', enabled: true },
-      { id: 'ammo', label: 'Ammo & Reloading', enabled: true, visible: trackAmmo },
+      { id: 'builds', label: 'Builds', enabled: true },
+      { id: 'logs', label: 'Logs', enabled: true },
+      { id: 'ammo', label: 'Ammo', enabled: true, visible: trackAmmo },
       { id: 'settings', label: 'Settings', enabled: true }
     ],
     [trackAmmo]
@@ -79,18 +80,22 @@ function App(): React.JSX.Element {
         <nav className="nav" aria-label="Primary">
           {navItems
             .filter((item) => item.visible !== false)
-            .map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className={`nav-item${view === item.id ? ' active' : ''}${item.enabled ? '' : ' muted'}`}
-                disabled={!item.enabled}
-                onClick={() => item.enabled && setActive(item.id)}
-              >
-                <span className="nav-dot" aria-hidden="true" />
-                {item.label}
-              </button>
-            ))}
+            .map((item) => {
+              const isActive = view === item.id
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`nav-item${isActive ? ' active' : ''}${item.enabled ? '' : ' muted'}`}
+                  disabled={!item.enabled}
+                  aria-current={isActive ? 'page' : undefined}
+                  onClick={() => item.enabled && setActive(item.id)}
+                >
+                  <span className="nav-dot" aria-hidden="true" />
+                  {item.label}
+                </button>
+              )
+            })}
         </nav>
 
         <div className="sidebar-meta">
@@ -125,6 +130,14 @@ function App(): React.JSX.Element {
         ) : null}
       </main>
     </div>
+  )
+}
+
+function App(): React.JSX.Element {
+  return (
+    <ToastProvider>
+      <AppShell />
+    </ToastProvider>
   )
 }
 

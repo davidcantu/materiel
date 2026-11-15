@@ -13,6 +13,14 @@
 
   --sidebar-width: 288px;
   --radius: 16px;
+  --radius-sm: 12px;
+  --space-1: 0.35rem;
+  --space-2: 0.65rem;
+  --space-3: 1rem;
+  --space-4: 1.25rem;
+  --space-5: 1.75rem;
+  --focus-ring: 2px solid color-mix(in srgb, var(--brand-primary) 65%, transparent);
+  --focus-offset: 2px;
 
   color-scheme: light;
 }
@@ -51,6 +59,16 @@ body {
 
 button,
 input,
-textarea {
+textarea,
+select {
   font: inherit;
+}
+
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }

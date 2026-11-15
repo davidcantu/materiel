@@ -4,6 +4,9 @@ import type { LoadDevelopmentInfo, LoadInput } from '../../../shared/loads'
 import { AmmoFormModal } from '../components/AmmoFormModal'
 import { EmptyState } from '../components/EmptyState'
 import { LoadFormModal } from '../components/LoadFormModal'
+import { PageFeedback } from '../components/PageFeedback'
+import { PageHeader } from '../components/PageHeader'
+import { useToast } from '../components/toast-context'
 
 type SubTab = 'inventory' | 'loads'
 
@@ -112,7 +115,7 @@ function AmmoCard({
       {!isPractice ? (
         <footer className="ammo-card-footer">
           <button type="button" className="btn-ghost" onClick={onMoveToPractice}>
-            Move to Practice
+            Move to practice
           </button>
         </footer>
       ) : null}
@@ -196,6 +199,7 @@ function LoadCard({
 }
 
 export function AmmoPage(): React.JSX.Element {
+  const toast = useToast()
   const [subTab, setSubTab] = useState<SubTab>('inventory')
   const [ammo, setAmmo] = useState<AmmoInventoryInfo[]>([])
   const [loads, setLoads] = useState<LoadDevelopmentInfo[]>([])
@@ -249,11 +253,23 @@ export function AmmoPage(): React.JSX.Element {
     }
   }, [])
 
+  function openCreateAmmo(): void {
+    setEditingAmmo(null)
+    setAmmoModalOpen(true)
+  }
+
+  function openCreateLoad(): void {
+    setEditingLoad(null)
+    setLoadModalOpen(true)
+  }
+
   async function handleSaveAmmo(input: AmmoInput): Promise<void> {
     if (editingAmmo) {
       await window.api.updateAmmo(editingAmmo.id, input)
+      toast.success('Ammo updated.')
     } else {
       await window.api.createAmmo(input)
+      toast.success('Ammo added.')
     }
     await load()
   }
@@ -261,8 +277,10 @@ export function AmmoPage(): React.JSX.Element {
   async function handleSaveLoad(input: LoadInput): Promise<void> {
     if (editingLoad) {
       await window.api.updateLoad(editingLoad.id, input)
+      toast.success('Load updated.')
     } else {
       await window.api.createLoad(input)
+      toast.success('Load created.')
     }
     await load()
   }
@@ -271,9 +289,10 @@ export function AmmoPage(): React.JSX.Element {
     if (!window.confirm(`Delete ${item.name}?`)) return
     try {
       await window.api.deleteAmmo(item.id)
+      toast.success('Ammo deleted.')
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Delete failed')
+      toast.error(err instanceof Error ? err.message : 'Delete failed')
     }
   }
 
@@ -281,9 +300,10 @@ export function AmmoPage(): React.JSX.Element {
     if (!window.confirm(`Delete load “${item.name}”?`)) return
     try {
       await window.api.deleteLoad(item.id)
+      toast.success('Load deleted.')
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Delete failed')
+      toast.error(err instanceof Error ? err.message : 'Delete failed')
     }
   }
 
@@ -297,72 +317,75 @@ export function AmmoPage(): React.JSX.Element {
     }
     try {
       await window.api.moveAmmoToPractice(item.id)
+      toast.success('Moved to practice ammo.')
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Move to Practice failed')
+      toast.error(err instanceof Error ? err.message : 'Move to practice failed')
     }
   }
 
+  const primaryAction =
+    subTab === 'inventory' ? (
+      <button type="button" className="btn-primary" onClick={openCreateAmmo}>
+        + Add Ammo
+      </button>
+    ) : (
+      <button type="button" className="btn-primary" onClick={openCreateLoad}>
+        + New Load
+      </button>
+    )
+
   return (
     <div className="page">
-      <header className="page-header">
-        <div>
-          <h1>Ammo & Reloading</h1>
-          <p>Track ammunition lots and reloading load development.</p>
-        </div>
-        <div className="subtab-row" role="tablist" aria-label="Ammo sections">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={subTab === 'inventory'}
-            className={`chip${subTab === 'inventory' ? ' active' : ''}`}
-            onClick={() => setSubTab('inventory')}
-          >
-            Inventory
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={subTab === 'loads'}
-            className={`chip${subTab === 'loads' ? ' active' : ''}`}
-            onClick={() => setSubTab('loads')}
-          >
-            Load Data
-          </button>
-        </div>
-      </header>
+      <PageHeader
+        title="Ammo & Reloading"
+        description="Track ammunition lots and reloading load development."
+        actions={
+          <>
+            <div className="subtab-row" role="tablist" aria-label="Ammo sections">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={subTab === 'inventory'}
+                className={`chip${subTab === 'inventory' ? ' active' : ''}`}
+                onClick={() => setSubTab('inventory')}
+              >
+                Inventory
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={subTab === 'loads'}
+                className={`chip${subTab === 'loads' ? ' active' : ''}`}
+                onClick={() => setSubTab('loads')}
+              >
+                Load data
+              </button>
+            </div>
+            {primaryAction}
+          </>
+        }
+      />
 
-      {error ? <p className="form-error">{error}</p> : null}
+      <PageFeedback
+        loading={loading}
+        loadingLabel="Loading ammo…"
+        error={error}
+        onRetry={() => void load()}
+      />
 
       {subTab === 'inventory' ? (
         <>
-          <div className="section-header">
-            <h2>Ammunition Inventory</h2>
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={() => {
-                setEditingAmmo(null)
-                setAmmoModalOpen(true)
-              }}
-            >
-              + Add Ammo
-            </button>
-          </div>
-
-          {loading ? (
-            <p className="muted">Loading…</p>
-          ) : ammo.length === 0 ? (
+          {!loading && ammo.length === 0 ? (
             <EmptyState
-              title="No Ammunition Tracked"
+              title="No ammunition tracked"
               description="Add factory or handload lots to track on-hand quantity."
-              actionLabel="Add First Ammo"
-              onAction={() => {
-                setEditingAmmo(null)
-                setAmmoModalOpen(true)
-              }}
+              actionLabel="Add first ammo"
+              onAction={openCreateAmmo}
             />
-          ) : (
+          ) : null}
+
+          {!loading && ammo.length > 0 ? (
             <div className="ammo-card-grid">
               {ammo.map((item) => (
                 <AmmoCard
@@ -378,37 +401,20 @@ export function AmmoPage(): React.JSX.Element {
                 />
               ))}
             </div>
-          )}
+          ) : null}
         </>
       ) : (
         <>
-          <div className="section-header">
-            <h2>Load Development</h2>
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={() => {
-                setEditingLoad(null)
-                setLoadModalOpen(true)
-              }}
-            >
-              + New Load
-            </button>
-          </div>
-
-          {loading ? (
-            <p className="muted">Loading…</p>
-          ) : loads.length === 0 ? (
+          {!loading && loads.length === 0 ? (
             <EmptyState
-              title="No Load Data"
+              title="No load data yet"
               description="Create a reloading recipe with charge, COAL, and components."
-              actionLabel="Create First Load"
-              onAction={() => {
-                setEditingLoad(null)
-                setLoadModalOpen(true)
-              }}
+              actionLabel="Create first load"
+              onAction={openCreateLoad}
             />
-          ) : (
+          ) : null}
+
+          {!loading && loads.length > 0 ? (
             <div className="ammo-card-grid">
               {loads.map((item) => (
                 <LoadCard
@@ -422,7 +428,7 @@ export function AmmoPage(): React.JSX.Element {
                 />
               ))}
             </div>
-          )}
+          ) : null}
         </>
       )}
 
