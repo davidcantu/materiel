@@ -41,7 +41,8 @@ export {
   deleteSystem,
   getSystem,
   listSystems,
-  countCompleteSystems
+  countCompleteSystems,
+  countCompleteSystemsByPlatform
 } from './systems'
 export {
   listParts,

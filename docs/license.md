@@ -4,24 +4,24 @@ Local-first paid unlock. **No server** is required to activate: the app verifies
 
 ## Free tier
 
-Without a paid key, the app allows at most **2** complete firearms (`systems` rows).
+Without a paid key, the app allows up to **2 firearms per platform**: 2 bolt-action, 2 pistols, and 2 AR-pattern systems. Mixing platforms within those caps stays free (up to 6 total). A paid key is required when creating a **3rd of any one platform**.
 
-Creating a third system (custom or factory) returns a clear IPC error:
+Creating a system that would exceed 2 on its platform (custom or factory) returns a clear IPC error:
 
 ```ts
 {
   ok: false,
   error: {
     code: 'LICENSE_RIFLE_LIMIT',
-    message: 'Free tier allows up to 2 complete firearms (you have 2). …',
+    message: 'Free tier allows up to 2 Bolt Action firearms (you have 2). …',
     license: { /* LicenseStatusInfo */ }
   }
 }
 ```
 
-Channels: `systems:create-custom`, `systems:create-factory`. Status: `license:get-status`.
+Channels: `systems:create-custom`, `systems:create-factory`. Status: `license:get-status` (includes `countsByPlatform`).
 
-Restore preflight: `systems:assert-restore-allowed` with the backup’s system count — blocked when a free-tier install would restore more than 2 systems.
+Restore preflight: `systems:assert-restore-allowed` with per-platform counts (preferred) or a bare total (treated conservatively as one platform). Blocked when any platform would exceed 2 on a free-tier install.
 
 ## Email identity + email-bound keys
 
@@ -100,7 +100,7 @@ When `unlocked` (aliases: `always-allow`, `dev`), create/restore gates always al
 | `license:clear` | Remove local key (dev / support) |
 | `systems:create-custom` | Gated create |
 | `systems:create-factory` | Gated create |
-| `systems:assert-restore-allowed` | Preflight restore by system count |
+| `systems:assert-restore-allowed` | Preflight restore by per-platform counts (or total) |
 | `systems:count` | Current complete-system count |
 
 Preload wrappers: `getLicenseStatus`, `activateLicense`, `clearLicense`, `createCustomSystem`, `createFactorySystem`, `assertRestoreAllowed`, `countSystems`.

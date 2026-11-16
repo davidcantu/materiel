@@ -1,11 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { AppInfo } from '../../shared/app-info'
-import type { LicenseStatusInfo } from '../../shared/license'
-import {
-  hasLocalIdentity,
-  needsOnboarding,
-  type ProfileInfo
-} from '../../shared/profile'
+import { formatPlatformCountsSummary, type LicenseStatusInfo } from '../../shared/license'
+import { hasLocalIdentity, needsOnboarding, type ProfileInfo } from '../../shared/profile'
 import { BrandLogo } from './components/BrandLogo'
 import { Icon } from './components/icons/Icon'
 import { NAV_ICONS } from './components/icons/nav-icons'
@@ -162,7 +158,7 @@ function AppShell(): React.JSX.Element {
             License:{' '}
             <strong>
               {license
-                ? `${license.tier}${license.mode === 'unlocked' ? ' · unlocked' : ''} (${license.completeRifleCount}/${license.freeRifleLimit})`
+                ? `${license.tier}${license.mode === 'unlocked' ? ' · unlocked' : ''} (${formatPlatformCountsSummary(license.countsByPlatform, license.freeRifleLimit)})`
                 : '…'}
             </strong>
           </div>

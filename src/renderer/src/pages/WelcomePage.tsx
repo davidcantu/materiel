@@ -81,8 +81,8 @@ export function WelcomePage({ onComplete }: WelcomePageProps): React.JSX.Element
 
         <p className="welcome-pitch">
           Inventory every part, lock in complete builds, log range days, track ammo and maintenance
-          — all encrypted on your machine. No cloud lock-in. Free for two firearms; unlock more with
-          a license key.
+          — all encrypted on your machine. No cloud lock-in. Free for up to 2 bolt guns, 2 pistols,
+          and 2 ARs; unlock more with a license key.
         </p>
 
         <div className="welcome-mode-tabs" role="tablist" aria-label="Get started">

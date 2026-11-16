@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { LicenseStatusInfo } from '../../../shared/license'
+import { formatPlatformCountsSummary, type LicenseStatusInfo } from '../../../shared/license'
 import type { MilestoneStatus, MilestonesSummary } from '../../../shared/milestones'
 import { PLATFORMS, PLATFORM_LABELS, type Platform } from '../../../shared/platforms'
 import { hasLocalIdentity, type ProfileInfo, type ProfilePatch } from '../../../shared/profile'
@@ -453,9 +453,14 @@ export function SettingsPage({
               </dd>
             </div>
             <div>
+              <dt>Free tier</dt>
+              <dd>Up to {license.freeRifleLimit} per platform (bolt, pistol, AR)</dd>
+            </div>
+            <div>
               <dt>Firearms</dt>
               <dd>
-                {license.completeRifleCount} / {license.freeRifleLimit} free
+                {formatPlatformCountsSummary(license.countsByPlatform, license.freeRifleLimit)}
+                {license.completeRifleCount > 0 ? ` · ${license.completeRifleCount} total` : ''}
               </dd>
             </div>
             <div>
