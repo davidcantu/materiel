@@ -31,22 +31,24 @@ export function seedDemoIfEmpty(db: Database.Database): boolean {
     db.prepare(
       `INSERT INTO profile (
         id, username, first_name, last_name, email, city, state, country,
-        competition_series, track_value, track_ammo, unlock_pin_set,
+        competition_series, track_value, track_ammo, track_loads, tracked_platforms,
+        onboarding_complete, unlock_pin_set,
         created_at, updated_at
       ) VALUES (
         'local-profile', 'david@example.local', 'David', 'Cantu', 'david@example.local', 'Austin', 'TX', 'USA',
-        '["PRS","NRL"]', 1, 1, 0, @createdAt, @createdAt
+        '["PRS","NRL"]', 1, 1, 1, '["bolt_action","ar_pattern","pistol"]', 1, 0,
+        @createdAt, @createdAt
       )`
     ).run({ createdAt })
 
     const insertPart = db.prepare(
       `INSERT INTO parts (
-        id, manufacturer, value, type, status, platforms, model, serial_number,
+        id, manufacturer, value, type, status, platforms, name, model, serial_number,
         total_round_count, rounds_after_cleaning, maintenance_interval,
         caliber, gunsmith, twist_rate, barrel_life, muzzle_type, notes,
         created_at, updated_at
       ) VALUES (
-        @id, @manufacturer, @value, @type, 'In Stock', @platforms, @model, @serialNumber,
+        @id, @manufacturer, @value, @type, 'In Stock', @platforms, @name, @model, @serialNumber,
         @totalRoundCount, @roundsAfterCleaning, @maintenanceInterval,
         @caliber, @gunsmith, @twistRate, @barrelLife, NULL, NULL,
         @createdAt, @createdAt
@@ -59,6 +61,7 @@ export function seedDemoIfEmpty(db: Database.Database): boolean {
       value: 1400,
       type: 'Action',
       platforms: '["bolt_action"]',
+      name: null,
       model: '737R',
       serialNumber: 'IMP-001',
       totalRoundCount: 1650,
@@ -77,6 +80,7 @@ export function seedDemoIfEmpty(db: Database.Database): boolean {
       value: 850,
       type: 'Barrel',
       platforms: '["bolt_action"]',
+      name: 'Proof 26 #1',
       model: 'Carbon 26',
       serialNumber: null,
       totalRoundCount: 1650,
@@ -95,6 +99,7 @@ export function seedDemoIfEmpty(db: Database.Database): boolean {
       value: 1200,
       type: 'Chassis',
       platforms: '["bolt_action"]',
+      name: null,
       model: 'ACC Premier Chassis',
       serialNumber: null,
       totalRoundCount: 0,
@@ -113,6 +118,7 @@ export function seedDemoIfEmpty(db: Database.Database): boolean {
       value: 3000,
       type: 'Optic',
       platforms: '["bolt_action"]',
+      name: null,
       model: 'Razor Gen III 6-36x56',
       serialNumber: 'VTX-001',
       totalRoundCount: 0,
@@ -137,10 +143,10 @@ export function seedDemoIfEmpty(db: Database.Database): boolean {
 
     db.prepare(
       `INSERT INTO ammo_inventory (
-        id, name, type, caliber, quantity, manufacturer, lot_number,
+        id, name, type, caliber, quantity, acquired_date, manufacturer, lot_number,
         created_at, updated_at
       ) VALUES (
-        'ammo-1', 'Hornady ELD-M 140', 'Factory', '6.5 Creedmoor', 200,
+        'ammo-1', 'Hornady ELD-M 140', 'Factory', '6.5 Creedmoor', 200, '2026-10-15',
         'Hornady', 'LOT-A', @createdAt, @createdAt
       )`
     ).run({ createdAt })

@@ -24,7 +24,6 @@ type FormState = {
   bulletManufacturer: string
   bulletModel: string
   brassManufacturer: string
-  brassModel: string
   powderManufacturer: string
   powderModel: string
   primerManufacturer: string
@@ -45,7 +44,6 @@ function blankForm(): FormState {
     bulletManufacturer: '',
     bulletModel: '',
     brassManufacturer: '',
-    brassModel: '',
     powderManufacturer: '',
     powderModel: '',
     primerManufacturer: '',
@@ -67,7 +65,6 @@ function fromLoad(load: LoadDevelopmentInfo): FormState {
     bulletManufacturer: load.bulletManufacturer,
     bulletModel: load.bulletModel,
     brassManufacturer: load.brassManufacturer,
-    brassModel: load.brassModel ?? '',
     powderManufacturer: load.powderManufacturer,
     powderModel: load.powderModel,
     primerManufacturer: load.primerManufacturer,
@@ -137,7 +134,7 @@ export function LoadFormModal({ initial, onClose, onSave }: LoadFormModalProps):
       bulletManufacturer: form.bulletManufacturer.trim(),
       bulletModel: form.bulletModel.trim(),
       brassManufacturer: form.brassManufacturer.trim(),
-      brassModel: form.brassModel.trim() || null,
+      brassModel: null,
       powderManufacturer: form.powderManufacturer.trim(),
       powderModel: form.powderModel.trim(),
       primerManufacturer: form.primerManufacturer.trim(),
@@ -293,10 +290,6 @@ export function LoadFormModal({ initial, onClose, onSave }: LoadFormModalProps):
               <option key={item} value={item} />
             ))}
           </datalist>
-        </label>
-        <label className="field">
-          <span className="field-label">Brass Model</span>
-          <input value={form.brassModel} onChange={(e) => setField('brassModel', e.target.value)} />
         </label>
 
         <label className="field">

@@ -12,6 +12,7 @@ function ammo(
   return {
     name: partial.name ?? partial.id,
     type: 'Factory',
+    acquiredDate: '2026-11-01',
     loadId: null,
     manufacturer: null,
     lotNumber: null,
@@ -60,6 +61,7 @@ test('systemCaliber uses factory cartridge or barrel caliber', () => {
         type: 'Barrel',
         status: 'In Use',
         platforms: ['bolt_action'],
+        name: 'Proof 26',
         model: null,
         serialNumber: null,
         totalRoundCount: 0,

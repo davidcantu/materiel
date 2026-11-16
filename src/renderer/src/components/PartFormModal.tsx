@@ -4,7 +4,8 @@ import {
   isMaintenanceTracked,
   isWearStatusTracked,
   partTypeLabel,
-  requiresSerialNumber
+  requiresSerialNumber,
+  showsSerialNumberField
 } from '../../../shared/parts'
 import {
   PLATFORMS,
@@ -41,6 +42,7 @@ type FormState = {
   platforms: Platform[]
   type: PartType
   manufacturer: string
+  name: string
   model: string
   serialNumber: string
   caliber: string
@@ -64,6 +66,7 @@ function blankForm(type: PartType = 'Action', platforms?: Platform[]): FormState
     platforms: normalizePartPlatforms(resolvedType, resolvedPlatforms),
     type: resolvedType,
     manufacturer: '',
+    name: '',
     model: '',
     serialNumber: '',
     caliber: '',
@@ -83,6 +86,7 @@ function fromPart(part: PartInfo): FormState {
     platforms: [...part.platforms],
     type: part.type,
     manufacturer: part.manufacturer,
+    name: part.name ?? '',
     model: part.model ?? '',
     serialNumber: part.serialNumber ?? '',
     caliber: part.caliber ?? '',
@@ -136,7 +140,8 @@ export function PartFormModal({
     return []
   }, [form.type, form.manufacturer])
 
-  const showSerial = requiresSerialNumber(form.type, form.muzzleType)
+  const serialRequired = requiresSerialNumber(form.type, form.muzzleType)
+  const showSerial = showsSerialNumberField(form.type, form.muzzleType)
   const showWearStatus = isWearStatusTracked(form.type)
 
   function setField<K extends keyof FormState>(key: K, value: FormState[K]): void {
@@ -195,16 +200,19 @@ export function PartFormModal({
         input.value = Number(form.value)
       }
       if (showSerial) {
-        input.serialNumber = form.serialNumber.trim()
+        input.serialNumber = form.serialNumber.trim() || null
       } else if (form.type === 'Suppressor') {
         input.serialNumber = null
       }
       if (form.type === 'Barrel') {
+        input.name = form.name.trim()
         input.caliber = form.caliber.trim()
         input.gunsmith = form.gunsmith.trim()
         input.twistRate = Number(form.twistRate) || 8
         input.barrelLife = Number(form.barrelLife) || 2500
         input.maintenanceInterval = Number(form.maintenanceInterval) || 1000
+      } else {
+        input.name = null
       }
       if (isMaintenanceTracked(form.type) && form.type !== 'Barrel') {
         input.maintenanceInterval = Number(form.maintenanceInterval) || 1000
@@ -310,20 +318,34 @@ export function PartFormModal({
         </label>
 
         {form.type === 'Barrel' ? (
-          <label className="field">
-            <span className="field-label">Cartridge</span>
-            <input
-              list="cartridge-suggestions"
-              value={form.caliber}
-              onChange={(e) => setField('caliber', e.target.value)}
-              required
-            />
-            <datalist id="cartridge-suggestions">
-              {CARTRIDGE_OPTIONS.map((item) => (
-                <option key={item} value={item} />
-              ))}
-            </datalist>
-          </label>
+          <>
+            <label className="field">
+              <span className="field-label">Name</span>
+              <input
+                value={form.name}
+                onChange={(e) => setField('name', e.target.value)}
+                placeholder="e.g. Proof 26&quot; #1"
+                required
+              />
+              <span className="muted field-hint">
+                Name or serialize barrels so you can track round count per tube.
+              </span>
+            </label>
+            <label className="field">
+              <span className="field-label">Cartridge</span>
+              <input
+                list="cartridge-suggestions"
+                value={form.caliber}
+                onChange={(e) => setField('caliber', e.target.value)}
+                required
+              />
+              <datalist id="cartridge-suggestions">
+                {CARTRIDGE_OPTIONS.map((item) => (
+                  <option key={item} value={item} />
+                ))}
+              </datalist>
+            </label>
+          </>
         ) : (
           <label className="field">
             <span className="field-label">Model</span>
@@ -343,11 +365,13 @@ export function PartFormModal({
 
         {showSerial ? (
           <label className="field">
-            <span className="field-label">Serial Number</span>
+            <span className="field-label">
+              Serial Number{serialRequired ? '' : ' (optional)'}
+            </span>
             <input
               value={form.serialNumber}
               onChange={(e) => setField('serialNumber', e.target.value)}
-              required
+              required={serialRequired}
             />
           </label>
         ) : null}

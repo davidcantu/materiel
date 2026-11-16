@@ -37,6 +37,8 @@ export type PartInfo = {
   status: PartStatus
   /** Platforms this part may be used on. */
   platforms: Platform[]
+  /** Barrel-only display name for round-count tracking. Null for other types. */
+  name: string | null
   model: string | null
   serialNumber: string | null
   totalRoundCount: number
@@ -59,6 +61,8 @@ export type PartInput = {
   type: PartType
   status?: PartStatus
   platforms?: Platform[]
+  /** Barrel-only name (ignored / cleared for other types). */
+  name?: string | null
   model?: string | null
   serialNumber?: string | null
   totalRoundCount?: number
@@ -112,8 +116,11 @@ export const WEAR_STATUS_PART_TYPES: PartType[] = ['Barrel', 'Trigger']
 
 export const MAINTENANCE_PART_TYPES: PartType[] = ['Action', 'Barrel', 'Suppressor', 'BCG', 'Pistol']
 
-/** Always-serialized receivers / optics / complete pistols. Suppressors handled separately. */
-export const SERIAL_REQUIRED_TYPES: PartType[] = ['Action', 'Optic', 'Lower', 'Pistol', 'Frame']
+/** Always-serialized receivers / complete pistols. Suppressors handled separately. Optics optional. */
+export const SERIAL_REQUIRED_TYPES: PartType[] = ['Action', 'Lower', 'Pistol', 'Frame']
+
+/** Types that show a serial field even when it is optional. */
+export const SERIAL_OPTIONAL_TYPES: PartType[] = ['Optic']
 
 export function isWearStatusTracked(type: PartType): boolean {
   return WEAR_STATUS_PART_TYPES.includes(type)
@@ -124,8 +131,9 @@ export function isMaintenanceTracked(type: PartType): boolean {
 }
 
 /**
- * Serial numbers are required for serialized receivers/optics/pistols,
+ * Serial numbers are required for serialized receivers/pistols,
  * and for muzzle devices that are Suppressors (not brakes).
+ * Optics show an optional serial field separately.
  */
 export function requiresSerialNumber(
   type: PartType,
@@ -135,6 +143,14 @@ export function requiresSerialNumber(
     return muzzleType !== 'Brake'
   }
   return SERIAL_REQUIRED_TYPES.includes(type)
+}
+
+/** Whether the part form should show a serial number field (required or optional). */
+export function showsSerialNumberField(
+  type: PartType,
+  muzzleType?: MuzzleType | null
+): boolean {
+  return requiresSerialNumber(type, muzzleType) || SERIAL_OPTIONAL_TYPES.includes(type)
 }
 
 export function partTypeLabel(type: PartType): string {

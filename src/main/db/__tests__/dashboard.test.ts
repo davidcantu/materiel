@@ -71,6 +71,7 @@ test('getDashboardSummary: KPIs, alerts, hides value when trackValue false', () 
   const barrel = createPart(db, {
     manufacturer: 'Proof',
     type: 'Barrel',
+    name: 'Proof Match',
     caliber: '6.5 Creedmoor',
     gunsmith: 'S&S',
     value: 850,

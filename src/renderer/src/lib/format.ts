@@ -24,6 +24,7 @@ export function maintenanceTone(percent: number): 'ok' | 'warn' | 'high' {
 
 export function partPrimaryTitle(part: PartInfo): string {
   if (part.type === 'Barrel') {
+    if (part.name?.trim()) return part.name.trim()
     return [part.manufacturer, part.caliber].filter(Boolean).join(' ')
   }
   return [part.manufacturer, part.model].filter(Boolean).join(' ') || part.manufacturer

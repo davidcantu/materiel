@@ -27,9 +27,13 @@ const DEFAULT_STATUSES: PartStatus[] = ['In Stock', 'In Use']
 
 type InventoryPageProps = {
   trackValue: boolean
+  trackedPlatforms?: Platform[]
 }
 
-export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Element {
+export function InventoryPage({
+  trackValue,
+  trackedPlatforms
+}: InventoryPageProps): React.JSX.Element {
   const toast = useToast()
   const [parts, setParts] = useState<PartInfo[]>([])
   const [loading, setLoading] = useState(true)
@@ -41,11 +45,19 @@ export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Ele
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<PartInfo | null>(null)
 
+  const availablePlatforms = useMemo(
+    () =>
+      trackedPlatforms && trackedPlatforms.length > 0
+        ? PLATFORMS.filter((p) => trackedPlatforms.includes(p))
+        : [...PLATFORMS],
+    [trackedPlatforms]
+  )
+
   const categoryOptions = useMemo(() => {
     if (platformFilter === 'All') {
       const seen = new Set<PartType>()
       const types: PartType[] = []
-      for (const platform of PLATFORMS) {
+      for (const platform of availablePlatforms) {
         for (const type of PLATFORM_PART_TYPES[platform]) {
           if (!seen.has(type)) {
             seen.add(type)
@@ -56,7 +68,7 @@ export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Ele
       return types
     }
     return [...PLATFORM_PART_TYPES[platformFilter]]
-  }, [platformFilter])
+  }, [platformFilter, availablePlatforms])
 
   const load = useCallback(async () => {
     setError(null)
@@ -99,19 +111,21 @@ export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Ele
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
+    const platformSet = new Set(availablePlatforms)
     return parts.filter((part) => {
+      if (!part.platforms.some((p) => platformSet.has(p))) return false
       if (platformFilter !== 'All' && !part.platforms.includes(platformFilter)) return false
       if (typeFilter !== 'All' && part.type !== typeFilter) return false
       // Wear status filter applies only to barrels/triggers; other parts always pass.
       if (isWearStatusTracked(part.type) && !statuses.includes(part.status)) return false
       if (!q) return true
-      const hay = [part.manufacturer, part.model, part.caliber, part.serialNumber]
+      const hay = [part.name, part.manufacturer, part.model, part.caliber, part.serialNumber]
         .filter(Boolean)
         .join(' ')
         .toLowerCase()
       return hay.includes(q)
     })
-  }, [parts, search, platformFilter, typeFilter, statuses])
+  }, [parts, search, platformFilter, typeFilter, statuses, availablePlatforms])
 
   function toggleStatus(status: PartStatus): void {
     setStatuses((prev) => {
@@ -191,7 +205,7 @@ export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Ele
           aria-label="Search parts"
         />
         <div className="chip-row" role="group" aria-label="Platform filter">
-          {(['All', ...PLATFORMS] as const).map((platform) => (
+          {(['All', ...availablePlatforms] as const).map((platform) => (
             <button
               key={platform}
               type="button"
@@ -300,6 +314,11 @@ export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Ele
                       ) : null}
                       {part.type === 'Barrel' ? (
                         <>
+                          {part.name ? (
+                            <div>
+                              {[part.manufacturer, part.caliber].filter(Boolean).join(' ')}
+                            </div>
+                          ) : null}
                           <div>Twist 1:{part.twistRate ?? '—'}</div>
                           <div>{part.gunsmith}</div>
                         </>
@@ -400,7 +419,12 @@ export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Ele
         <PartFormModal
           trackValue={trackValue}
           initial={editing}
-          defaultPlatforms={platformFilter === 'All' ? undefined : [platformFilter]}
+          defaultPlatforms={
+            platformFilter === 'All' ? availablePlatforms : [platformFilter]
+          }
+          lockPlatforms={
+            availablePlatforms.length < PLATFORMS.length ? availablePlatforms : undefined
+          }
           onClose={() => {
             setModalOpen(false)
             setEditing(null)

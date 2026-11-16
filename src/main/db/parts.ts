@@ -20,6 +20,7 @@ type PartRow = {
   type: PartType
   status: PartStatus
   platforms: string
+  name: string | null
   model: string | null
   serial_number: string | null
   total_round_count: number
@@ -42,6 +43,7 @@ export type NewPartInput = {
   type: PartType
   status?: PartStatus
   platforms?: Platform[]
+  name?: string | null
   model?: string | null
   serialNumber?: string | null
   totalRoundCount?: number
@@ -76,6 +78,7 @@ function mapPart(row: PartRow): Part {
     type: row.type,
     status: row.status,
     platforms: parsePlatformsJson(row.platforms),
+    name: row.name ?? null,
     model: row.model,
     serialNumber: row.serial_number,
     totalRoundCount: row.total_round_count,
@@ -96,6 +99,7 @@ function validatePartFields(
   type: PartType,
   input: {
     manufacturer?: string
+    name?: string | null
     serialNumber?: string | null
     caliber?: string | null
     gunsmith?: string | null
@@ -119,6 +123,9 @@ function validatePartFields(
     }
   }
   if (type === 'Barrel') {
+    if (requireCore || input.name !== undefined) {
+      if (!String(input.name ?? '').trim()) throw new Error('Name is required for Barrel')
+    }
     if (requireCore || input.caliber !== undefined) {
       if (!String(input.caliber ?? '').trim()) throw new Error('Cartridge is required for Barrel')
     }
@@ -162,16 +169,16 @@ export function listParts(db: Database.Database, options: ListPartsOptions = {})
   if (options.search?.trim()) {
     const q = `%${options.search.trim().toLowerCase()}%`
     clauses.push(
-      `(LOWER(manufacturer) LIKE ? OR LOWER(COALESCE(model, '')) LIKE ? OR LOWER(COALESCE(caliber, '')) LIKE ? OR LOWER(COALESCE(serial_number, '')) LIKE ?)`
+      `(LOWER(manufacturer) LIKE ? OR LOWER(COALESCE(name, '')) LIKE ? OR LOWER(COALESCE(model, '')) LIKE ? OR LOWER(COALESCE(caliber, '')) LIKE ? OR LOWER(COALESCE(serial_number, '')) LIKE ?)`
     )
-    params.push(q, q, q, q)
+    params.push(q, q, q, q, q)
   }
 
   const where = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : ''
   const rows = db
     .prepare(
       `SELECT * FROM parts ${where}
-       ORDER BY type ASC, manufacturer ASC, COALESCE(model, caliber, '') ASC`
+       ORDER BY type ASC, manufacturer ASC, COALESCE(name, model, caliber, '') ASC`
     )
     .all(...params) as PartRow[]
 
@@ -201,12 +208,12 @@ export function createPart(db: Database.Database, input: NewPartInput): Part {
 
   db.prepare(
     `INSERT INTO parts (
-      id, manufacturer, value, type, status, platforms, model, serial_number,
+      id, manufacturer, value, type, status, platforms, name, model, serial_number,
       total_round_count, rounds_after_cleaning, maintenance_interval,
       caliber, gunsmith, twist_rate, barrel_life, muzzle_type, notes,
       created_at, updated_at
     ) VALUES (
-      @id, @manufacturer, @value, @type, @status, @platforms, @model, @serialNumber,
+      @id, @manufacturer, @value, @type, @status, @platforms, @name, @model, @serialNumber,
       @totalRoundCount, @roundsAfterCleaning, @maintenanceInterval,
       @caliber, @gunsmith, @twistRate, @barrelLife, @muzzleType, @notes,
       @createdAt, @updatedAt
@@ -218,6 +225,7 @@ export function createPart(db: Database.Database, input: NewPartInput): Part {
     type: input.type,
     status,
     platforms: serializePlatforms(platforms),
+    name: input.type === 'Barrel' ? input.name?.trim() || null : null,
     model: input.model?.trim() || null,
     serialNumber: input.serialNumber?.trim() || null,
     totalRoundCount: input.totalRoundCount ?? 0,
@@ -254,12 +262,20 @@ export function updatePart(db: Database.Database, id: string, patch: UpdatePartI
       : existing.platforms
 
   const updatedAt = nowIso()
+  const nextName =
+    existing.type === 'Barrel'
+      ? patch.name !== undefined
+        ? patch.name?.trim() || null
+        : existing.name
+      : null
+
   db.prepare(
     `UPDATE parts SET
       manufacturer = @manufacturer,
       value = @value,
       status = @status,
       platforms = @platforms,
+      name = @name,
       model = @model,
       serial_number = @serialNumber,
       total_round_count = @totalRoundCount,
@@ -279,6 +295,7 @@ export function updatePart(db: Database.Database, id: string, patch: UpdatePartI
     value: patch.value ?? existing.value,
     status: nextStatus,
     platforms: serializePlatforms(platforms),
+    name: nextName,
     model: patch.model !== undefined ? patch.model?.trim() || null : existing.model,
     serialNumber:
       patch.serialNumber !== undefined ? patch.serialNumber?.trim() || null : existing.serialNumber,

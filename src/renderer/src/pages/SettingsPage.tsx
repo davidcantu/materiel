@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { LicenseStatusInfo } from '../../../shared/license'
 import type { MilestoneStatus, MilestonesSummary } from '../../../shared/milestones'
+import { PLATFORMS, PLATFORM_LABELS, type Platform } from '../../../shared/platforms'
 import { hasLocalIdentity, type ProfileInfo, type ProfilePatch } from '../../../shared/profile'
 import { BrandLogo } from '../components/BrandLogo'
 import { Icon } from '../components/icons/Icon'
@@ -176,6 +177,34 @@ export function SettingsPage({
     if (!profile) return
     try {
       await window.api.updateProfile({ trackAmmo: !profile.trackAmmo })
+      onRefresh()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not update preference')
+    }
+  }
+
+  async function toggleTrackLoads(): Promise<void> {
+    if (!profile) return
+    try {
+      await window.api.updateProfile({ trackLoads: !profile.trackLoads })
+      onRefresh()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not update preference')
+    }
+  }
+
+  async function toggleTrackedPlatform(platform: Platform): Promise<void> {
+    if (!profile) return
+    const current = profile.trackedPlatforms
+    const next = current.includes(platform)
+      ? current.filter((p) => p !== platform)
+      : [...current, platform]
+    if (next.length === 0) {
+      toast.error('Keep at least one firearm type selected.')
+      return
+    }
+    try {
+      await window.api.updateProfile({ trackedPlatforms: next })
       onRefresh()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not update preference')
@@ -517,7 +546,75 @@ export function SettingsPage({
       </section>
 
       <section className="settings-panel">
-        <h2>Inventory preferences</h2>
+        <h2>Tracking preferences</h2>
+        <p className="muted">
+          Same choices as first-run setup. Turning something off hides related fields and sections.
+        </p>
+
+        <div className="pref-row pref-row-stack">
+          <div className="pref-row-label">
+            <span>Firearm types</span>
+            <PreferenceInfoButton title="Firearm types">
+              <p>
+                Choose which platforms appear in inventory filters and when creating builds. Parts
+                for other platforms stay in the database but stay out of day-to-day views.
+              </p>
+            </PreferenceInfoButton>
+          </div>
+          <div className="chip-row">
+            {PLATFORMS.map((platform) => {
+              const checked = profile?.trackedPlatforms?.includes(platform) ?? true
+              return (
+                <button
+                  key={platform}
+                  type="button"
+                  className={`chip${checked ? ' active' : ''}`}
+                  aria-pressed={checked}
+                  onClick={() => void toggleTrackedPlatform(platform)}
+                >
+                  {PLATFORM_LABELS[platform]}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="pref-row">
+          <label className="toggle-row">
+            <input
+              type="checkbox"
+              checked={profile?.trackAmmo ?? true}
+              onChange={() => void toggleTrackAmmo()}
+            />
+            <span>Track ammo use and inventory</span>
+          </label>
+          <PreferenceInfoButton title="Track ammo">
+            <p>
+              When enabled, ammunition lots stay available so you can manage on-hand quantity and
+              deduct rounds when you log sessions.
+            </p>
+            <p>Turn this off to hide ammo inventory if you only want builds and shooting logs.</p>
+          </PreferenceInfoButton>
+        </div>
+
+        <div className="pref-row">
+          <label className="toggle-row">
+            <input
+              type="checkbox"
+              checked={profile?.trackLoads ?? true}
+              onChange={() => void toggleTrackLoads()}
+            />
+            <span>Track load details (reloaders)</span>
+          </label>
+          <PreferenceInfoButton title="Track load details">
+            <p>
+              When enabled, Load Data recipes are available for reloading development (charge, COAL,
+              components).
+            </p>
+            <p>Turn this off if you buy factory ammo only and do not need load recipes.</p>
+          </PreferenceInfoButton>
+        </div>
+
         <div className="pref-row">
           <label className="toggle-row">
             <input
@@ -535,26 +632,6 @@ export function SettingsPage({
             <p>
               Turn this off if you prefer not to track or display financial figures anywhere in the
               app.
-            </p>
-          </PreferenceInfoButton>
-        </div>
-        <div className="pref-row">
-          <label className="toggle-row">
-            <input
-              type="checkbox"
-              checked={profile?.trackAmmo ?? true}
-              onChange={() => void toggleTrackAmmo()}
-            />
-            <span>Track ammo</span>
-          </label>
-          <PreferenceInfoButton title="Track ammo">
-            <p>
-              When enabled, the Ammo &amp; Reloading section is available so you can manage
-              ammunition lots, link handloads, and deduct rounds when you log sessions.
-            </p>
-            <p>
-              Turn this off to hide ammunition inventory and consumption tracking if you only want
-              builds and shooting logs.
             </p>
           </PreferenceInfoButton>
         </div>

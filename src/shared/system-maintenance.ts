@@ -26,6 +26,7 @@ export function systemTrackedPartIds(system: CompleteSystemInfo): string[] {
 
 function partTitle(part: PartInfo): string {
   if (part.type === 'Barrel') {
+    if (part.name?.trim()) return part.name.trim()
     return [part.manufacturer, part.caliber].filter(Boolean).join(' ') || part.manufacturer
   }
   return [part.manufacturer, part.model].filter(Boolean).join(' ') || part.manufacturer
