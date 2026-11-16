@@ -21,7 +21,10 @@ jobs:
           - os: macos-latest
             target: mac
             # Ad-hoc signed DMG + ZIP per arch (see electron-builder.yml mac.identity: "-").
-            artifact_glob: 'dist/*.{dmg,zip}'
+            # upload-artifact does not expand bash brace globs like *.{dmg,zip}.
+            artifact_glob: |
+              dist/*.dmg
+              dist/*.zip
           - os: windows-latest
             target: win
             artifact_glob: 'dist/*-setup.exe'
