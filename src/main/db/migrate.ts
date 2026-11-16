@@ -39,34 +39,60 @@ export function getAppliedMigrationVersion(db: Database.Database): number {
   return latest.version
 }
 
+export type MigrateOptions = {
+  /** Stop after this migration id (inclusive). Used by upgrade-path tests. */
+  throughVersion?: number
+}
+
 /**
  * Apply all pending migrations forward from an empty or older DB.
  * Returns the version after migration.
+ *
+ * Foreign keys are disabled *outside* the migration transaction. SQLite treats
+ * `PRAGMA foreign_keys = OFF` as a no-op while a multi-statement transaction is
+ * open, so rebuild migrations that `DROP TABLE parts` (005/006) would otherwise
+ * fail with FOREIGN KEY constraint failed when systems / shooting_logs /
+ * system_misc_parts already reference part rows.
  */
-export function migrate(db: Database.Database): number {
+export function migrate(db: Database.Database, options: MigrateOptions = {}): number {
   db.pragma('foreign_keys = ON')
 
   const applied = getAppliedMigrationVersion(db)
-  const pending = MIGRATIONS.filter((m) => m.id > applied).sort((a, b) => a.id - b.id)
+  const pending = MIGRATIONS.filter(
+    (m) => m.id > applied && (options.throughVersion == null || m.id <= options.throughVersion)
+  ).sort((a, b) => a.id - b.id)
 
   if (pending.length === 0) {
     return applied
   }
 
-  const runAll = db.transaction((migrations: Migration[]) => {
-    for (const migration of migrations) {
-      db.exec(migration.sql)
-      // Prepare after exec so 001 can create schema_migrations first.
-      db.prepare(
-        `INSERT INTO schema_migrations (version, name, applied_at) VALUES (@version, @name, @appliedAt)`
-      ).run({
-        version: migration.id,
-        name: migration.name,
-        appliedAt: new Date().toISOString()
-      })
-    }
-  })
+  db.pragma('foreign_keys = OFF')
+  try {
+    const runAll = db.transaction((migrations: Migration[]) => {
+      for (const migration of migrations) {
+        db.exec(migration.sql)
+        // Prepare after exec so 001 can create schema_migrations first.
+        db.prepare(
+          `INSERT INTO schema_migrations (version, name, applied_at) VALUES (@version, @name, @appliedAt)`
+        ).run({
+          version: migration.id,
+          name: migration.name,
+          appliedAt: new Date().toISOString()
+        })
+      }
+    })
 
-  runAll(pending)
+    runAll(pending)
+  } finally {
+    db.pragma('foreign_keys = ON')
+  }
+
+  const violations = db.prepare('PRAGMA foreign_key_check').all()
+  if (violations.length > 0) {
+    throw new Error(
+      `Foreign key check failed after migrations: ${JSON.stringify(violations.slice(0, 5))}`
+    )
+  }
+
   return getAppliedMigrationVersion(db)
 }

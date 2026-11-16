@@ -8,6 +8,8 @@
 export const id = 5
 export const name = '005_platforms'
 
+// Note: migrate() disables foreign_keys outside the wrapping transaction.
+// PRAGMA foreign_keys cannot change mid-transaction in SQLite (no-op).
 export const sql = `
 PRAGMA foreign_keys = OFF;
 
