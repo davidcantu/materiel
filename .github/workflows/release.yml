@@ -54,6 +54,8 @@ jobs:
 
       - name: Verify macOS ad-hoc signature and DMG mount
         if: matrix.target == 'mac'
+        # macOS runners ship Bash 3.2 — avoid Bash-4-only builtins like mapfile.
+        shell: bash
         run: |
           set -euo pipefail
           echo "== Artifacts =="
@@ -70,15 +72,18 @@ jobs:
             codesign --verify --deep "$app"
           }
 
-          mapfile -t apps < <(find dist -maxdepth 3 -type d -name 'Materiel.app' | sort)
-          if [[ ${#apps[@]} -eq 0 ]]; then
+          app_count=0
+          for app in dist/mac-arm64/Materiel.app dist/mac/Materiel.app; do
+            if [ -d "$app" ]; then
+              verify_app "$app"
+              app_count=$((app_count + 1))
+            fi
+          done
+          if [ "$app_count" -eq 0 ]; then
             echo "No Materiel.app found under dist/ for codesign verify" >&2
             find dist -maxdepth 4 -type d -name '*.app' -print || true
             exit 1
           fi
-          for app in "${apps[@]}"; do
-            verify_app "$app"
-          done
           for dmg in dist/*.dmg; do
             mountpoint="$(mktemp -d /tmp/materiel-dmg.XXXXXX)"
             echo "== hdiutil attach $dmg -> $mountpoint =="
