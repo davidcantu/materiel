@@ -1,24 +1,32 @@
-import { countCompleteSystems } from '../db/systems'
+import { countCompleteSystemsByPlatform } from '../db/systems'
 import { requireDatabase } from '../db/connection'
-import type { LicenseStatusInfo } from '../../shared/license'
-import { FREE_RIFLE_LIMIT } from './crypto'
+import {
+  anyPlatformHasFreeSlot,
+  emptyPlatformCounts,
+  FREE_PER_PLATFORM_LIMIT,
+  freeTierLimitMessage,
+  normalizePlatformCounts,
+  platformHasFreeSlot,
+  totalPlatformCounts,
+  type LicenseStatusInfo,
+  type PlatformSystemCounts
+} from '../../shared/license'
+import type { Platform } from '../../shared/platforms'
 import { resolveLicenseMode } from './mode'
 import { loadStoredLicense, type LicenseStoreOptions } from './store'
 import { ensureLicenseState, readLicenseState } from './state'
 import { verifyLicenseKey, resolveSigningSecret } from './crypto'
 
 export type GetLicenseStatusOptions = LicenseStoreOptions & {
-  /** Override system count (tests). */
+  /** Override per-platform counts (tests). */
+  countsByPlatform?: PlatformSystemCounts
+  /**
+   * @deprecated Prefer countsByPlatform. When set alone, treated as a single-platform
+   * worst-case total for restore compatibility (all systems counted as bolt_action).
+   */
   completeRifleCount?: number
   /** Skip DB (tests that only exercise store + mode). */
   skipDb?: boolean
-}
-
-function rifleLimitMessage(count: number): string {
-  return (
-    `Free tier allows up to ${FREE_RIFLE_LIMIT} complete firearms ` +
-    `(you have ${count}). Activate a paid license key to add more.`
-  )
 }
 
 export function getLicenseStatus(options: GetLicenseStatusOptions = {}): LicenseStatusInfo {
@@ -60,28 +68,21 @@ export function getLicenseStatus(options: GetLicenseStatusOptions = {}): License
     }
   }
 
-  const completeRifleCount =
-    options.completeRifleCount ??
-    (() => {
-      try {
-        return countCompleteSystems(requireDatabase().db)
-      } catch {
-        return 0
-      }
-    })()
-
-  const withinFreeTier = completeRifleCount < FREE_RIFLE_LIMIT
+  const countsByPlatform = resolveCounts(options)
+  const completeRifleCount = totalPlatformCounts(countsByPlatform)
+  const withinFreeTier = anyPlatformHasFreeSlot(countsByPlatform, FREE_PER_PLATFORM_LIMIT)
   const canCreateRifle = mode === 'unlocked' || tier === 'paid' || withinFreeTier
 
   let blockReason: string | null = null
   if (!canCreateRifle) {
-    blockReason = rifleLimitMessage(completeRifleCount)
+    blockReason = freeTierLimitMessage(countsByPlatform)
   }
 
   return {
     tier,
-    freeRifleLimit: FREE_RIFLE_LIMIT,
+    freeRifleLimit: FREE_PER_PLATFORM_LIMIT,
     completeRifleCount,
+    countsByPlatform,
     canCreateRifle,
     keyPresent,
     activatedEmail,
@@ -91,14 +92,41 @@ export function getLicenseStatus(options: GetLicenseStatusOptions = {}): License
   }
 }
 
-export function buildRifleLimitDenial(license: LicenseStatusInfo): {
+function resolveCounts(options: GetLicenseStatusOptions): PlatformSystemCounts {
+  if (options.countsByPlatform) {
+    return normalizePlatformCounts(options.countsByPlatform)
+  }
+  if (typeof options.completeRifleCount === 'number') {
+    // Legacy override: attribute the whole count to bolt_action (worst-case for restore).
+    const counts = emptyPlatformCounts()
+    counts.bolt_action = Math.max(0, Math.floor(options.completeRifleCount))
+    return counts
+  }
+  try {
+    return countCompleteSystemsByPlatform(requireDatabase().db)
+  } catch {
+    return emptyPlatformCounts()
+  }
+}
+
+export function canCreatePlatform(license: LicenseStatusInfo, platform: Platform): boolean {
+  if (license.mode === 'unlocked' || license.tier === 'paid') return true
+  return platformHasFreeSlot(license.countsByPlatform, platform, license.freeRifleLimit)
+}
+
+export function buildRifleLimitDenial(
+  license: LicenseStatusInfo,
+  platform?: Platform
+): {
   code: 'LICENSE_RIFLE_LIMIT'
   message: string
   license: LicenseStatusInfo
 } {
   return {
     code: 'LICENSE_RIFLE_LIMIT',
-    message: license.blockReason ?? rifleLimitMessage(license.completeRifleCount),
+    message:
+      license.blockReason ??
+      freeTierLimitMessage(license.countsByPlatform, platform ? { platform } : undefined),
     license
   }
 }

@@ -9,6 +9,7 @@
 
 import { randomUUID } from 'crypto'
 import type Database from 'better-sqlite3-multiple-ciphers'
+import { emptyPlatformCounts, type PlatformSystemCounts } from '../../shared/license'
 import {
   PLATFORM_CORE_SLOTS,
   accessoryListTypes,
@@ -387,6 +388,21 @@ export function countCompleteSystems(db: Database.Database): number {
   return row.count
 }
 
+export function countCompleteSystemsByPlatform(db: Database.Database): PlatformSystemCounts {
+  const counts = emptyPlatformCounts()
+  const rows = db
+    .prepare(`SELECT platform, COUNT(*) AS count FROM systems GROUP BY platform`)
+    .all() as {
+    platform: string
+    count: number
+  }[]
+  for (const row of rows) {
+    const platform = resolvePlatform(row.platform)
+    counts[platform] = row.count
+  }
+  return counts
+}
+
 export function createCustomSystem(
   db: Database.Database,
   input: CustomSystemInput
@@ -609,8 +625,7 @@ export function updateSystem(
     const opticId = patch.opticId !== undefined ? patch.opticId : existing.opticId
     const suppressorId =
       patch.suppressorId !== undefined ? patch.suppressorId : existing.suppressorId
-    let laserIrId =
-      patch.laserIrId !== undefined ? patch.laserIrId : existing.laserIrId
+    const laserIrId = patch.laserIrId !== undefined ? patch.laserIrId : existing.laserIrId
     let lightId = patch.lightId !== undefined ? patch.lightId : existing.lightId
     if (platform === 'bolt_action') {
       lightId = null

@@ -1,12 +1,13 @@
 /**
  * Local license gate for Materiel.
  *
- * Free tier: up to FREE_RIFLE_LIMIT complete firearms.
+ * Free tier: up to FREE_PER_PLATFORM_LIMIT complete firearms per platform
+ * (bolt / pistol / AR). Paid when exceeding 2 of any one platform.
  * Paid: MAT-1-… HMAC key bound to an email, stored via safeStorage.
  * Dev: MAIN_VITE_LICENSE_MODE=unlocked always allows creates.
  */
 
-export { FREE_RIFLE_LIMIT, LICENSE_KEY_PREFIX } from './crypto'
+export { FREE_PER_PLATFORM_LIMIT, FREE_RIFLE_LIMIT, LICENSE_KEY_PREFIX } from './crypto'
 export {
   issueLicenseKey,
   verifyLicenseKey,
@@ -20,6 +21,7 @@ export { resolveLicenseMode, isLicenseUnlocked } from './mode'
 export { getLicenseStatus, buildRifleLimitDenial } from './status'
 export {
   assertCanCreateCompleteSystem,
+  assertLicenseAllowsPlatformCounts,
   assertLicenseAllowsSystemCount,
   canCreateCompleteSystem,
   checkCreateCompleteSystem,

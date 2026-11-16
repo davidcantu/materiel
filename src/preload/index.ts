@@ -11,7 +11,8 @@ import type {
 import type {
   LicenseActivateRequest,
   LicenseActivateResult,
-  LicenseStatusInfo
+  LicenseStatusInfo,
+  PlatformSystemCounts
 } from '../shared/license'
 import type {
   PartInfo,
@@ -83,8 +84,10 @@ const api = {
     }
   ): Promise<CompleteSystemInfo> => ipcRenderer.invoke('systems:update', id, patch),
   deleteSystem: (id: string): Promise<{ ok: true }> => ipcRenderer.invoke('systems:delete', id),
-  assertRestoreAllowed: (systemCount: number): Promise<RestoreLicenseCheckResult> =>
-    ipcRenderer.invoke('systems:assert-restore-allowed', systemCount),
+  assertRestoreAllowed: (
+    payload: number | PlatformSystemCounts
+  ): Promise<RestoreLicenseCheckResult> =>
+    ipcRenderer.invoke('systems:assert-restore-allowed', payload),
   listLogs: (): Promise<ShootingLogInfo[]> => ipcRenderer.invoke('logs:list'),
   getLog: (id: string): Promise<ShootingLogInfo | null> => ipcRenderer.invoke('logs:get', id),
   addLog: (input: NewShootingLogInputInfo): Promise<ShootingLogInfo> =>

@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { PartInfo } from '../../../shared/parts'
 import type { CompleteSystemInfo } from '../../../shared/systems'
-import type { LicenseGateDenial, LicenseStatusInfo } from '../../../shared/license'
+import {
+  formatPlatformCountsSummary,
+  type LicenseGateDenial,
+  type LicenseStatusInfo
+} from '../../../shared/license'
 import {
   PLATFORM_CORE_LABELS,
   PLATFORM_LABELS,
@@ -103,7 +107,7 @@ export function BuildsPage({
         code: 'LICENSE_RIFLE_LIMIT',
         message:
           license.blockReason ??
-          `Free tier allows ${license.freeRifleLimit} complete firearms. Activate a license to add more.`,
+          `Free tier allows ${license.freeRifleLimit} firearms per platform (bolt, pistol, AR). Activate a license to add more.`,
         license
       })
       return
@@ -196,8 +200,11 @@ export function BuildsPage({
           </strong>
           <p>{licenseBanner.message}</p>
           <p className="muted">
-            Using {licenseBanner.license.completeRifleCount} of{' '}
-            {licenseBanner.license.freeRifleLimit} free firearms
+            Free usage:{' '}
+            {formatPlatformCountsSummary(
+              licenseBanner.license.countsByPlatform,
+              licenseBanner.license.freeRifleLimit
+            )}
             {licenseBanner.license.mode === 'unlocked' ? ' (dev unlocked)' : ''}.
           </p>
         </div>

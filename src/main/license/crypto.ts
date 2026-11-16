@@ -11,9 +11,9 @@
  */
 
 import { createHmac, timingSafeEqual } from 'crypto'
-import { FREE_RIFLE_LIMIT, LICENSE_KEY_PREFIX } from '../../shared/license'
+import { FREE_PER_PLATFORM_LIMIT, FREE_RIFLE_LIMIT, LICENSE_KEY_PREFIX } from '../../shared/license'
 
-export { FREE_RIFLE_LIMIT, LICENSE_KEY_PREFIX }
+export { FREE_PER_PLATFORM_LIMIT, FREE_RIFLE_LIMIT, LICENSE_KEY_PREFIX }
 
 export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase()

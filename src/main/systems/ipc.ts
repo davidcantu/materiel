@@ -3,6 +3,7 @@
  */
 
 import { ipcMain } from 'electron'
+import type { PlatformSystemCounts } from '../../shared/license'
 import type { CustomSystemInput, FactorySystemInput } from '../db/types'
 import {
   createCustomSystem,
@@ -14,8 +15,12 @@ import {
   updateSystem
 } from '../db/systems'
 import { requireDatabase } from '../db/connection'
-import { checkCreateCompleteSystem, LicenseLimitError } from '../license/gate'
-import { assertLicenseAllowsSystemCount } from '../license/gate'
+import {
+  assertLicenseAllowsPlatformCounts,
+  assertLicenseAllowsSystemCount,
+  checkCreateCompleteSystem,
+  LicenseLimitError
+} from '../license/gate'
 import { getLicenseStatus } from '../license/status'
 
 export function registerSystemsIpc(): void {
@@ -28,7 +33,7 @@ export function registerSystemsIpc(): void {
   ipcMain.handle('systems:get-license-gate', () => getLicenseStatus())
 
   ipcMain.handle('systems:create-custom', (_event, input: CustomSystemInput) => {
-    const gate = checkCreateCompleteSystem()
+    const gate = checkCreateCompleteSystem({ platform: input.platform })
     if (!gate.ok) {
       return { ok: false as const, error: gate.error }
     }
@@ -44,7 +49,7 @@ export function registerSystemsIpc(): void {
   })
 
   ipcMain.handle('systems:create-factory', (_event, input: FactorySystemInput) => {
-    const gate = checkCreateCompleteSystem()
+    const gate = checkCreateCompleteSystem({ platform: input.platform })
     if (!gate.ok) {
       return { ok: false as const, error: gate.error }
     }
@@ -76,19 +81,27 @@ export function registerSystemsIpc(): void {
   })
 
   /**
-   * Preflight for restore-from-backup: pass the system count inside the backup blob.
-   * Returns the same Result shape as create so the renderer can show one message.
+   * Preflight for restore-from-backup.
+   * Prefer per-platform counts; a bare number is treated conservatively
+   * (all systems on one platform).
    */
-  ipcMain.handle('systems:assert-restore-allowed', (_event, systemCount: number) => {
-    const count = typeof systemCount === 'number' && systemCount >= 0 ? systemCount : 0
-    try {
-      const license = assertLicenseAllowsSystemCount(count)
-      return { ok: true as const, license }
-    } catch (error) {
-      if (error instanceof LicenseLimitError) {
-        return { ok: false as const, error: error.toDenial() }
+  ipcMain.handle(
+    'systems:assert-restore-allowed',
+    (_event, payload: number | PlatformSystemCounts) => {
+      try {
+        if (typeof payload === 'number') {
+          const count = payload >= 0 ? payload : 0
+          const license = assertLicenseAllowsSystemCount(count)
+          return { ok: true as const, license }
+        }
+        const license = assertLicenseAllowsPlatformCounts(payload ?? {})
+        return { ok: true as const, license }
+      } catch (error) {
+        if (error instanceof LicenseLimitError) {
+          return { ok: false as const, error: error.toDenial() }
+        }
+        throw error
       }
-      throw error
     }
-  })
+  )
 }

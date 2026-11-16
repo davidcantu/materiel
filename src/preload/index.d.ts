@@ -10,7 +10,8 @@ import type {
 import type {
   LicenseActivateRequest,
   LicenseActivateResult,
-  LicenseStatusInfo
+  LicenseStatusInfo,
+  PlatformSystemCounts
 } from '../shared/license'
 import type {
   PartInfo,
@@ -74,7 +75,9 @@ declare global {
         }
       ) => Promise<CompleteSystemInfo>
       deleteSystem: (id: string) => Promise<{ ok: true }>
-      assertRestoreAllowed: (systemCount: number) => Promise<RestoreLicenseCheckResult>
+      assertRestoreAllowed: (
+        payload: number | PlatformSystemCounts
+      ) => Promise<RestoreLicenseCheckResult>
       listLogs: () => Promise<ShootingLogInfo[]>
       getLog: (id: string) => Promise<ShootingLogInfo | null>
       addLog: (input: NewShootingLogInputInfo) => Promise<ShootingLogInfo>

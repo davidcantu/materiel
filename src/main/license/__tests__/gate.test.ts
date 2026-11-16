@@ -4,16 +4,18 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, test } from 'node:test'
 import { closeDatabase, openDatabase, requireDatabase } from '../../db/connection'
-import { createCustomSystem } from '../../db/systems'
+import { createCustomSystem, createFactorySystem } from '../../db/systems'
 import { activateLicense, clearLicense } from '../activate'
 import { issueLicenseKey } from '../crypto'
 import {
   assertCanCreateCompleteSystem,
+  assertLicenseAllowsPlatformCounts,
   assertLicenseAllowsSystemCount,
   checkCreateCompleteSystem,
   LicenseLimitError
 } from '../gate'
 import { getLicenseStatus } from '../status'
+import type { Platform } from '../../../shared/platforms'
 
 const SECRET = 'test-license-signing-secret-do-not-use-in-prod'
 const dirs: string[] = []
@@ -57,7 +59,7 @@ function setup(): { userData: string; storeOpts: { userDataPath: string; filePat
   return { userData, storeOpts }
 }
 
-function insertSystems(count: number): void {
+function insertBoltSystems(count: number): void {
   const db = requireDatabase().db
   const createdAt = '2026-01-01T00:00:00.000Z'
   const insertPart = db.prepare(
@@ -106,7 +108,7 @@ function insertSystems(count: number): void {
       createdAt
     })
     createCustomSystem(db, {
-      id: `sys-${i}`,
+      id: `sys-bolt-${i}`,
       name: `Rifle ${i}`,
       platform: 'bolt_action',
       actionId,
@@ -116,40 +118,81 @@ function insertSystems(count: number): void {
   }
 }
 
-test('free tier allows create when under limit', () => {
+function insertFactorySystems(platform: Platform, count: number, prefix: string): void {
+  const db = requireDatabase().db
+  for (let i = 0; i < count; i++) {
+    createFactorySystem(db, {
+      id: `sys-${prefix}-${i}`,
+      name: `${prefix} ${i}`,
+      platform,
+      factoryManufacturer: 'Acme',
+      factoryModel: `Model-${i}`,
+      factoryCartridge: platform === 'pistol' ? '9mm' : '5.56 NATO'
+    })
+  }
+}
+
+test('free tier allows create when under per-platform limit', () => {
   const { storeOpts } = setup()
-  insertSystems(1)
+  insertBoltSystems(1)
   const status = getLicenseStatus(storeOpts)
   assert.equal(status.tier, 'free')
   assert.equal(status.completeRifleCount, 1)
+  assert.equal(status.countsByPlatform.bolt_action, 1)
+  assert.equal(status.countsByPlatform.pistol, 0)
   assert.equal(status.canCreateRifle, true)
-  assert.equal(checkCreateCompleteSystem(storeOpts).ok, true)
+  assert.equal(checkCreateCompleteSystem({ ...storeOpts, platform: 'bolt_action' }).ok, true)
 })
 
-test('free tier blocks third complete system', () => {
+test('free tier blocks third bolt but still allows pistol/AR', () => {
   const { storeOpts } = setup()
-  insertSystems(2)
+  insertBoltSystems(2)
   const status = getLicenseStatus(storeOpts)
   assert.equal(status.completeRifleCount, 2)
-  assert.equal(status.canCreateRifle, false)
-  assert.match(status.blockReason ?? '', /Free tier allows up to 2/)
+  assert.equal(status.countsByPlatform.bolt_action, 2)
+  assert.equal(status.canCreateRifle, true)
 
-  const check = checkCreateCompleteSystem(storeOpts)
-  assert.equal(check.ok, false)
-  if (!check.ok) {
-    assert.equal(check.error.code, 'LICENSE_RIFLE_LIMIT')
+  const boltBlocked = checkCreateCompleteSystem({ ...storeOpts, platform: 'bolt_action' })
+  assert.equal(boltBlocked.ok, false)
+  if (!boltBlocked.ok) {
+    assert.equal(boltBlocked.error.code, 'LICENSE_RIFLE_LIMIT')
+    assert.match(boltBlocked.error.message, /Bolt Action/)
   }
 
+  assert.equal(checkCreateCompleteSystem({ ...storeOpts, platform: 'pistol' }).ok, true)
+  assert.equal(checkCreateCompleteSystem({ ...storeOpts, platform: 'ar_pattern' }).ok, true)
+
   assert.throws(
-    () => assertCanCreateCompleteSystem(storeOpts),
+    () => assertCanCreateCompleteSystem({ ...storeOpts, platform: 'bolt_action' }),
     (err: unknown) => err instanceof LicenseLimitError
   )
+})
+
+test('mixing platforms within 2-each caps stays free', () => {
+  const { storeOpts } = setup()
+  insertBoltSystems(2)
+  insertFactorySystems('pistol', 2, 'pistol')
+  insertFactorySystems('ar_pattern', 2, 'ar')
+
+  const status = getLicenseStatus(storeOpts)
+  assert.equal(status.completeRifleCount, 6)
+  assert.deepEqual(status.countsByPlatform, {
+    bolt_action: 2,
+    ar_pattern: 2,
+    pistol: 2
+  })
+  assert.equal(status.canCreateRifle, false)
+  assert.match(status.blockReason ?? '', /per platform/)
+
+  assert.equal(checkCreateCompleteSystem({ ...storeOpts, platform: 'bolt_action' }).ok, false)
+  assert.equal(checkCreateCompleteSystem({ ...storeOpts, platform: 'pistol' }).ok, false)
+  assert.equal(checkCreateCompleteSystem({ ...storeOpts, platform: 'ar_pattern' }).ok, false)
 })
 
 test('unlocked mode always allows create', () => {
   process.env.MAIN_VITE_LICENSE_MODE = 'unlocked'
   const { storeOpts } = setup()
-  insertSystems(5)
+  insertBoltSystems(5)
   const status = getLicenseStatus(storeOpts)
   assert.equal(status.mode, 'unlocked')
   assert.equal(status.canCreateRifle, true)
@@ -158,10 +201,10 @@ test('unlocked mode always allows create', () => {
 
 test('paid activation unlocks beyond free tier', () => {
   const { storeOpts } = setup()
-  insertSystems(2)
+  insertBoltSystems(2)
 
-  const before = getLicenseStatus(storeOpts)
-  assert.equal(before.canCreateRifle, false)
+  const before = checkCreateCompleteSystem({ ...storeOpts, platform: 'bolt_action' })
+  assert.equal(before.ok, false)
 
   const key = issueLicenseKey('shooter@example.com', SECRET)
   const result = activateLicense({ email: 'shooter@example.com', key }, storeOpts)
@@ -174,7 +217,10 @@ test('paid activation unlocks beyond free tier', () => {
     assert.equal(result.license.keyPresent, true)
   }
 
-  assert.equal(assertCanCreateCompleteSystem(storeOpts).tier, 'paid')
+  assert.equal(
+    assertCanCreateCompleteSystem({ ...storeOpts, platform: 'bolt_action' }).tier,
+    'paid'
+  )
 })
 
 test('activate rejects email mismatch', () => {
@@ -213,12 +259,25 @@ test('reinstall recovery: email + key restores paid', () => {
   }
 })
 
-test('restore gate allows free-tier sized backups and blocks larger', () => {
+test('restore gate allows mixed free-tier backups and blocks over-cap platforms', () => {
   const { storeOpts } = setup()
 
-  const ok = assertLicenseAllowsSystemCount(2, storeOpts)
+  const ok = assertLicenseAllowsPlatformCounts(
+    { bolt_action: 2, ar_pattern: 2, pistol: 2 },
+    storeOpts
+  )
   assert.equal(ok.tier, 'free')
+  assert.equal(ok.completeRifleCount, 6)
 
+  assert.throws(
+    () =>
+      assertLicenseAllowsPlatformCounts({ bolt_action: 3, ar_pattern: 0, pistol: 0 }, storeOpts),
+    (err: unknown) => err instanceof LicenseLimitError && /exceed/i.test(err.message)
+  )
+
+  // Bare total is conservative (treated as one platform).
+  const okTotal = assertLicenseAllowsSystemCount(2, storeOpts)
+  assert.equal(okTotal.tier, 'free')
   assert.throws(
     () => assertLicenseAllowsSystemCount(3, storeOpts),
     (err: unknown) => err instanceof LicenseLimitError && /restore has 3/.test(err.message)

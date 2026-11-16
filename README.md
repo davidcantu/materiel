@@ -3,7 +3,7 @@
 Local-first Electron desktop **firearms tracker**: component inventory, complete builds, session logs, ammo/reloading, and maintenance — with optional encrypted cloud backup.
 
 **Display name:** Materiel  
-**Free tier:** 2 complete firearms (license key unlocks more)  
+**Free tier:** up to 2 bolt guns, 2 pistols, and 2 ARs (license key unlocks more of any platform)  
 **Stack:** Electron + React + TypeScript via [electron-vite](https://electron-vite.org/)
 
 ## Download
@@ -87,7 +87,7 @@ From the repo on a machine with the project:
 npm run license:issue -- --email you@example.com
 ```
 
-Paste the `MAT-1.…` key in the app (Settings / License). Same email as in the app. Note free tier = 2 complete firearms without a key.
+Paste the `MAT-1.…` key in the app (Settings / License). Same email as in the app. Note free tier = up to 2 firearms per platform (bolt / pistol / AR) without a key.
 
 Requires `LICENSE_SIGNING_SECRET` in the environment (see [docs/license.md](./docs/license.md)). Dev unlock: `MAIN_VITE_LICENSE_MODE=unlocked` (already set in `.env.development`).
 
