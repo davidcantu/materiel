@@ -47,6 +47,9 @@ export type Profile = {
   profileImageUrl: string | null
   trackValue: boolean
   trackAmmo: boolean
+  trackLoads: boolean
+  trackedPlatforms: Platform[]
+  onboardingComplete: boolean
   unlockPinSet: boolean
   createdAt: string
   updatedAt: string
@@ -59,6 +62,8 @@ export type Part = {
   type: PartType
   status: PartStatus
   platforms: Platform[]
+  /** Barrel-only display name. */
+  name: string | null
   model: string | null
   serialNumber: string | null
   totalRoundCount: number
@@ -144,6 +149,7 @@ export type AmmoInventory = {
   type: AmmoType
   caliber: string
   quantity: number
+  acquiredDate: string | null
   loadId: string | null
   manufacturer: string | null
   lotNumber: string | null

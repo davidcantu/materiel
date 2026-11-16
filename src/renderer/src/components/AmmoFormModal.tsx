@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
 import type { AmmoInput, AmmoInventoryInfo, AmmoType } from '../../../shared/ammo'
 import { AMMO_TYPES } from '../../../shared/ammo'
+import { todayIsoDate } from '../../../shared/ammo-from-load'
 import {
-  BRASS_MANUFACTURERS,
   BULLET_MANUFACTURERS,
   CARTRIDGE_OPTIONS,
   POWDER_MANUFACTURERS,
@@ -16,7 +16,7 @@ import { Modal } from './Modal'
 
 type AmmoFormModalProps = {
   initial?: AmmoInventoryInfo | null
-  /** Prefill a new ammo lot from a load recipe (Move to Practice from Load Data). */
+  /** Prefill a new ammo lot from a load recipe (Make Ammo from Load Data). */
   fromLoad?: LoadDevelopmentInfo | null
   /** Prefill cartridge when creating inline (e.g. from a shooting log). */
   defaultCaliber?: string | null
@@ -27,9 +27,9 @@ type AmmoFormModalProps = {
 
 type FormState = {
   type: AmmoType
-  name: string
   caliber: string
   quantity: string
+  acquiredDate: string
   lotNumber: string
   manufacturer: string
   loadId: string
@@ -41,7 +41,6 @@ type FormState = {
   primerManufacturer: string
   primer: string
   caseManufacturer: string
-  caseName: string
   seatingDepth: string
   notes: string
   showComponents: boolean
@@ -50,9 +49,9 @@ type FormState = {
 function blankForm(): FormState {
   return {
     type: 'Factory',
-    name: '',
     caliber: '',
     quantity: '',
+    acquiredDate: todayIsoDate(),
     lotNumber: '',
     manufacturer: '',
     loadId: '',
@@ -64,7 +63,6 @@ function blankForm(): FormState {
     primerManufacturer: '',
     primer: '',
     caseManufacturer: '',
-    caseName: '',
     seatingDepth: '',
     notes: '',
     showComponents: false
@@ -81,14 +79,13 @@ function fromAmmo(ammo: AmmoInventoryInfo): FormState {
     ammo.primerManufacturer ||
     ammo.primer ||
     ammo.caseManufacturer ||
-    ammo.caseName ||
     ammo.seatingDepth
   )
   return {
     type: ammo.type,
-    name: ammo.name,
     caliber: ammo.caliber,
     quantity: String(ammo.quantity),
+    acquiredDate: ammo.acquiredDate ?? todayIsoDate(),
     lotNumber: ammo.lotNumber ?? '',
     manufacturer: ammo.manufacturer ?? '',
     loadId: ammo.loadId ?? '',
@@ -100,7 +97,6 @@ function fromAmmo(ammo: AmmoInventoryInfo): FormState {
     primerManufacturer: ammo.primerManufacturer ?? '',
     primer: ammo.primer ?? '',
     caseManufacturer: ammo.caseManufacturer ?? '',
-    caseName: ammo.caseName ?? '',
     seatingDepth: ammo.seatingDepth ?? '',
     notes: ammo.notes ?? '',
     showComponents: hasComponents
@@ -110,9 +106,9 @@ function fromAmmo(ammo: AmmoInventoryInfo): FormState {
 function fromLoad(load: LoadDevelopmentInfo): FormState {
   return {
     type: 'Handload',
-    name: load.name,
     caliber: load.caliber,
     quantity: '',
+    acquiredDate: todayIsoDate(),
     lotNumber: '',
     manufacturer: '',
     loadId: load.id,
@@ -124,7 +120,6 @@ function fromLoad(load: LoadDevelopmentInfo): FormState {
     primerManufacturer: load.primerManufacturer,
     primer: load.primerModel,
     caseManufacturer: load.brassManufacturer,
-    caseName: load.brassModel ?? '',
     seatingDepth: load.cbto != null ? String(load.cbto) : String(load.coal),
     notes: '',
     showComponents: true
@@ -145,7 +140,6 @@ function applyLoadFields(prev: FormState, load: LoadDevelopmentInfo): FormState 
     primerManufacturer: load.primerManufacturer,
     primer: load.primerModel,
     caseManufacturer: load.brassManufacturer,
-    caseName: load.brassModel ?? '',
     seatingDepth: load.cbto != null ? String(load.cbto) : String(load.coal),
     showComponents: true
   }
@@ -218,10 +212,6 @@ export function AmmoFormModal({
     setError(null)
 
     const quantity = Number(form.quantity)
-    if (!form.name.trim()) {
-      setError('Ammo name is required')
-      return
-    }
     if (!form.caliber.trim()) {
       setError('Cartridge is required')
       return
@@ -230,14 +220,18 @@ export function AmmoFormModal({
       setError('Quantity must be a whole number greater than 0')
       return
     }
+    if (!form.acquiredDate.trim()) {
+      setError('Date made or purchased is required')
+      return
+    }
 
     const chargeWeight = parseOptionalNumber(form.chargeWeight)
 
     const input: AmmoInput = {
-      name: form.name.trim(),
       type: form.type,
       caliber: form.caliber.trim(),
       quantity,
+      acquiredDate: form.acquiredDate.trim(),
       lotNumber: form.lotNumber.trim() || null,
       manufacturer: form.type === 'Factory' ? form.manufacturer.trim() || null : null,
       loadId: form.type === 'Handload' ? form.loadId || null : null,
@@ -250,7 +244,7 @@ export function AmmoFormModal({
       primerManufacturer: form.primerManufacturer.trim() || null,
       primer: form.primer.trim() || null,
       caseManufacturer: form.caseManufacturer.trim() || null,
-      caseName: form.caseName.trim() || null,
+      caseName: null,
       seatingDepth: form.seatingDepth.trim() || null
     }
 
@@ -267,7 +261,7 @@ export function AmmoFormModal({
 
   return (
     <Modal
-      title={editing ? 'Edit Ammo' : fromLoadFlow ? 'Move Load to Practice' : 'Add Ammo'}
+      title={editing ? 'Edit Ammo' : fromLoadFlow ? 'Make Ammo' : 'Add Ammo'}
       onClose={onClose}
       wide
       footer={
@@ -281,7 +275,7 @@ export function AmmoFormModal({
               : editing
                 ? 'Save Changes'
                 : fromLoadFlow
-                  ? 'Move to Practice'
+                  ? 'Make Ammo'
                   : 'Add Ammo'}
           </button>
         </>
@@ -320,11 +314,6 @@ export function AmmoFormModal({
         </label>
 
         <label className="field">
-          <span className="field-label">Ammo Name / Description</span>
-          <input value={form.name} onChange={(e) => setField('name', e.target.value)} required />
-        </label>
-
-        <label className="field">
           <span className="field-label">Quantity</span>
           <input
             type="number"
@@ -332,6 +321,18 @@ export function AmmoFormModal({
             step="1"
             value={form.quantity}
             onChange={(e) => setField('quantity', e.target.value)}
+            required
+          />
+        </label>
+
+        <label className="field">
+          <span className="field-label">
+            {form.type === 'Handload' ? 'Date Made' : 'Date Purchased'}
+          </span>
+          <input
+            type="date"
+            value={form.acquiredDate}
+            onChange={(e) => setField('acquiredDate', e.target.value)}
             required
           />
         </label>
@@ -480,21 +481,11 @@ export function AmmoFormModal({
               </datalist>
             </label>
             <label className="field">
-              <span className="field-label">Case Manufacturer</span>
+              <span className="field-label">Brass Manufacturer</span>
               <input
-                list="ammo-case-mfr"
                 value={form.caseManufacturer}
                 onChange={(e) => setField('caseManufacturer', e.target.value)}
               />
-              <datalist id="ammo-case-mfr">
-                {BRASS_MANUFACTURERS.map((item) => (
-                  <option key={item} value={item} />
-                ))}
-              </datalist>
-            </label>
-            <label className="field">
-              <span className="field-label">Case</span>
-              <input value={form.caseName} onChange={(e) => setField('caseName', e.target.value)} />
             </label>
             <label className="field">
               <span className="field-label">Seating Depth / CBTO</span>

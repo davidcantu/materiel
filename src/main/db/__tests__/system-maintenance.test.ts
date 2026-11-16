@@ -16,6 +16,7 @@ function part(partial: Partial<PartInfo> & Pick<PartInfo, 'id' | 'type'>): PartI
     value: 0,
     status: 'In Use',
     platforms: ['bolt_action'],
+    name: partial.type === 'Barrel' ? 'Tube 1' : null,
     model: 'M1',
     serialNumber: null,
     totalRoundCount: 0,
@@ -151,7 +152,7 @@ test('ammoInputFromLoad prefills cartridge, powder, bullet from load', () => {
     updatedAt: '2026-01-01T00:00:00.000Z'
   } satisfies LoadDevelopmentInfo
 
-  const input = ammoInputFromLoad(load, 40)
+  const input = ammoInputFromLoad(load, 40, { acquiredDate: '2026-11-16' })
   assert.equal(input.caliber, '6.5 Creedmoor')
   assert.equal(input.quantity, 40)
   assert.equal(input.type, 'Handload')
@@ -161,5 +162,7 @@ test('ammoInputFromLoad prefills cartridge, powder, bullet from load', () => {
   assert.equal(input.powderManufacturer, 'Hodgdon')
   assert.equal(input.powder, 'H4350')
   assert.equal(input.chargeWeight, 41.5)
-  assert.equal(input.name, 'Practice Ammo')
+  assert.equal(input.acquiredDate, '2026-11-16')
+  assert.equal(input.caseName, null)
+  assert.ok(input.name?.includes('6.5 Creedmoor'))
 })

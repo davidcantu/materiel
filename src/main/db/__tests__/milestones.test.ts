@@ -123,6 +123,7 @@ test('getMilestonesSummary: derives unlocks from DB rows', () => {
   const barrel = createPart(db, {
     manufacturer: 'Proof',
     type: 'Barrel',
+    name: 'Proof GT',
     caliber: '6mm GT',
     gunsmith: 'Altus',
     twistRate: 7.5,
@@ -175,7 +176,8 @@ test('getMilestonesSummary: derives unlocks from DB rows', () => {
     name: 'Handload Lot',
     type: 'Handload',
     caliber: '6mm GT',
-    quantity: 50
+    quantity: 50,
+    acquiredDate: '2026-11-01'
   })
 
   for (let i = 0; i < 5; i++) {

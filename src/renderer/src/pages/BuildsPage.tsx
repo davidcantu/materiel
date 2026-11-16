@@ -2,7 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { PartInfo } from '../../../shared/parts'
 import type { CompleteSystemInfo } from '../../../shared/systems'
 import type { LicenseGateDenial, LicenseStatusInfo } from '../../../shared/license'
-import { PLATFORM_CORE_LABELS, PLATFORM_LABELS } from '../../../shared/platforms'
+import {
+  PLATFORM_CORE_LABELS,
+  PLATFORM_LABELS,
+  PLATFORMS,
+  type Platform
+} from '../../../shared/platforms'
 import { EmptyState } from '../components/EmptyState'
 import { Icon } from '../components/icons/Icon'
 import { MaintenanceDueModal } from '../components/MaintenanceDueModal'
@@ -14,12 +19,14 @@ import { formatCurrency, maintenancePercent, partPrimaryTitle } from '../lib/for
 
 type BuildsPageProps = {
   trackValue: boolean
+  trackedPlatforms?: Platform[]
   license: LicenseStatusInfo | null
   onLicenseChange: () => void
 }
 
 export function BuildsPage({
   trackValue,
+  trackedPlatforms,
   license,
   onLicenseChange
 }: BuildsPageProps): React.JSX.Element {
@@ -33,11 +40,24 @@ export function BuildsPage({
   const [editing, setEditing] = useState<CompleteSystemInfo | null>(null)
   const [maintenanceSystem, setMaintenanceSystem] = useState<CompleteSystemInfo | null>(null)
 
+  const availablePlatforms = useMemo(
+    () =>
+      trackedPlatforms && trackedPlatforms.length > 0
+        ? PLATFORMS.filter((p) => trackedPlatforms.includes(p))
+        : [...PLATFORMS],
+    [trackedPlatforms]
+  )
+
   const partsById = useMemo(() => {
     const map = new Map<string, PartInfo>()
     for (const part of parts) map.set(part.id, part)
     return map
   }, [parts])
+
+  const visibleSystems = useMemo(() => {
+    const allowed = new Set(availablePlatforms)
+    return systems.filter((system) => allowed.has(system.platform))
+  }, [systems, availablePlatforms])
 
   const load = useCallback(async () => {
     setError(null)
@@ -190,7 +210,7 @@ export function BuildsPage({
         onRetry={() => void load()}
       />
 
-      {!loading && systems.length === 0 ? (
+      {!loading && visibleSystems.length === 0 ? (
         <EmptyState
           icon="builds"
           title="No complete firearms yet"
@@ -200,132 +220,153 @@ export function BuildsPage({
         />
       ) : null}
 
-      {!loading && systems.length > 0 ? (
-        <div className="table-wrap">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Build</th>
-                <th>Platform</th>
-                <th>Type</th>
-                <th>Components</th>
-                <th>Barrel rounds</th>
-                <th>Maintenance</th>
-                {trackValue ? <th>Value</th> : null}
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {systems.map((system) => {
-                const labels = PLATFORM_CORE_LABELS[system.platform]
-                const barrel = partsById.get(system.barrelId)
-                const action = partsById.get(system.actionId)
-                const chassis = partsById.get(system.chassisId)
-                const optic = system.opticId ? partsById.get(system.opticId) : undefined
-                const muzzle = system.suppressorId ? partsById.get(system.suppressorId) : undefined
-                const laser = system.laserIrId ? partsById.get(system.laserIrId) : undefined
-                const light = system.lightId ? partsById.get(system.lightId) : undefined
-                const caliber =
-                  system.buildType === 'factory' ? system.factoryCartridge : barrel?.caliber
-                const maint = barrel ? maintenancePercent(barrel) : null
-                const valueParts = [
-                  action,
-                  barrel,
-                  chassis,
-                  optic,
-                  muzzle,
-                  laser,
-                  light,
-                  ...system.miscPartIds.map((id) => partsById.get(id))
-                ].filter(Boolean) as PartInfo[]
-                const totalValue = valueParts.reduce((sum, part) => sum + part.value, 0)
+      {!loading && visibleSystems.length > 0 ? (
+        <div className="build-card-grid">
+          {visibleSystems.map((system) => {
+            const labels = PLATFORM_CORE_LABELS[system.platform]
+            const barrel = partsById.get(system.barrelId)
+            const action = partsById.get(system.actionId)
+            const chassis = partsById.get(system.chassisId)
+            const optic = system.opticId ? partsById.get(system.opticId) : undefined
+            const muzzle = system.suppressorId ? partsById.get(system.suppressorId) : undefined
+            const laser = system.laserIrId ? partsById.get(system.laserIrId) : undefined
+            const light = system.lightId ? partsById.get(system.lightId) : undefined
+            const caliber =
+              system.buildType === 'factory' ? system.factoryCartridge : barrel?.caliber
+            const maint = barrel ? maintenancePercent(barrel) : null
+            const valueParts = [
+              action,
+              barrel,
+              chassis,
+              optic,
+              muzzle,
+              laser,
+              light,
+              ...system.miscPartIds.map((id) => partsById.get(id))
+            ].filter(Boolean) as PartInfo[]
+            const totalValue = valueParts.reduce((sum, part) => sum + part.value, 0)
 
-                return (
-                  <tr key={system.id}>
-                    <td>
-                      <div className="build-name-cell">
-                        {system.imageUrl ? (
-                          <div className="build-thumb" aria-hidden="true">
-                            <img src={system.imageUrl} alt="" />
-                          </div>
-                        ) : (
-                          <div className="build-thumb build-thumb-empty" aria-hidden="true" />
-                        )}
-                        <div>
-                          <div className="cell-title">{system.name}</div>
-                          <div className="cell-sub">{caliber ?? 'No cartridge set'}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td>
+            return (
+              <article key={system.id} className="build-card">
+                <div
+                  className={`build-card-media${system.imageUrl ? '' : ' build-card-media-empty'}`}
+                  aria-hidden="true"
+                >
+                  {system.imageUrl ? (
+                    <img
+                      src={system.imageUrl}
+                      alt=""
+                      style={
+                        system.imageScale && system.imageScale !== 1
+                          ? { transform: `scale(${system.imageScale})` }
+                          : undefined
+                      }
+                    />
+                  ) : null}
+                </div>
+
+                <div className="build-card-body">
+                  <header className="build-card-header">
+                    <div>
+                      <h3 className="build-card-title">{system.name}</h3>
+                      <p className="build-card-sub muted">{caliber ?? 'No cartridge set'}</p>
+                    </div>
+                    <div className="build-card-badges">
                       <span className="type-pill">{PLATFORM_LABELS[system.platform]}</span>
-                    </td>
-                    <td>
                       <span className="type-pill">
                         {system.buildType === 'factory' ? 'Factory' : 'Custom'}
                       </span>
-                    </td>
-                    <td className="cell-meta">
-                      {action ? (
-                        <div>
-                          {labels.primary}: {partPrimaryTitle(action)}
-                        </div>
-                      ) : null}
-                      {barrel ? (
-                        <div>
-                          {labels.barrel}: {partPrimaryTitle(barrel)}
-                        </div>
-                      ) : null}
-                      {chassis ? (
-                        <div>
-                          {labels.furniture}: {partPrimaryTitle(chassis)}
-                        </div>
-                      ) : null}
-                      {optic ? <div>Optic: {partPrimaryTitle(optic)}</div> : null}
-                      {laser ? <div>Laser/IR: {partPrimaryTitle(laser)}</div> : null}
-                      {light ? <div>Light: {partPrimaryTitle(light)}</div> : null}
-                      {muzzle ? <div>Muzzle: {partPrimaryTitle(muzzle)}</div> : null}
-                      {system.miscPartIds.length > 0 ? (
-                        <div>Accessories: {system.miscPartIds.length}</div>
-                      ) : null}
-                    </td>
-                    <td>{barrel?.totalRoundCount ?? 0}</td>
-                    <td>{maint != null ? `${maint}%` : '—'}</td>
-                    {trackValue ? <td>{formatCurrency(totalValue)}</td> : null}
-                    <td>
-                      <div className="row-actions">
-                        <button
-                          type="button"
-                          className="btn-ghost btn-sm"
-                          onClick={() => setMaintenanceSystem(system)}
-                        >
-                          Maintenance
-                        </button>
-                        <button
-                          type="button"
-                          className="btn-ghost btn-sm"
-                          onClick={() => {
-                            setLicenseBanner(null)
-                            setEditing(system)
-                            setModalOpen(true)
-                          }}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          className="btn-ghost btn-sm"
-                          onClick={() => void handleDelete(system)}
-                        >
-                          Delete
-                        </button>
+                    </div>
+                  </header>
+
+                  <dl className="build-card-details">
+                    {action ? (
+                      <div>
+                        <dt>{labels.primary}</dt>
+                        <dd>{partPrimaryTitle(action)}</dd>
                       </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+                    ) : null}
+                    {barrel && system.platform !== 'pistol' ? (
+                      <div>
+                        <dt>{labels.barrel}</dt>
+                        <dd>{partPrimaryTitle(barrel)}</dd>
+                      </div>
+                    ) : null}
+                    {chassis && system.platform !== 'pistol' ? (
+                      <div>
+                        <dt>{labels.furniture}</dt>
+                        <dd>{partPrimaryTitle(chassis)}</dd>
+                      </div>
+                    ) : null}
+                    {optic ? (
+                      <div>
+                        <dt>Optic</dt>
+                        <dd>{partPrimaryTitle(optic)}</dd>
+                      </div>
+                    ) : null}
+                    {laser ? (
+                      <div>
+                        <dt>Laser/IR</dt>
+                        <dd>{partPrimaryTitle(laser)}</dd>
+                      </div>
+                    ) : null}
+                    {light ? (
+                      <div>
+                        <dt>Light</dt>
+                        <dd>{partPrimaryTitle(light)}</dd>
+                      </div>
+                    ) : null}
+                    {muzzle ? (
+                      <div>
+                        <dt>Muzzle</dt>
+                        <dd>{partPrimaryTitle(muzzle)}</dd>
+                      </div>
+                    ) : null}
+                    {system.miscPartIds.length > 0 ? (
+                      <div>
+                        <dt>Accessories</dt>
+                        <dd>{system.miscPartIds.length}</dd>
+                      </div>
+                    ) : null}
+                  </dl>
+
+                  <div className="build-card-meta">
+                    <span>Barrel rounds: {barrel?.totalRoundCount ?? 0}</span>
+                    <span>Maintenance: {maint != null ? `${maint}%` : '—'}</span>
+                    {trackValue ? <span>Value: {formatCurrency(totalValue)}</span> : null}
+                  </div>
+
+                  <footer className="build-card-actions">
+                    <button
+                      type="button"
+                      className="btn-ghost btn-sm"
+                      onClick={() => setMaintenanceSystem(system)}
+                    >
+                      Maintenance
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-ghost btn-sm"
+                      onClick={() => {
+                        setLicenseBanner(null)
+                        setEditing(system)
+                        setModalOpen(true)
+                      }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-ghost btn-sm"
+                      onClick={() => void handleDelete(system)}
+                    >
+                      Delete
+                    </button>
+                  </footer>
+                </div>
+              </article>
+            )
+          })}
         </div>
       ) : null}
 
@@ -333,6 +374,7 @@ export function BuildsPage({
         <SystemFormModal
           parts={parts}
           trackValue={trackValue}
+          allowedPlatforms={availablePlatforms}
           initial={editing}
           onClose={() => {
             setModalOpen(false)

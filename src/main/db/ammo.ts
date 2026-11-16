@@ -4,6 +4,7 @@
 
 import { randomUUID } from 'crypto'
 import type Database from 'better-sqlite3-multiple-ciphers'
+import { defaultAmmoName } from '../../shared/ammo'
 import type { AmmoInventory, AmmoType } from './types'
 
 type AmmoRow = {
@@ -12,6 +13,7 @@ type AmmoRow = {
   type: AmmoType
   caliber: string
   quantity: number
+  acquired_date: string | null
   load_id: string | null
   manufacturer: string | null
   lot_number: string | null
@@ -32,10 +34,11 @@ type AmmoRow = {
 
 export type NewAmmoInput = {
   id?: string
-  name: string
+  name?: string
   type: AmmoType
   caliber: string
   quantity: number
+  acquiredDate: string
   loadId?: string | null
   manufacturer?: string | null
   lotNumber?: string | null
@@ -64,6 +67,22 @@ function nullIfEmpty(value: string | null | undefined): string | null {
   return trimmed.length ? trimmed : null
 }
 
+function normalizeAcquiredDate(value: string | null | undefined, required: boolean): string | null {
+  const trimmed = value?.trim() ?? ''
+  if (!trimmed) {
+    if (required) throw new Error('Date made or purchased is required')
+    return null
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    throw new Error('Date must be YYYY-MM-DD')
+  }
+  const parsed = new Date(`${trimmed}T12:00:00`)
+  if (Number.isNaN(parsed.getTime())) {
+    throw new Error('Date made or purchased is invalid')
+  }
+  return trimmed
+}
+
 function mapAmmo(row: AmmoRow): AmmoInventory {
   return {
     id: row.id,
@@ -71,6 +90,7 @@ function mapAmmo(row: AmmoRow): AmmoInventory {
     type: row.type,
     caliber: row.caliber,
     quantity: row.quantity,
+    acquiredDate: row.acquired_date ?? null,
     loadId: row.load_id,
     manufacturer: row.manufacturer,
     lotNumber: row.lot_number,
@@ -91,15 +111,11 @@ function mapAmmo(row: AmmoRow): AmmoInventory {
 }
 
 function validateAmmo(input: {
-  name?: string
   type?: AmmoType
   caliber?: string
   quantity?: number
   loadId?: string | null
 }): void {
-  if (input.name !== undefined && !input.name.trim()) {
-    throw new Error('Ammo name is required')
-  }
   if (input.caliber !== undefined && !input.caliber.trim()) {
     throw new Error('Cartridge is required')
   }
@@ -132,7 +148,10 @@ function assertLoadExists(
 
 export function listAmmoInventory(db: Database.Database): AmmoInventory[] {
   const rows = db
-    .prepare(`SELECT * FROM ammo_inventory ORDER BY caliber ASC, name ASC`)
+    .prepare(
+      `SELECT * FROM ammo_inventory
+       ORDER BY caliber ASC, COALESCE(acquired_date, created_at) DESC, name ASC`
+    )
     .all() as AmmoRow[]
   return rows.map(mapAmmo)
 }
@@ -144,12 +163,10 @@ export function getAmmoInventory(db: Database.Database, id: string): AmmoInvento
 
 export function createAmmoInventory(db: Database.Database, input: NewAmmoInput): AmmoInventory {
   validateAmmo({
-    name: input.name,
     type: input.type,
     caliber: input.caliber,
     quantity: input.quantity
   })
-  if (!input.name?.trim()) throw new Error('Ammo name is required')
   if (!input.caliber?.trim()) throw new Error('Cartridge is required')
   if (input.type !== 'Factory' && input.type !== 'Handload') {
     throw new Error('Ammo type must be Factory or Handload')
@@ -160,32 +177,39 @@ export function createAmmoInventory(db: Database.Database, input: NewAmmoInput):
 
   const caliber = input.caliber.trim()
   const type = input.type
+  const acquiredDate = normalizeAcquiredDate(input.acquiredDate, true)!
   const loadId = type === 'Handload' ? (input.loadId ?? null) : null
   assertLoadExists(db, loadId, caliber)
+
+  const manufacturer = type === 'Factory' ? nullIfEmpty(input.manufacturer) : null
+  const name =
+    nullIfEmpty(input.name) ??
+    defaultAmmoName({ caliber, type, acquiredDate, manufacturer })
 
   const id = input.id ?? randomUUID()
   const createdAt = nowIso()
 
   db.prepare(
     `INSERT INTO ammo_inventory (
-      id, name, type, caliber, quantity, load_id, manufacturer, lot_number, notes,
+      id, name, type, caliber, quantity, acquired_date, load_id, manufacturer, lot_number, notes,
       bullet_manufacturer, bullet_type, powder_manufacturer, powder, charge_weight,
       primer_manufacturer, primer, case_manufacturer, case_name, seating_depth,
       created_at, updated_at
     ) VALUES (
-      @id, @name, @type, @caliber, @quantity, @loadId, @manufacturer, @lotNumber, @notes,
+      @id, @name, @type, @caliber, @quantity, @acquiredDate, @loadId, @manufacturer, @lotNumber, @notes,
       @bulletManufacturer, @bulletType, @powderManufacturer, @powder, @chargeWeight,
       @primerManufacturer, @primer, @caseManufacturer, @caseName, @seatingDepth,
       @createdAt, @createdAt
     )`
   ).run({
     id,
-    name: input.name.trim(),
+    name,
     type,
     caliber,
     quantity: input.quantity,
+    acquiredDate,
     loadId,
-    manufacturer: type === 'Factory' ? nullIfEmpty(input.manufacturer) : null,
+    manufacturer,
     lotNumber: nullIfEmpty(input.lotNumber),
     notes: nullIfEmpty(input.notes),
     bulletManufacturer: nullIfEmpty(input.bulletManufacturer),
@@ -217,6 +241,10 @@ export function updateAmmoInventory(
     type: patch.type ?? existing.type,
     caliber: patch.caliber !== undefined ? patch.caliber.trim() : existing.caliber,
     quantity: patch.quantity ?? existing.quantity,
+    acquiredDate:
+      patch.acquiredDate !== undefined
+        ? normalizeAcquiredDate(patch.acquiredDate, true)
+        : existing.acquiredDate,
     loadId: patch.loadId !== undefined ? patch.loadId : existing.loadId,
     manufacturer: patch.manufacturer !== undefined ? patch.manufacturer : existing.manufacturer,
     lotNumber: patch.lotNumber !== undefined ? patch.lotNumber : existing.lotNumber,
@@ -244,14 +272,36 @@ export function updateAmmoInventory(
   }
 
   validateAmmo({
-    name: next.name,
     type: next.type,
     caliber: next.caliber,
     quantity: next.quantity
   })
+  if (!next.acquiredDate) {
+    throw new Error('Date made or purchased is required')
+  }
 
   const loadId = next.type === 'Handload' ? next.loadId : null
   assertLoadExists(db, loadId, next.caliber)
+
+  const manufacturer = next.type === 'Factory' ? nullIfEmpty(next.manufacturer) : null
+  const name =
+    patch.name !== undefined
+      ? nullIfEmpty(patch.name) ??
+        defaultAmmoName({
+          caliber: next.caliber,
+          type: next.type,
+          acquiredDate: next.acquiredDate,
+          manufacturer
+        })
+      : existing.name === 'Practice Ammo'
+        ? existing.name
+        : next.name ||
+          defaultAmmoName({
+            caliber: next.caliber,
+            type: next.type,
+            acquiredDate: next.acquiredDate,
+            manufacturer
+          })
 
   const updatedAt = nowIso()
   db.prepare(
@@ -260,6 +310,7 @@ export function updateAmmoInventory(
       type = @type,
       caliber = @caliber,
       quantity = @quantity,
+      acquired_date = @acquiredDate,
       load_id = @loadId,
       manufacturer = @manufacturer,
       lot_number = @lotNumber,
@@ -278,12 +329,13 @@ export function updateAmmoInventory(
     WHERE id = @id`
   ).run({
     id,
-    name: next.name,
+    name,
     type: next.type,
     caliber: next.caliber,
     quantity: next.quantity,
+    acquiredDate: next.acquiredDate,
     loadId,
-    manufacturer: next.type === 'Factory' ? nullIfEmpty(next.manufacturer) : null,
+    manufacturer,
     lotNumber: nullIfEmpty(next.lotNumber),
     notes: nullIfEmpty(next.notes),
     bulletManufacturer: nullIfEmpty(next.bulletManufacturer),
@@ -345,12 +397,12 @@ export function moveAmmoToPractice(db: Database.Database, sourceId: string): Amm
 
     db.prepare(
       `INSERT INTO ammo_inventory (
-        id, name, type, caliber, quantity, load_id, manufacturer, lot_number, notes,
+        id, name, type, caliber, quantity, acquired_date, load_id, manufacturer, lot_number, notes,
         bullet_manufacturer, bullet_type, powder_manufacturer, powder, charge_weight,
         primer_manufacturer, primer, case_manufacturer, case_name, seating_depth,
         created_at, updated_at
       ) VALUES (
-        @id, 'Practice Ammo', @type, @caliber, @quantity, @loadId, @manufacturer, '', @notes,
+        @id, 'Practice Ammo', @type, @caliber, @quantity, @acquiredDate, @loadId, @manufacturer, '', @notes,
         @bulletManufacturer, @bulletType, @powderManufacturer, @powder, @chargeWeight,
         @primerManufacturer, @primer, @caseManufacturer, @caseName, @seatingDepth,
         @createdAt, @createdAt
@@ -360,6 +412,7 @@ export function moveAmmoToPractice(db: Database.Database, sourceId: string): Amm
       type: source.type,
       caliber: source.caliber,
       quantity: source.quantity,
+      acquiredDate: source.acquiredDate,
       loadId: source.loadId,
       manufacturer: source.manufacturer,
       notes,

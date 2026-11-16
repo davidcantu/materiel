@@ -1912,6 +1912,145 @@ html[data-theme='dark'] .brand-logo-dark {
   gap: 0.75rem;
 }
 
+.pref-row-stack {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.pref-row-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.onboarding-form {
+  gap: 1rem;
+}
+
+.onboarding-toggle {
+  padding: 0.35rem 0;
+}
+
+.ammo-acquired {
+  margin: -0.25rem 0 0;
+  font-size: 0.85rem;
+}
+
+.build-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17.5rem, 1fr));
+  gap: 1rem;
+}
+
+.build-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  background: var(--surface);
+  overflow: hidden;
+  transition:
+    box-shadow 160ms ease,
+    border-color 160ms ease;
+}
+
+.build-card:hover {
+  border-color: color-mix(in srgb, var(--brand-primary) 40%, var(--border-subtle));
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--brand-dark) 10%, transparent);
+}
+
+.build-card-media {
+  aspect-ratio: 16 / 10;
+  background: color-mix(in srgb, var(--brand-secondary) 35%, var(--surface));
+  overflow: hidden;
+}
+
+.build-card-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.build-card-media-empty {
+  background: repeating-linear-gradient(
+    -45deg,
+    color-mix(in srgb, var(--brand-secondary) 28%, transparent),
+    color-mix(in srgb, var(--brand-secondary) 28%, transparent) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+}
+
+.build-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem 1.1rem 1.1rem;
+}
+
+.build-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.build-card-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--brand-deep);
+  line-height: 1.25;
+}
+
+.build-card-sub {
+  margin: 0.15rem 0 0;
+  font-size: 0.85rem;
+}
+
+.build-card-badges {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.3rem;
+}
+
+.build-card-details {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+.build-card-details dt {
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--brand-neutral);
+}
+
+.build-card-details dd {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--brand-deep);
+}
+
+.build-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 1rem;
+  font-size: 0.8rem;
+  color: var(--brand-neutral);
+}
+
+.build-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.15rem;
+}
+
 .pref-info-btn {
   display: inline-flex;
   align-items: center;

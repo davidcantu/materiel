@@ -56,14 +56,28 @@ test('migrations run forward from empty encrypted DB', () => {
     // Re-open / re-migrate is a no-op.
     const versionAgain = getAppliedMigrationVersion(db)
     assert.equal(versionAgain, MIGRATIONS[MIGRATIONS.length - 1].id)
-    assert.equal(versionAgain, 6)
+    assert.equal(versionAgain, 7)
 
     const partCols = db.prepare(`PRAGMA table_info(parts)`).all() as Array<{ name: string }>
-    assert.ok(!partCols.some((c) => c.name === 'name'), 'parts.name should be dropped')
+    assert.ok(
+      partCols.some((c) => c.name === 'name'),
+      'parts.name (barrel name) column missing'
+    )
     assert.ok(
       partCols.some((c) => c.name === 'platforms'),
       'parts.platforms column missing'
     )
+
+    const ammoCols = db.prepare(`PRAGMA table_info(ammo_inventory)`).all() as Array<{ name: string }>
+    assert.ok(
+      ammoCols.some((c) => c.name === 'acquired_date'),
+      'ammo_inventory.acquired_date column missing'
+    )
+
+    const profileCols = db.prepare(`PRAGMA table_info(profile)`).all() as Array<{ name: string }>
+    assert.ok(profileCols.some((c) => c.name === 'track_loads'))
+    assert.ok(profileCols.some((c) => c.name === 'tracked_platforms'))
+    assert.ok(profileCols.some((c) => c.name === 'onboarding_complete'))
 
     const systemCols = db.prepare(`PRAGMA table_info(systems)`).all() as Array<{ name: string }>
     assert.ok(

@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { AppInfo } from '../../shared/app-info'
 import type { LicenseStatusInfo } from '../../shared/license'
-import { hasLocalIdentity, type ProfileInfo } from '../../shared/profile'
+import {
+  hasLocalIdentity,
+  needsOnboarding,
+  type ProfileInfo
+} from '../../shared/profile'
 import { BrandLogo } from './components/BrandLogo'
 import { Icon } from './components/icons/Icon'
 import { NAV_ICONS } from './components/icons/nav-icons'
@@ -17,6 +21,7 @@ import { BuildsPage } from './pages/BuildsPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { InventoryPage } from './pages/InventoryPage'
 import { LogsPage } from './pages/LogsPage'
+import { OnboardingPage } from './pages/OnboardingPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { WelcomePage } from './pages/WelcomePage'
 
@@ -35,8 +40,11 @@ function AppShell(): React.JSX.Element {
   )
 
   const trackAmmo = profile?.trackAmmo ?? true
-  const view: NavId = !trackAmmo && active === 'ammo' ? 'dashboard' : active
+  const trackLoads = profile?.trackLoads ?? true
+  const showAmmoNav = trackAmmo || trackLoads
+  const view: NavId = !showAmmoNav && active === 'ammo' ? 'dashboard' : active
   const needsSetup = bootstrapped && !hasLocalIdentity(profile)
+  const needsPrefs = bootstrapped && needsOnboarding(profile)
 
   useEffect(() => {
     applyThemePreference(themePreference)
@@ -52,10 +60,10 @@ function AppShell(): React.JSX.Element {
       { id: 'inventory', label: 'Inventory', enabled: true },
       { id: 'builds', label: 'Builds', enabled: true },
       { id: 'logs', label: 'Logs', enabled: true },
-      { id: 'ammo', label: 'Ammo', enabled: true, visible: trackAmmo },
+      { id: 'ammo', label: 'Ammo', enabled: true, visible: showAmmoNav },
       { id: 'settings', label: 'Settings', enabled: true }
     ],
-    [trackAmmo]
+    [showAmmoNav]
   )
 
   const refresh = useCallback(async () => {
@@ -105,6 +113,10 @@ function AppShell(): React.JSX.Element {
 
   if (needsSetup) {
     return <WelcomePage onComplete={() => void refresh()} />
+  }
+
+  if (needsPrefs) {
+    return <OnboardingPage onComplete={() => void refresh()} />
   }
 
   return (
@@ -159,16 +171,24 @@ function AppShell(): React.JSX.Element {
 
       <main className="main">
         {view === 'dashboard' ? <DashboardPage onNavigateLogs={() => setActive('logs')} /> : null}
-        {view === 'inventory' ? <InventoryPage trackValue={profile?.trackValue ?? true} /> : null}
+        {view === 'inventory' ? (
+          <InventoryPage
+            trackValue={profile?.trackValue ?? true}
+            trackedPlatforms={profile?.trackedPlatforms}
+          />
+        ) : null}
         {view === 'builds' ? (
           <BuildsPage
             trackValue={profile?.trackValue ?? true}
+            trackedPlatforms={profile?.trackedPlatforms}
             license={license}
             onLicenseChange={() => void refresh()}
           />
         ) : null}
         {view === 'logs' ? <LogsPage onNavigateBuilds={() => setActive('builds')} /> : null}
-        {view === 'ammo' && trackAmmo ? <AmmoPage /> : null}
+        {view === 'ammo' && showAmmoNav ? (
+          <AmmoPage trackAmmo={trackAmmo} trackLoads={trackLoads} />
+        ) : null}
         {view === 'settings' ? (
           <SettingsPage
             license={license}

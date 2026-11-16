@@ -71,20 +71,23 @@ test('ammo CRUD: factory and handload with load link', () => {
     type: 'Factory',
     caliber: '6.5 Creedmoor',
     quantity: 100,
+    acquiredDate: '2026-11-01',
     manufacturer: 'Hornady',
     lotNumber: 'LOT-1'
   })
   assert.equal(factory.type, 'Factory')
   assert.equal(factory.manufacturer, 'Hornady')
+  assert.equal(factory.acquiredDate, '2026-11-01')
 
   const handload = createAmmoInventory(db, {
-    name: 'My Handload',
     type: 'Handload',
     caliber: '6.5 Creedmoor',
     quantity: 40,
+    acquiredDate: '2026-11-02',
     loadId: load.id
   })
   assert.equal(handload.loadId, load.id)
+  assert.ok(handload.name.includes('6.5 Creedmoor'))
 
   updateAmmoInventory(db, factory.id, { quantity: 80 })
   assert.equal(listAmmoInventory(db).find((a) => a.id === factory.id)?.quantity, 80)
@@ -93,17 +96,27 @@ test('ammo CRUD: factory and handload with load link', () => {
   assert.equal(listAmmoInventory(db).length, 1)
 })
 
-test('ammo: refuses quantity <= 0', () => {
+test('ammo: refuses quantity <= 0 and missing date', () => {
   const db = setup()
   assert.throws(
     () =>
       createAmmoInventory(db, {
-        name: 'Bad',
         type: 'Factory',
         caliber: '6.5 Creedmoor',
-        quantity: 0
+        quantity: 0,
+        acquiredDate: '2026-11-01'
       }),
     /greater than 0/
+  )
+  assert.throws(
+    () =>
+      createAmmoInventory(db, {
+        type: 'Factory',
+        caliber: '6.5 Creedmoor',
+        quantity: 10,
+        acquiredDate: ''
+      }),
+    /Date made or purchased/
   )
 })
 
@@ -114,6 +127,7 @@ test('moveAmmoToPractice: creates Practice Ammo then merges', () => {
     type: 'Factory',
     caliber: '6.5 Creedmoor',
     quantity: 50,
+    acquiredDate: '2026-11-01',
     manufacturer: 'Hornady',
     lotNumber: 'A1',
     notes: 'Match ammo'
@@ -132,6 +146,7 @@ test('moveAmmoToPractice: creates Practice Ammo then merges', () => {
     type: 'Factory',
     caliber: '6.5 Creedmoor',
     quantity: 25,
+    acquiredDate: '2026-11-02',
     lotNumber: 'B2'
   })
   const merged = moveAmmoToPractice(db, match2.id)
@@ -147,13 +162,15 @@ test('moveAmmoToPractice: separate calibers stay separate', () => {
     name: '6.5 Match',
     type: 'Factory',
     caliber: '6.5 Creedmoor',
-    quantity: 10
+    quantity: 10,
+    acquiredDate: '2026-11-01'
   })
   const b = createAmmoInventory(db, {
     name: '6GT Match',
     type: 'Factory',
     caliber: '6mm GT',
-    quantity: 20
+    quantity: 20,
+    acquiredDate: '2026-11-01'
   })
   moveAmmoToPractice(db, a.id)
   moveAmmoToPractice(db, b.id)

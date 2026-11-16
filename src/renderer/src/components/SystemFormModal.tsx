@@ -31,6 +31,8 @@ type BuildMode = 'custom' | 'factory'
 type SystemFormModalProps = {
   parts: PartInfo[]
   trackValue?: boolean
+  /** Platforms the user opted into during onboarding / settings. */
+  allowedPlatforms?: Platform[]
   initial?: CompleteSystemInfo | null
   onClose: () => void
   onCreateCustom: (input: CustomSystemInputInfo) => Promise<void>
@@ -84,10 +86,10 @@ type CreateTarget =
   | 'factoryLightId'
   | { misc: number }
 
-function blankForm(): FormState {
+function blankForm(defaultPlatform: Platform = 'bolt_action'): FormState {
   return {
     mode: 'custom',
-    platform: 'bolt_action',
+    platform: defaultPlatform,
     name: '',
     notes: '',
     actionId: '',
@@ -144,6 +146,7 @@ function fromSystem(system: CompleteSystemInfo): FormState {
 export function SystemFormModal({
   parts: partsProp,
   trackValue = false,
+  allowedPlatforms,
   initial,
   onClose,
   onCreateCustom,
@@ -152,7 +155,15 @@ export function SystemFormModal({
   onPartsChanged
 }: SystemFormModalProps): React.JSX.Element {
   const editing = Boolean(initial)
-  const [form, setForm] = useState<FormState>(() => (initial ? fromSystem(initial) : blankForm()))
+  const platformChoices = useMemo(() => {
+    if (allowedPlatforms && allowedPlatforms.length > 0) {
+      return PLATFORMS.filter((p) => allowedPlatforms.includes(p))
+    }
+    return [...PLATFORMS]
+  }, [allowedPlatforms])
+  const [form, setForm] = useState<FormState>(() =>
+    initial ? fromSystem(initial) : blankForm(platformChoices[0] ?? 'bolt_action')
+  )
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [createdParts, setCreatedParts] = useState<PartInfo[]>([])
@@ -422,7 +433,7 @@ export function SystemFormModal({
           <div className="field field-span">
             <span className="field-label">Platform</span>
             <div className="chip-row">
-              {PLATFORMS.map((platform) => (
+              {platformChoices.map((platform) => (
                 <button
                   key={platform}
                   type="button"

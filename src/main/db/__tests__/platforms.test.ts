@@ -101,6 +101,7 @@ test('parts list filters by platform; AR/pistol builds use platform core slots',
   const arBarrel = createPart(db, {
     manufacturer: 'Criterion',
     type: 'Barrel',
+    name: 'Criterion 16',
     caliber: '.223',
     gunsmith: 'Factory',
     platforms: ['ar_pattern']
@@ -186,6 +187,7 @@ test('parts list filters by platform; AR/pistol builds use platform core slots',
     barrelId: createPart(db, {
       manufacturer: 'Bartlein',
       type: 'Barrel',
+      name: 'Bartlein Match',
       caliber: '6.5 Creedmoor',
       gunsmith: 'S&S',
       platforms: ['bolt_action']

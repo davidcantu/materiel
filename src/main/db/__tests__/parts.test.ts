@@ -48,11 +48,13 @@ test('parts CRUD: create, list, status, maintenance reset, delete', () => {
   const barrel = createPart(db, {
     manufacturer: 'Proof Research',
     type: 'Barrel',
+    name: 'Proof #1',
     caliber: '6.5 Creedmoor',
     gunsmith: 'S&S',
     twistRate: 8,
     barrelLife: 3000
   })
+  assert.equal(barrel.name, 'Proof #1')
 
   const listed = listParts(db, { types: ['Action', 'Barrel'] })
   assert.equal(listed.length, 2)
@@ -113,10 +115,32 @@ test('suppressor requires serial; brake does not; wear status only for barrel/tr
   const optic = createPart(db, {
     manufacturer: 'Vortex',
     type: 'Optic',
-    model: 'Razor',
-    serialNumber: 'O-1'
+    model: 'Razor'
   })
+  assert.equal(optic.serialNumber, null)
   assert.throws(() => setPartStatus(db, optic.id, 'Sold'), /wear parts/)
+})
+
+test('barrel requires name; optic serial is optional', () => {
+  const db = setup()
+  assert.throws(
+    () =>
+      createPart(db, {
+        manufacturer: 'Bartlein',
+        type: 'Barrel',
+        caliber: '6mm GT',
+        gunsmith: 'Factory'
+      }),
+    /Name is required/
+  )
+
+  const optic = createPart(db, {
+    manufacturer: 'Nightforce',
+    type: 'Optic',
+    model: 'ATACR',
+    serialNumber: 'NF-9'
+  })
+  assert.equal(optic.serialNumber, 'NF-9')
 })
 
 test('parts: refuses delete while part is on a system', () => {
@@ -130,6 +154,7 @@ test('parts: refuses delete while part is on a system', () => {
   const barrel = createPart(db, {
     manufacturer: 'Bartlein',
     type: 'Barrel',
+    name: 'Bartlein 24',
     caliber: '6mm GT',
     gunsmith: 'Factory'
   })

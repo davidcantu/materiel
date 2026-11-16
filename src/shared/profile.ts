@@ -1,5 +1,11 @@
 /** Local profile settings exposed to the renderer. */
 
+import {
+  PLATFORMS,
+  isValidPlatform,
+  type Platform
+} from './platforms'
+
 export type ProfileInfo = {
   id: string
   /**
@@ -18,6 +24,12 @@ export type ProfileInfo = {
   profileImageUrl: string | null
   trackValue: boolean
   trackAmmo: boolean
+  /** Reloading load-development recipes. */
+  trackLoads: boolean
+  /** Firearm platforms the user wants to track. */
+  trackedPlatforms: Platform[]
+  /** First-run Q&A completed (after email identity). */
+  onboardingComplete: boolean
   unlockPinSet: boolean
   createdAt: string
   updatedAt: string
@@ -35,6 +47,9 @@ export type ProfilePatch = {
   profileImageUrl?: string | null
   trackValue?: boolean
   trackAmmo?: boolean
+  trackLoads?: boolean
+  trackedPlatforms?: Platform[]
+  onboardingComplete?: boolean
 }
 
 export function normalizeEmailIdentity(email: string): string {
@@ -64,4 +79,36 @@ export function hasLocalIdentity(profile: ProfileInfo | null | undefined): boole
 /** @deprecated Use hasLocalIdentity. */
 export function hasLocalUsername(profile: ProfileInfo | null | undefined): boolean {
   return hasLocalIdentity(profile)
+}
+
+/** First-run Q&A still needed after email is set. */
+export function needsOnboarding(profile: ProfileInfo | null | undefined): boolean {
+  return hasLocalIdentity(profile) && !profile?.onboardingComplete
+}
+
+export function parseTrackedPlatforms(raw: string | null | undefined): Platform[] {
+  if (!raw?.trim()) return [...PLATFORMS]
+  try {
+    const parsed = JSON.parse(raw) as unknown
+    if (!Array.isArray(parsed)) return [...PLATFORMS]
+    const platforms = parsed.filter(
+      (p): p is Platform => typeof p === 'string' && isValidPlatform(p)
+    )
+    return platforms.length > 0 ? [...new Set(platforms)] : [...PLATFORMS]
+  } catch {
+    return [...PLATFORMS]
+  }
+}
+
+export function serializeTrackedPlatforms(platforms: readonly Platform[]): string {
+  const unique = [...new Set(platforms.filter(isValidPlatform))]
+  return JSON.stringify(unique.length > 0 ? unique : [...PLATFORMS])
+}
+
+export function normalizeTrackedPlatforms(
+  platforms: readonly Platform[] | null | undefined
+): Platform[] {
+  if (!platforms || platforms.length === 0) return [...PLATFORMS]
+  const filtered = [...new Set(platforms.filter(isValidPlatform))]
+  return filtered.length > 0 ? filtered : [...PLATFORMS]
 }

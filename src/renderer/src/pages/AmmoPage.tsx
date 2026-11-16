@@ -11,8 +11,24 @@ import { useToast } from '../components/toast-context'
 
 type SubTab = 'inventory' | 'loads'
 
+type AmmoPageProps = {
+  trackAmmo?: boolean
+  trackLoads?: boolean
+}
+
 function telemetry(value: number | null | undefined): string {
   return value == null ? '—' : String(value)
+}
+
+function formatAcquiredDate(iso: string | null): string | null {
+  if (!iso) return null
+  const date = new Date(`${iso.slice(0, 10)}T12:00:00`)
+  if (Number.isNaN(date.getTime())) return iso.slice(0, 10)
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  })
 }
 
 function AmmoCard({
@@ -52,10 +68,10 @@ function AmmoCard({
           value: [ammo.primerManufacturer, ammo.primer].filter(Boolean).join(' ')
         }
       : null,
-    ammo.caseManufacturer || ammo.caseName
+    ammo.caseManufacturer
       ? {
-          label: 'Case',
-          value: [ammo.caseManufacturer, ammo.caseName].filter(Boolean).join(' ')
+          label: 'Brass',
+          value: ammo.caseManufacturer
         }
       : null,
     ammo.seatingDepth
@@ -67,6 +83,7 @@ function AmmoCard({
   ].filter(Boolean) as Array<{ label: string; value: string }>
 
   const isPractice = ammo.name === 'Practice Ammo'
+  const acquiredLabel = formatAcquiredDate(ammo.acquiredDate)
 
   return (
     <article className="ammo-card">
@@ -85,14 +102,20 @@ function AmmoCard({
         </div>
       </header>
 
-      <h3 className="ammo-card-title">{ammo.name}</h3>
       {ammo.manufacturer ? <p className="ammo-card-mfr">{ammo.manufacturer}</p> : null}
+      {isPractice ? <h3 className="ammo-card-title">Practice Ammo</h3> : null}
 
       <div className="ammo-qty-row">
         <span className="ammo-qty">{ammo.quantity}</span>
         <span className="ammo-qty-label">rounds</span>
         {ammo.lotNumber ? <span className="ammo-lot">Lot #{ammo.lotNumber}</span> : null}
       </div>
+
+      {acquiredLabel ? (
+        <p className="ammo-acquired muted">
+          {ammo.type === 'Handload' ? 'Made' : 'Purchased'} {acquiredLabel}
+        </p>
+      ) : null}
 
       {components.length ? (
         <dl className="ammo-component-grid">
@@ -128,12 +151,12 @@ function LoadCard({
   load,
   onEdit,
   onDelete,
-  onMoveToPractice
+  onMakeAmmo
 }: {
   load: LoadDevelopmentInfo
   onEdit: () => void
   onDelete: () => void
-  onMoveToPractice: () => void
+  onMakeAmmo: () => void
 }): React.JSX.Element {
   return (
     <article className="ammo-card">
@@ -168,10 +191,7 @@ function LoadCard({
         </div>
         <div>
           <dt>Brass</dt>
-          <dd>
-            {load.brassManufacturer}
-            {load.brassModel ? ` ${load.brassModel}` : ''}
-          </dd>
+          <dd>{load.brassManufacturer}</dd>
         </div>
         <div>
           <dt>Primer</dt>
@@ -199,17 +219,21 @@ function LoadCard({
       {load.notes ? <p className="ammo-notes">{load.notes}</p> : null}
 
       <footer className="ammo-card-footer">
-        <button type="button" className="btn-ghost" onClick={onMoveToPractice}>
-          Move to practice
+        <button type="button" className="btn-primary btn-sm" onClick={onMakeAmmo}>
+          Make Ammo
         </button>
       </footer>
     </article>
   )
 }
 
-export function AmmoPage(): React.JSX.Element {
+export function AmmoPage({
+  trackAmmo = true,
+  trackLoads = true
+}: AmmoPageProps): React.JSX.Element {
   const toast = useToast()
-  const [subTab, setSubTab] = useState<SubTab>('inventory')
+  const initialTab: SubTab = trackAmmo ? 'inventory' : 'loads'
+  const [subTab, setSubTab] = useState<SubTab>(initialTab)
   const [ammo, setAmmo] = useState<AmmoInventoryInfo[]>([])
   const [loads, setLoads] = useState<LoadDevelopmentInfo[]>([])
   const [loading, setLoading] = useState(true)
@@ -218,7 +242,7 @@ export function AmmoPage(): React.JSX.Element {
   const [loadModalOpen, setLoadModalOpen] = useState(false)
   const [editingAmmo, setEditingAmmo] = useState<AmmoInventoryInfo | null>(null)
   const [editingLoad, setEditingLoad] = useState<LoadDevelopmentInfo | null>(null)
-  const [practiceFromLoad, setPracticeFromLoad] = useState<LoadDevelopmentInfo | null>(null)
+  const [makeAmmoFromLoad, setMakeAmmoFromLoad] = useState<LoadDevelopmentInfo | null>(null)
 
   const loadsById = useMemo(() => {
     const map = new Map<string, LoadDevelopmentInfo>()
@@ -263,15 +287,20 @@ export function AmmoPage(): React.JSX.Element {
     }
   }, [])
 
+  useEffect(() => {
+    if (subTab === 'inventory' && !trackAmmo && trackLoads) setSubTab('loads')
+    if (subTab === 'loads' && !trackLoads && trackAmmo) setSubTab('inventory')
+  }, [subTab, trackAmmo, trackLoads])
+
   function openCreateAmmo(): void {
     setEditingAmmo(null)
-    setPracticeFromLoad(null)
+    setMakeAmmoFromLoad(null)
     setAmmoModalOpen(true)
   }
 
-  function openMoveLoadToPractice(load: LoadDevelopmentInfo): void {
+  function openMakeAmmo(loadItem: LoadDevelopmentInfo): void {
     setEditingAmmo(null)
-    setPracticeFromLoad(load)
+    setMakeAmmoFromLoad(loadItem)
     setAmmoModalOpen(true)
   }
 
@@ -284,16 +313,9 @@ export function AmmoPage(): React.JSX.Element {
     if (editingAmmo) {
       await window.api.updateAmmo(editingAmmo.id, input)
       toast.success('Ammo updated.')
-    } else if (practiceFromLoad) {
-      // Create a batch from the load, then consolidate into Practice Ammo (§7.3).
-      const batchName =
-        input.name.trim() === 'Practice Ammo' ? `${practiceFromLoad.name} batch` : input.name.trim()
-      const created = await window.api.createAmmo({ ...input, name: batchName })
-      await window.api.moveAmmoToPractice(created.id)
-      toast.success('Moved load batch to practice ammo.')
     } else {
       await window.api.createAmmo(input)
-      toast.success('Ammo added.')
+      toast.success(makeAmmoFromLoad ? 'Ammo made from load.' : 'Ammo added.')
     }
     await load()
   }
@@ -310,7 +332,8 @@ export function AmmoPage(): React.JSX.Element {
   }
 
   async function handleDeleteAmmo(item: AmmoInventoryInfo): Promise<void> {
-    if (!window.confirm(`Delete ${item.name}?`)) return
+    const label = item.name === 'Practice Ammo' ? 'Practice Ammo' : item.caliber
+    if (!window.confirm(`Delete ${label}?`)) return
     try {
       await window.api.deleteAmmo(item.id)
       toast.success('Ammo deleted.')
@@ -334,7 +357,7 @@ export function AmmoPage(): React.JSX.Element {
   async function handleMoveToPractice(item: AmmoInventoryInfo): Promise<void> {
     if (
       !window.confirm(
-        `Move ${item.quantity} rounds of “${item.name}” into Practice Ammo (${item.caliber})?`
+        `Move ${item.quantity} rounds of ${item.caliber} into Practice Ammo?`
       )
     ) {
       return
@@ -348,8 +371,19 @@ export function AmmoPage(): React.JSX.Element {
     }
   }
 
+  const showInventory = trackAmmo
+  const showLoads = trackLoads
+  const activeTab: SubTab =
+    subTab === 'inventory' && showInventory
+      ? 'inventory'
+      : subTab === 'loads' && showLoads
+        ? 'loads'
+        : showInventory
+          ? 'inventory'
+          : 'loads'
+
   const primaryAction =
-    subTab === 'inventory' ? (
+    activeTab === 'inventory' ? (
       <button type="button" className="btn-primary btn-with-icon" onClick={openCreateAmmo}>
         <Icon name="add" size={16} />
         Add Ammo
@@ -368,26 +402,28 @@ export function AmmoPage(): React.JSX.Element {
         description="Track ammunition lots and reloading load development."
         actions={
           <>
-            <div className="subtab-row" role="tablist" aria-label="Ammo sections">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={subTab === 'inventory'}
-                className={`chip${subTab === 'inventory' ? ' active' : ''}`}
-                onClick={() => setSubTab('inventory')}
-              >
-                Inventory
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={subTab === 'loads'}
-                className={`chip${subTab === 'loads' ? ' active' : ''}`}
-                onClick={() => setSubTab('loads')}
-              >
-                Load data
-              </button>
-            </div>
+            {showInventory && showLoads ? (
+              <div className="subtab-row" role="tablist" aria-label="Ammo sections">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activeTab === 'inventory'}
+                  className={`chip${activeTab === 'inventory' ? ' active' : ''}`}
+                  onClick={() => setSubTab('inventory')}
+                >
+                  Inventory
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activeTab === 'loads'}
+                  className={`chip${activeTab === 'loads' ? ' active' : ''}`}
+                  onClick={() => setSubTab('loads')}
+                >
+                  Load data
+                </button>
+              </div>
+            ) : null}
             {primaryAction}
           </>
         }
@@ -400,7 +436,7 @@ export function AmmoPage(): React.JSX.Element {
         onRetry={() => void load()}
       />
 
-      {subTab === 'inventory' ? (
+      {activeTab === 'inventory' && showInventory ? (
         <>
           {!loading && ammo.length === 0 ? (
             <EmptyState
@@ -421,6 +457,7 @@ export function AmmoPage(): React.JSX.Element {
                   loadName={item.loadId ? (loadsById.get(item.loadId)?.name ?? null) : null}
                   onEdit={() => {
                     setEditingAmmo(item)
+                    setMakeAmmoFromLoad(null)
                     setAmmoModalOpen(true)
                   }}
                   onDelete={() => void handleDeleteAmmo(item)}
@@ -430,7 +467,9 @@ export function AmmoPage(): React.JSX.Element {
             </div>
           ) : null}
         </>
-      ) : (
+      ) : null}
+
+      {activeTab === 'loads' && showLoads ? (
         <>
           {!loading && loads.length === 0 ? (
             <EmptyState
@@ -453,23 +492,23 @@ export function AmmoPage(): React.JSX.Element {
                     setLoadModalOpen(true)
                   }}
                   onDelete={() => void handleDeleteLoad(item)}
-                  onMoveToPractice={() => openMoveLoadToPractice(item)}
+                  onMakeAmmo={() => openMakeAmmo(item)}
                 />
               ))}
             </div>
           ) : null}
         </>
-      )}
+      ) : null}
 
       {ammoModalOpen ? (
         <AmmoFormModal
           initial={editingAmmo}
-          fromLoad={practiceFromLoad}
+          fromLoad={makeAmmoFromLoad}
           loads={loads}
           onClose={() => {
             setAmmoModalOpen(false)
             setEditingAmmo(null)
-            setPracticeFromLoad(null)
+            setMakeAmmoFromLoad(null)
           }}
           onSave={handleSaveAmmo}
         />
