@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { PartInfo, PartInput, PartStatus, PartType } from '../../../shared/parts'
-import { PART_STATUSES, partTypeLabel } from '../../../shared/parts'
+import { PART_STATUSES, isWearStatusTracked, partTypeLabel } from '../../../shared/parts'
 import {
   PLATFORMS,
   PLATFORM_LABELS,
@@ -102,7 +102,8 @@ export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Ele
     return parts.filter((part) => {
       if (platformFilter !== 'All' && !part.platforms.includes(platformFilter)) return false
       if (typeFilter !== 'All' && part.type !== typeFilter) return false
-      if (!statuses.includes(part.status)) return false
+      // Wear status filter applies only to barrels/triggers; other parts always pass.
+      if (isWearStatusTracked(part.type) && !statuses.includes(part.status)) return false
       if (!q) return true
       const hay = [part.manufacturer, part.model, part.caliber, part.serialNumber]
         .filter(Boolean)
@@ -172,7 +173,7 @@ export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Ele
     <div className="page">
       <PageHeader
         title="Parts Inventory"
-        description="Track components by platform, category, status, and maintenance."
+        description="Track components by platform and category. Wear status applies to barrels and triggers."
         actions={
           <button type="button" className="btn-primary btn-with-icon" onClick={openCreate}>
             <Icon name="add" size={16} />
@@ -213,13 +214,14 @@ export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Ele
             </button>
           ))}
         </div>
-        <div className="chip-row" role="group" aria-label="Status filter">
+        <div className="chip-row" role="group" aria-label="Wear status filter">
           {PART_STATUSES.map((status) => (
             <button
               key={status}
               type="button"
               className={`chip${statuses.includes(status) ? ' active' : ''}`}
               onClick={() => toggleStatus(status)}
+              title="Filters barrels and triggers only"
             >
               {status}
             </button>
@@ -305,7 +307,11 @@ export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Ele
                       {part.type === 'Suppressor' ? <div>{part.muzzleType}</div> : null}
                     </td>
                     <td>
-                      <StatusBadge status={part.status} />
+                      {isWearStatusTracked(part.type) ? (
+                        <StatusBadge status={part.status} />
+                      ) : (
+                        <span className="muted">—</span>
+                      )}
                     </td>
                     <td>
                       {percent != null ? (
@@ -352,7 +358,7 @@ export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Ele
                         >
                           Delete
                         </button>
-                        {part.status !== 'Sold' ? (
+                        {isWearStatusTracked(part.type) && part.status !== 'Sold' ? (
                           <button
                             type="button"
                             className="btn-link"
@@ -361,7 +367,7 @@ export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Ele
                             Mark sold
                           </button>
                         ) : null}
-                        {part.type === 'Barrel' && part.status !== 'Retired' ? (
+                        {isWearStatusTracked(part.type) && part.status !== 'Retired' ? (
                           <button
                             type="button"
                             className="btn-link"
@@ -370,7 +376,8 @@ export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Ele
                             Retire
                           </button>
                         ) : null}
-                        {part.status === 'Sold' || part.status === 'Retired' ? (
+                        {isWearStatusTracked(part.type) &&
+                        (part.status === 'Sold' || part.status === 'Retired') ? (
                           <button
                             type="button"
                             className="btn-link"

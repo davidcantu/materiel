@@ -23,6 +23,8 @@ export type PartType =
   | 'Slide'
   | 'LaserIR'
   | 'Light'
+  | 'Pistol'
+  | 'Trigger'
 
 export type PartStatus = 'In Stock' | 'In Use' | 'Retired' | 'Sold'
 export type MuzzleType = 'Suppressor' | 'Brake'
@@ -94,6 +96,8 @@ export const PART_TYPES: PartType[] = [
   'Stock',
   'Frame',
   'Slide',
+  'Pistol',
+  'Trigger',
   'Optic',
   'LaserIR',
   'Light',
@@ -103,15 +107,33 @@ export const PART_TYPES: PartType[] = [
 
 export const PART_STATUSES: PartStatus[] = ['In Stock', 'In Use', 'Sold', 'Retired']
 
-export const MAINTENANCE_PART_TYPES: PartType[] = ['Action', 'Barrel', 'Suppressor', 'BCG']
+/** Wear parts expose In Stock / In Use / Sold / Retired in the UI. */
+export const WEAR_STATUS_PART_TYPES: PartType[] = ['Barrel', 'Trigger']
 
-export const SERIAL_REQUIRED_TYPES: PartType[] = ['Action', 'Optic', 'Lower', 'Frame']
+export const MAINTENANCE_PART_TYPES: PartType[] = ['Action', 'Barrel', 'Suppressor', 'BCG', 'Pistol']
+
+/** Always-serialized receivers / optics / complete pistols. Suppressors handled separately. */
+export const SERIAL_REQUIRED_TYPES: PartType[] = ['Action', 'Optic', 'Lower', 'Pistol', 'Frame']
+
+export function isWearStatusTracked(type: PartType): boolean {
+  return WEAR_STATUS_PART_TYPES.includes(type)
+}
 
 export function isMaintenanceTracked(type: PartType): boolean {
   return MAINTENANCE_PART_TYPES.includes(type)
 }
 
-export function requiresSerialNumber(type: PartType): boolean {
+/**
+ * Serial numbers are required for serialized receivers/optics/pistols,
+ * and for muzzle devices that are Suppressors (not brakes).
+ */
+export function requiresSerialNumber(
+  type: PartType,
+  muzzleType?: MuzzleType | null
+): boolean {
+  if (type === 'Suppressor') {
+    return muzzleType !== 'Brake'
+  }
   return SERIAL_REQUIRED_TYPES.includes(type)
 }
 
@@ -131,6 +153,10 @@ export function partTypeLabel(type: PartType): string {
       return 'Lower'
     case 'Upper':
       return 'Upper'
+    case 'Pistol':
+      return 'Pistol'
+    case 'Trigger':
+      return 'Trigger'
     default:
       return type
   }

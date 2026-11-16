@@ -68,6 +68,57 @@ test('parts CRUD: create, list, status, maintenance reset, delete', () => {
   assert.equal(listParts(db).length, 1)
 })
 
+test('suppressor requires serial; brake does not; wear status only for barrel/trigger', () => {
+  const db = setup()
+
+  const suppressor = createPart(db, {
+    manufacturer: 'Dead Air',
+    type: 'Suppressor',
+    model: 'Sandman',
+    muzzleType: 'Suppressor',
+    serialNumber: 'DA-100'
+  })
+  assert.equal(suppressor.serialNumber, 'DA-100')
+  assert.equal(suppressor.muzzleType, 'Suppressor')
+
+  assert.throws(
+    () =>
+      createPart(db, {
+        manufacturer: 'Dead Air',
+        type: 'Suppressor',
+        model: 'Sandman',
+        muzzleType: 'Suppressor'
+      }),
+    /Serial number is required for Suppressor/
+  )
+
+  const brake = createPart(db, {
+    manufacturer: 'Area 419',
+    type: 'Suppressor',
+    model: 'Hellfire',
+    muzzleType: 'Brake'
+  })
+  assert.equal(brake.muzzleType, 'Brake')
+  assert.equal(brake.serialNumber, null)
+
+  const trigger = createPart(db, {
+    manufacturer: 'TriggerTech',
+    type: 'Trigger',
+    model: 'Diamond',
+    status: 'In Stock'
+  })
+  const retired = setPartStatus(db, trigger.id, 'Retired')
+  assert.equal(retired.status, 'Retired')
+
+  const optic = createPart(db, {
+    manufacturer: 'Vortex',
+    type: 'Optic',
+    model: 'Razor',
+    serialNumber: 'O-1'
+  })
+  assert.throws(() => setPartStatus(db, optic.id, 'Sold'), /wear parts/)
+})
+
 test('parts: refuses delete while part is on a system', () => {
   const db = setup()
   const action = createPart(db, {

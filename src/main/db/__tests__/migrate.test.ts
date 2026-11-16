@@ -56,7 +56,7 @@ test('migrations run forward from empty encrypted DB', () => {
     // Re-open / re-migrate is a no-op.
     const versionAgain = getAppliedMigrationVersion(db)
     assert.equal(versionAgain, MIGRATIONS[MIGRATIONS.length - 1].id)
-    assert.equal(versionAgain, 5)
+    assert.equal(versionAgain, 6)
 
     const partCols = db.prepare(`PRAGMA table_info(parts)`).all() as Array<{ name: string }>
     assert.ok(!partCols.some((c) => c.name === 'name'), 'parts.name should be dropped')

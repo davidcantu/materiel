@@ -1,6 +1,11 @@
 import { useMemo, useState } from 'react'
 import type { PartInfo, PartInput, PartStatus, PartType, MuzzleType } from '../../../shared/parts'
-import { isMaintenanceTracked, partTypeLabel, requiresSerialNumber } from '../../../shared/parts'
+import {
+  isMaintenanceTracked,
+  isWearStatusTracked,
+  partTypeLabel,
+  requiresSerialNumber
+} from '../../../shared/parts'
 import {
   PLATFORMS,
   PLATFORM_LABELS,
@@ -131,6 +136,9 @@ export function PartFormModal({
     return []
   }, [form.type, form.manufacturer])
 
+  const showSerial = requiresSerialNumber(form.type, form.muzzleType)
+  const showWearStatus = isWearStatusTracked(form.type)
+
   function setField<K extends keyof FormState>(key: K, value: FormState[K]): void {
     setForm((prev) => ({ ...prev, [key]: value }))
   }
@@ -160,7 +168,8 @@ export function PartFormModal({
     setForm((prev) => ({
       ...prev,
       type,
-      platforms: normalizePartPlatforms(type, prev.platforms)
+      platforms: normalizePartPlatforms(type, prev.platforms),
+      status: isWearStatusTracked(type) ? prev.status : 'In Stock'
     }))
   }
 
@@ -172,16 +181,23 @@ export function PartFormModal({
       const input: PartInput = {
         manufacturer: form.manufacturer.trim(),
         type: form.type,
-        status: form.status,
         platforms: normalizePartPlatforms(form.type, form.platforms),
         model: form.model.trim() || null,
         notes: form.notes.trim() || null
       }
+      // Wear parts own the status model; others keep attach bookkeeping untouched on edit.
+      if (showWearStatus) {
+        input.status = form.status
+      } else if (!editing) {
+        input.status = 'In Stock'
+      }
       if (trackValue && form.value.trim()) {
         input.value = Number(form.value)
       }
-      if (requiresSerialNumber(form.type)) {
+      if (showSerial) {
         input.serialNumber = form.serialNumber.trim()
+      } else if (form.type === 'Suppressor') {
+        input.serialNumber = null
       }
       if (form.type === 'Barrel') {
         input.caliber = form.caliber.trim()
@@ -205,10 +221,7 @@ export function PartFormModal({
     }
   }
 
-  const statusOptions: PartStatus[] =
-    form.type === 'Barrel'
-      ? ['In Stock', 'In Use', 'Sold', 'Retired']
-      : ['In Stock', 'In Use', 'Sold']
+  const statusOptions: PartStatus[] = ['In Stock', 'In Use', 'Sold', 'Retired']
 
   return (
     <Modal
@@ -328,7 +341,7 @@ export function PartFormModal({
           </label>
         )}
 
-        {requiresSerialNumber(form.type) ? (
+        {showSerial ? (
           <label className="field">
             <span className="field-label">Serial Number</span>
             <input
@@ -408,21 +421,24 @@ export function PartFormModal({
           </label>
         ) : null}
 
-        <div className="field field-span">
-          <span className="field-label">Status</span>
-          <div className="chip-row">
-            {statusOptions.map((status) => (
-              <button
-                key={status}
-                type="button"
-                className={`chip${form.status === status ? ' active' : ''}`}
-                onClick={() => setField('status', status)}
-              >
-                {status}
-              </button>
-            ))}
+        {showWearStatus ? (
+          <div className="field field-span">
+            <span className="field-label">Status</span>
+            <div className="chip-row">
+              {statusOptions.map((status) => (
+                <button
+                  key={status}
+                  type="button"
+                  className={`chip${form.status === status ? ' active' : ''}`}
+                  onClick={() => setField('status', status)}
+                >
+                  {status}
+                </button>
+              ))}
+            </div>
+            <p className="muted field-hint">Wear tracking for barrels and triggers only.</p>
           </div>
-        </div>
+        ) : null}
 
         {error ? <p className="form-error field-span">{error}</p> : null}
       </form>

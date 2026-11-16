@@ -27,25 +27,46 @@ function setup(): Database.Database {
   return openTestDatabase(join(dir, 'test.db'))
 }
 
-test('compatibility: actions only for bolt; laser/light for AR and pistol', () => {
+test('compatibility: simplified AR/pistol lists; laser/IR on bolt', () => {
   assert.deepEqual(platformsForPartType('Action'), ['bolt_action'])
   assert.deepEqual(platformsForPartType('Lower'), ['ar_pattern'])
-  assert.deepEqual(platformsForPartType('Frame'), ['pistol'])
-  assert.deepEqual(platformsForPartType('LaserIR'), ['ar_pattern', 'pistol'])
+  assert.deepEqual(platformsForPartType('Pistol'), ['pistol'])
+  assert.deepEqual(platformsForPartType('LaserIR'), ['bolt_action', 'ar_pattern', 'pistol'])
   assert.deepEqual(platformsForPartType('Light'), ['ar_pattern', 'pistol'])
   assert.ok(platformsForPartType('Optic').includes('bolt_action'))
   assert.ok(platformsForPartType('Optic').includes('pistol'))
+  assert.ok(!platformsForPartType('Optic').includes('ar_pattern'))
+  assert.ok(platformsForPartType('Trigger').includes('bolt_action'))
+
+  const arTypes = partTypesForPlatforms(['ar_pattern'])
+  assert.deepEqual(
+    arTypes.filter((t) =>
+      ['Lower', 'Upper', 'Barrel', 'LaserIR', 'Light', 'Suppressor', 'Misc'].includes(t)
+    ).length,
+    7
+  )
+  assert.ok(!arTypes.includes('Optic'))
+  assert.ok(!arTypes.includes('Handguard'))
+  assert.ok(!arTypes.includes('BCG'))
+
+  const pistolTypes = partTypesForPlatforms(['pistol'])
+  assert.ok(pistolTypes.includes('Pistol'))
+  assert.ok(pistolTypes.includes('Optic'))
+  assert.ok(!pistolTypes.includes('Frame'))
+  assert.ok(!pistolTypes.includes('Barrel'))
 })
 
 test('smart create categories: intersection for multi-platform selection', () => {
   const both = partTypesForPlatforms(['ar_pattern', 'pistol'])
-  assert.ok(both.includes('Optic'))
   assert.ok(both.includes('LaserIR'))
   assert.ok(both.includes('Light'))
-  assert.ok(both.includes('Barrel'))
+  assert.ok(both.includes('Suppressor'))
+  assert.ok(both.includes('Misc'))
+  assert.ok(!both.includes('Optic'))
+  assert.ok(!both.includes('Barrel'))
   assert.ok(!both.includes('Action'))
   assert.ok(!both.includes('Lower'))
-  assert.ok(!both.includes('Frame'))
+  assert.ok(!both.includes('Pistol'))
 })
 
 test('parts list filters by platform; AR/pistol builds use platform core slots', () => {
@@ -56,6 +77,12 @@ test('parts list filters by platform; AR/pistol builds use platform core slots',
     type: 'Action',
     model: '737R',
     serialNumber: 'A1',
+    platforms: ['bolt_action']
+  })
+  const boltLaser = createPart(db, {
+    manufacturer: 'Wilcox',
+    type: 'LaserIR',
+    model: 'RAPTAR',
     platforms: ['bolt_action']
   })
   const arLower = createPart(db, {
@@ -78,24 +105,11 @@ test('parts list filters by platform; AR/pistol builds use platform core slots',
     gunsmith: 'Factory',
     platforms: ['ar_pattern']
   })
-  const pistolFrame = createPart(db, {
+  const pistol = createPart(db, {
     manufacturer: 'Glock',
-    type: 'Frame',
-    model: '19',
-    serialNumber: 'F1',
-    platforms: ['pistol']
-  })
-  const pistolSlide = createPart(db, {
-    manufacturer: 'Glock',
-    type: 'Slide',
-    model: '19',
-    platforms: ['pistol']
-  })
-  const pistolBarrel = createPart(db, {
-    manufacturer: 'Glock',
-    type: 'Barrel',
-    caliber: '9mm',
-    gunsmith: 'Factory',
+    type: 'Pistol',
+    model: '19 Gen5',
+    serialNumber: 'P1',
     platforms: ['pistol']
   })
   const optic = createPart(db, {
@@ -103,7 +117,7 @@ test('parts list filters by platform; AR/pistol builds use platform core slots',
     type: 'Optic',
     model: 'RMR',
     serialNumber: 'O1',
-    platforms: ['ar_pattern', 'pistol']
+    platforms: ['pistol']
   })
   const light = createPart(db, {
     manufacturer: 'SureFire',
@@ -112,10 +126,9 @@ test('parts list filters by platform; AR/pistol builds use platform core slots',
     platforms: ['ar_pattern', 'pistol']
   })
 
-  assert.equal(listParts(db, { platforms: ['bolt_action'] }).length, 1)
-  assert.equal(listParts(db, { platforms: ['ar_pattern'] }).length, 5)
-  assert.equal(listParts(db, { platforms: ['pistol'] }).length, 5)
-  assert.ok(listParts(db, { platforms: ['ar_pattern'] }).some((p) => p.id === optic.id))
+  assert.equal(listParts(db, { platforms: ['bolt_action'] }).length, 2)
+  assert.ok(listParts(db, { platforms: ['ar_pattern'] }).some((p) => p.id === arLower.id))
+  assert.ok(listParts(db, { platforms: ['pistol'] }).some((p) => p.id === pistol.id))
   assert.ok(listParts(db, { platforms: ['pistol'] }).some((p) => p.id === light.id))
   assert.ok(!listParts(db, { platforms: ['ar_pattern'] }).some((p) => p.id === boltAction.id))
 
@@ -125,7 +138,6 @@ test('parts list filters by platform; AR/pistol builds use platform core slots',
     actionId: arLower.id,
     barrelId: arBarrel.id,
     chassisId: arUpper.id,
-    opticId: optic.id,
     lightId: light.id
   })
   assert.equal(ar.platform, 'ar_pattern')
@@ -143,18 +155,55 @@ test('parts list filters by platform; AR/pistol builds use platform core slots',
     /Primary must be a Lower/
   )
 
-  const pistol = createFactorySystem(db, {
+  const pistolBuild = createCustomSystem(db, {
+    name: 'G19 Custom',
+    platform: 'pistol',
+    actionId: pistol.id,
+    barrelId: pistol.id,
+    chassisId: pistol.id,
+    opticId: optic.id
+  })
+  assert.equal(pistolBuild.actionId, pistol.id)
+  assert.equal(pistolBuild.barrelId, pistol.id)
+  assert.equal(pistolBuild.chassisId, pistol.id)
+
+  const factoryPistol = createFactorySystem(db, {
     name: 'G19 Factory',
     platform: 'pistol',
     factoryManufacturer: 'Glock',
     factoryModel: '19 Gen5',
     factoryCartridge: '9mm'
   })
-  assert.equal(pistol.platform, 'pistol')
-  assert.ok(pistol.actionId.startsWith('action-'))
+  assert.equal(factoryPistol.platform, 'pistol')
+  assert.equal(factoryPistol.actionId, factoryPistol.barrelId)
+  assert.equal(factoryPistol.actionId, factoryPistol.chassisId)
+  assert.ok(factoryPistol.actionId.startsWith('action-'))
 
-  // Keep unused pistol parts referenced so GC doesn't confuse the assertion above.
-  assert.ok(pistolFrame.id)
-  assert.ok(pistolSlide.id)
-  assert.ok(pistolBarrel.id)
+  const boltWithLaser = createCustomSystem(db, {
+    name: 'Bolt + IR',
+    platform: 'bolt_action',
+    actionId: boltAction.id,
+    barrelId: createPart(db, {
+      manufacturer: 'Bartlein',
+      type: 'Barrel',
+      caliber: '6.5 Creedmoor',
+      gunsmith: 'S&S',
+      platforms: ['bolt_action']
+    }).id,
+    chassisId: createPart(db, {
+      manufacturer: 'MDT',
+      type: 'Chassis',
+      model: 'ACC',
+      platforms: ['bolt_action']
+    }).id,
+    opticId: createPart(db, {
+      manufacturer: 'Vortex',
+      type: 'Optic',
+      model: 'Razor',
+      serialNumber: 'V1',
+      platforms: ['bolt_action']
+    }).id,
+    laserIrId: boltLaser.id
+  })
+  assert.equal(boltWithLaser.laserIrId, boltLaser.id)
 })

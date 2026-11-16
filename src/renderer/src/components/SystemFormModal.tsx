@@ -16,6 +16,7 @@ import {
   PLATFORM_CORE_SLOTS,
   PLATFORM_LABELS,
   accessoryListTypes,
+  isSingleCorePartPlatform,
   type AccessorySlot,
   type Platform
 } from '../../../shared/platforms'
@@ -209,8 +210,18 @@ export function SystemFormModal({
       platforms: input.platforms?.length ? input.platforms : [form.platform]
     })
     setCreatedParts((prev) => [...prev, created])
-    if (createTarget === 'actionId') setField('actionId', created.id)
-    else if (createTarget === 'barrelId') setField('barrelId', created.id)
+    if (createTarget === 'actionId') {
+      if (isSingleCorePartPlatform(form.platform)) {
+        setForm((prev) => ({
+          ...prev,
+          actionId: created.id,
+          barrelId: created.id,
+          chassisId: created.id
+        }))
+      } else {
+        setField('actionId', created.id)
+      }
+    } else if (createTarget === 'barrelId') setField('barrelId', created.id)
     else if (createTarget === 'chassisId') setField('chassisId', created.id)
     else if (createTarget === 'opticId') setField('opticId', created.id)
     else if (createTarget === 'suppressorId') setField('suppressorId', created.id)
@@ -323,22 +334,26 @@ export function SystemFormModal({
       const imageUrl = form.image.imageUrl
       const imageScale = form.image.imageScale ?? 1
       if (form.mode === 'custom') {
+        const singleCore = isSingleCorePartPlatform(form.platform)
+        const corePartId = form.actionId
         const input: CustomSystemInputInfo = {
           name: form.name.trim(),
           platform: form.platform,
-          actionId: form.actionId,
-          barrelId: form.barrelId,
-          chassisId: form.chassisId,
+          actionId: corePartId,
+          barrelId: singleCore ? corePartId : form.barrelId,
+          chassisId: singleCore ? corePartId : form.chassisId,
           opticId: form.opticId || null,
           suppressorId: form.suppressorId || null,
-          laserIrId: form.platform === 'bolt_action' ? null : form.laserIrId || null,
+          laserIrId: form.laserIrId || null,
           lightId: form.platform === 'bolt_action' ? null : form.lightId || null,
           miscPartIds,
           imageUrl,
           imageScale,
           notes: form.notes.trim() || null
         }
-        if (!input.actionId || !input.barrelId || !input.chassisId) {
+        if (singleCore) {
+          if (!input.actionId) throw new Error('Custom pistol builds require a pistol')
+        } else if (!input.actionId || !input.barrelId || !input.chassisId) {
           throw new Error(
             `Custom builds require ${coreLabels.primary}, ${coreLabels.barrel}, and ${coreLabels.furniture}`
           )
@@ -362,7 +377,7 @@ export function SystemFormModal({
           factoryBarrelMaintenance: Number(form.factoryBarrelMaintenance) || 300,
           opticId: form.factoryOpticId || null,
           suppressorId: form.factorySuppressorId || null,
-          laserIrId: form.platform === 'bolt_action' ? null : form.factoryLaserIrId || null,
+          laserIrId: form.factoryLaserIrId || null,
           lightId: form.platform === 'bolt_action' ? null : form.factoryLightId || null,
           miscPartIds,
           imageUrl,
@@ -461,58 +476,81 @@ export function SystemFormModal({
 
           {form.mode === 'custom' ? (
             <>
-              <PartSelect
-                label={coreLabels.primary}
-                value={form.actionId}
-                options={available(core.primary, form.actionId)}
-                onChange={(v) => setField('actionId', v)}
-                required
-                onCreate={() => {
-                  setCreateTarget('actionId')
-                  setCreatingType(core.primary)
-                }}
-              />
-              <PartSelect
-                label={coreLabels.barrel}
-                value={form.barrelId}
-                options={available(core.barrel, form.barrelId)}
-                onChange={(v) => setField('barrelId', v)}
-                required
-                onCreate={() => {
-                  setCreateTarget('barrelId')
-                  setCreatingType(core.barrel)
-                }}
-              />
-              <label className="field">
-                <span className="field-label">Cartridge</span>
-                <input
-                  value={
-                    form.barrelId
-                      ? (parts.find((part) => part.id === form.barrelId)?.caliber ?? '')
-                      : ''
+              {isSingleCorePartPlatform(form.platform) ? (
+                <PartSelect
+                  label={coreLabels.primary}
+                  value={form.actionId}
+                  options={available(core.primary, form.actionId)}
+                  onChange={(v) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      actionId: v,
+                      barrelId: v,
+                      chassisId: v
+                    }))
                   }
-                  readOnly
-                  placeholder="Select a barrel…"
-                  aria-readonly="true"
+                  required
+                  onCreate={() => {
+                    setCreateTarget('actionId')
+                    setCreatingType(core.primary)
+                  }}
                 />
-                <span className="muted field-hint">
-                  Locked from the selected barrel
-                  {form.barrelId && !parts.find((part) => part.id === form.barrelId)?.caliber
-                    ? ' (no cartridge on that barrel)'
-                    : ''}
-                </span>
-              </label>
-              <PartSelect
-                label={coreLabels.furniture}
-                value={form.chassisId}
-                options={available(core.furniture, form.chassisId)}
-                onChange={(v) => setField('chassisId', v)}
-                required
-                onCreate={() => {
-                  setCreateTarget('chassisId')
-                  setCreatingType(core.furniture)
-                }}
-              />
+              ) : (
+                <>
+                  <PartSelect
+                    label={coreLabels.primary}
+                    value={form.actionId}
+                    options={available(core.primary, form.actionId)}
+                    onChange={(v) => setField('actionId', v)}
+                    required
+                    onCreate={() => {
+                      setCreateTarget('actionId')
+                      setCreatingType(core.primary)
+                    }}
+                  />
+                  <PartSelect
+                    label={coreLabels.barrel}
+                    value={form.barrelId}
+                    options={available(core.barrel, form.barrelId)}
+                    onChange={(v) => setField('barrelId', v)}
+                    required
+                    onCreate={() => {
+                      setCreateTarget('barrelId')
+                      setCreatingType(core.barrel)
+                    }}
+                  />
+                  <label className="field">
+                    <span className="field-label">Cartridge</span>
+                    <input
+                      value={
+                        form.barrelId
+                          ? (parts.find((part) => part.id === form.barrelId)?.caliber ?? '')
+                          : ''
+                      }
+                      readOnly
+                      placeholder="Select a barrel…"
+                      aria-readonly="true"
+                    />
+                    <span className="muted field-hint">
+                      Locked from the selected barrel
+                      {form.barrelId && !parts.find((part) => part.id === form.barrelId)?.caliber
+                        ? ' (no cartridge on that barrel)'
+                        : ''}
+                    </span>
+                  </label>
+                  <PartSelect
+                    label={coreLabels.furniture}
+                    value={form.chassisId}
+                    options={available(core.furniture, form.chassisId)}
+                    onChange={(v) => setField('chassisId', v)}
+                    required
+                    onCreate={() => {
+                      setCreateTarget('chassisId')
+                      setCreatingType(core.furniture)
+                    }}
+                  />
+                </>
+              )}
               {accessorySlots.map((slot) => (
                 <PartSelect
                   key={slot}
@@ -598,16 +636,18 @@ export function SystemFormModal({
                   required
                 />
               </label>
-              <label className="field">
-                <span className="field-label">Barrel Maint. Interval</span>
-                <input
-                  type="number"
-                  min="1"
-                  value={form.factoryBarrelMaintenance}
-                  onChange={(e) => setField('factoryBarrelMaintenance', e.target.value)}
-                  required
-                />
-              </label>
+              {!isSingleCorePartPlatform(form.platform) ? (
+                <label className="field">
+                  <span className="field-label">Barrel Maint. Interval</span>
+                  <input
+                    type="number"
+                    min="1"
+                    value={form.factoryBarrelMaintenance}
+                    onChange={(e) => setField('factoryBarrelMaintenance', e.target.value)}
+                    required
+                  />
+                </label>
+              ) : null}
               {accessorySlots.map((slot) => (
                 <PartSelect
                   key={`factory-${slot}`}
