@@ -6,6 +6,12 @@ Local-first Electron desktop **firearms tracker**: component inventory, complete
 **Free tier:** 2 complete firearms (license key unlocks more)  
 **Stack:** Electron + React + TypeScript via [electron-vite](https://electron-vite.org/)
 
+## Download
+
+Pre-built installers for **macOS** (`.dmg`), **Windows** (NSIS `.exe`), and **Linux** (AppImage) are on the [Releases](https://github.com/davidcantu/materiel/releases) page.
+
+macOS builds are currently **unsigned** (Gatekeeper may warn — right-click → Open the first time). First launch: enter email (that is the username).
+
 ## Prerequisites
 
 - Node.js 20.19+ or 22.12+
@@ -17,7 +23,7 @@ Local-first Electron desktop **firearms tracker**: component inventory, complete
 npm install
 ```
 
-## Mac install
+## Mac install (from source)
 
 ```bash
 git clone https://github.com/davidcantu/materiel.git
@@ -26,7 +32,7 @@ npm install
 npm run build:mac
 ```
 
-Open the `.dmg` under `dist/` and install. First launch: enter email (that is the username).
+Open the `.dmg` under `dist/` and install. Prefer a [Release](https://github.com/davidcantu/materiel/releases) download when available.
 
 ## Development
 
