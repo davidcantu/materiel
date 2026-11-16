@@ -15,27 +15,22 @@ export const PLATFORM_LABELS: Record<Platform, string> = {
   pistol: 'Pistol'
 }
 
-/** Categories allowed on each platform (domain rules). */
+/**
+ * Categories offered per platform (inventory create / filter).
+ * AR: Lower, Upper, Barrel (Upper/Barrel), Laser/IR, Light, Muzzle, Misc (+ Trigger wear).
+ * Pistol: Pistol, Optic, Laser/IR, Light, Muzzle, Misc (+ Trigger wear).
+ * Bolt: classic bolt set + Laser/IR + Trigger.
+ */
 export const PLATFORM_PART_TYPES: Record<Platform, readonly PartType[]> = {
-  bolt_action: ['Action', 'Barrel', 'Chassis', 'Optic', 'Suppressor', 'Misc'],
-  ar_pattern: [
-    'Lower',
-    'Upper',
-    'Barrel',
-    'Handguard',
-    'BCG',
-    'GasBlock',
-    'Stock',
-    'Optic',
-    'LaserIR',
-    'Light',
-    'Suppressor',
-    'Misc'
-  ],
-  pistol: ['Frame', 'Slide', 'Barrel', 'Optic', 'LaserIR', 'Light', 'Suppressor', 'Misc']
+  bolt_action: ['Action', 'Barrel', 'Chassis', 'Optic', 'LaserIR', 'Suppressor', 'Trigger', 'Misc'],
+  ar_pattern: ['Lower', 'Upper', 'Barrel', 'LaserIR', 'Light', 'Suppressor', 'Trigger', 'Misc'],
+  pistol: ['Pistol', 'Optic', 'LaserIR', 'Light', 'Suppressor', 'Trigger', 'Misc']
 }
 
-/** Platforms a category may be assigned to. */
+/**
+ * Platforms a category may be assigned to.
+ * Legacy types (Frame/Slide/Handguard/…) kept for existing rows / edit.
+ */
 export const PART_TYPE_PLATFORMS: Record<PartType, readonly Platform[]> = {
   Action: ['bolt_action'],
   Chassis: ['bolt_action'],
@@ -47,9 +42,11 @@ export const PART_TYPE_PLATFORMS: Record<PartType, readonly Platform[]> = {
   Stock: ['ar_pattern'],
   Frame: ['pistol'],
   Slide: ['pistol'],
-  Barrel: ['bolt_action', 'ar_pattern', 'pistol'],
-  Optic: ['bolt_action', 'ar_pattern', 'pistol'],
-  LaserIR: ['ar_pattern', 'pistol'],
+  Pistol: ['pistol'],
+  Trigger: ['bolt_action', 'ar_pattern', 'pistol'],
+  Barrel: ['bolt_action', 'ar_pattern'],
+  Optic: ['bolt_action', 'pistol'],
+  LaserIR: ['bolt_action', 'ar_pattern', 'pistol'],
   Light: ['ar_pattern', 'pistol'],
   Suppressor: ['bolt_action', 'ar_pattern', 'pistol'],
   Misc: ['bolt_action', 'ar_pattern', 'pistol']
@@ -67,7 +64,8 @@ export type PlatformCoreSlots = {
 export const PLATFORM_CORE_SLOTS: Record<Platform, PlatformCoreSlots> = {
   bolt_action: { primary: 'Action', barrel: 'Barrel', furniture: 'Chassis' },
   ar_pattern: { primary: 'Lower', barrel: 'Barrel', furniture: 'Upper' },
-  pistol: { primary: 'Frame', barrel: 'Barrel', furniture: 'Slide' }
+  /** Complete pistol as one inventory item; all three columns reference that part. */
+  pistol: { primary: 'Pistol', barrel: 'Pistol', furniture: 'Pistol' }
 }
 
 export const PLATFORM_CORE_LABELS: Record<
@@ -85,18 +83,24 @@ export const PLATFORM_CORE_LABELS: Record<
     furniture: 'Upper Receiver'
   },
   pistol: {
-    primary: 'Frame',
-    barrel: 'Barrel',
-    furniture: 'Slide'
+    primary: 'Pistol',
+    barrel: 'Pistol',
+    furniture: 'Pistol'
   }
+}
+
+/** Platforms that use a single inventory part for all three core columns. */
+export function isSingleCorePartPlatform(platform: Platform): boolean {
+  const slots = PLATFORM_CORE_SLOTS[platform]
+  return slots.primary === slots.barrel && slots.barrel === slots.furniture
 }
 
 /** Optional dedicated accessory slots on a complete system. */
 export type AccessorySlot = 'optic' | 'suppressor' | 'laserIr' | 'light'
 
 export const PLATFORM_ACCESSORY_SLOTS: Record<Platform, readonly AccessorySlot[]> = {
-  bolt_action: ['optic', 'suppressor'],
-  ar_pattern: ['optic', 'laserIr', 'light', 'suppressor'],
+  bolt_action: ['optic', 'laserIr', 'suppressor'],
+  ar_pattern: ['laserIr', 'light', 'suppressor'],
   pistol: ['optic', 'laserIr', 'light', 'suppressor']
 }
 
@@ -117,9 +121,12 @@ export const ACCESSORY_SLOT_LABELS: Record<AccessorySlot, string> = {
 /** Extra parts selectable in the build accessory list (beyond dedicated slots). */
 export function accessoryListTypes(platform: Platform): PartType[] {
   if (platform === 'ar_pattern') {
-    return ['Handguard', 'BCG', 'GasBlock', 'Stock', 'Misc']
+    return ['Trigger', 'Misc']
   }
-  return ['Misc']
+  if (platform === 'bolt_action') {
+    return ['Trigger', 'Misc']
+  }
+  return ['Trigger', 'Misc']
 }
 
 /** Categories offered when creating a part for the chosen platform set (intersection). */

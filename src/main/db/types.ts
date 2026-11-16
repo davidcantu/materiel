@@ -21,6 +21,8 @@ export type PartType =
   | 'Slide'
   | 'LaserIR'
   | 'Light'
+  | 'Pistol'
+  | 'Trigger'
 export type PartStatus = 'In Stock' | 'In Use' | 'Retired' | 'Sold'
 export type MuzzleType = 'Suppressor' | 'Brake'
 export type BuildType = 'custom' | 'factory'

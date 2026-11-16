@@ -2,7 +2,7 @@
  * Complete-system helpers + factory part synthesis (software-spec §7.1).
  *
  * Creating/updating a factory build synthesizes core parts for the platform
- * (bolt: Action/Barrel/Chassis; AR: Lower/Barrel/Upper; pistol: Frame/Barrel/Slide)
+ * (bolt: Action/Barrel/Chassis; AR: Lower/Barrel/Upper; pistol: single Pistol)
  * with ids `action-{sysId}`, `barrel-{sysId}`, `chassis-{sysId}`.
  * Deleting a factory build removes those synthesized parts.
  */
@@ -12,6 +12,7 @@ import type Database from 'better-sqlite3-multiple-ciphers'
 import {
   PLATFORM_CORE_SLOTS,
   accessoryListTypes,
+  isSingleCorePartPlatform,
   isValidPlatform,
   type Platform
 } from '../../shared/platforms'
@@ -187,15 +188,20 @@ function validateCustomParts(
 ): void {
   const core = PLATFORM_CORE_SLOTS[platform]
   assertPartSlot(db, input.actionId, core.primary, platform, 'Primary')
-  assertPartSlot(db, input.barrelId, core.barrel, platform, 'Barrel')
-  assertPartSlot(db, input.chassisId, core.furniture, platform, 'Furniture')
+  if (isSingleCorePartPlatform(platform)) {
+    if (input.barrelId !== input.actionId || input.chassisId !== input.actionId) {
+      throw new Error('Pistol builds use one pistol part for all core slots')
+    }
+  } else {
+    assertPartSlot(db, input.barrelId, core.barrel, platform, 'Barrel')
+    assertPartSlot(db, input.chassisId, core.furniture, platform, 'Furniture')
+  }
   assertOptionalSlot(db, input.opticId, 'Optic', platform, 'Optic')
   assertOptionalSlot(db, input.suppressorId, 'Suppressor', platform, 'Muzzle device')
+  assertOptionalSlot(db, input.laserIrId, 'LaserIR', platform, 'Laser/IR')
   if (platform === 'bolt_action') {
-    if (input.laserIrId) throw new Error('Laser/IR is not used on bolt-action builds')
     if (input.lightId) throw new Error('Weapon lights are not used on bolt-action builds')
   } else {
-    assertOptionalSlot(db, input.laserIrId, 'LaserIR', platform, 'Laser/IR')
     assertOptionalSlot(db, input.lightId, 'Light', platform, 'Weapon light')
   }
 
@@ -286,9 +292,30 @@ export function synthesizeFactoryParts(
   const ids = factoryPartIds(input.systemId)
   const core = PLATFORM_CORE_SLOTS[input.platform]
   const serial =
-    core.primary === 'Action' || core.primary === 'Lower' || core.primary === 'Frame'
+    core.primary === 'Action' ||
+    core.primary === 'Lower' ||
+    core.primary === 'Frame' ||
+    core.primary === 'Pistol'
       ? 'Factory Standard'
       : null
+
+  if (isSingleCorePartPlatform(input.platform)) {
+    upsertFactoryPart(db, {
+      id: ids.actionId,
+      manufacturer: input.manufacturer,
+      type: core.primary,
+      platforms: input.platform,
+      model: `${input.model} (${input.cartridge})`,
+      serialNumber: serial,
+      maintenanceInterval: input.actionMaintenance,
+      caliber: input.cartridge,
+      gunsmith: null,
+      twistRate: null,
+      barrelLife: null
+    })
+    // One pistol part referenced by all three system columns.
+    return { actionId: ids.actionId, barrelId: ids.actionId, chassisId: ids.actionId }
+  }
 
   upsertFactoryPart(db, {
     id: ids.actionId,
@@ -369,11 +396,15 @@ export function createCustomSystem(
     const createdAt = nowIso()
     const platform = resolvePlatform(input.platform)
     const miscPartIds = input.miscPartIds ?? []
-    const laserIrId = platform === 'bolt_action' ? null : (input.laserIrId ?? null)
+    const laserIrId = input.laserIrId ?? null
     const lightId = platform === 'bolt_action' ? null : (input.lightId ?? null)
+    const barrelId = isSingleCorePartPlatform(platform) ? input.actionId : input.barrelId
+    const chassisId = isSingleCorePartPlatform(platform) ? input.actionId : input.chassisId
 
     validateCustomParts(db, platform, {
       ...input,
+      barrelId,
+      chassisId,
       laserIrId,
       lightId,
       miscPartIds
@@ -399,8 +430,8 @@ export function createCustomSystem(
       name: input.name,
       platform,
       actionId: input.actionId,
-      barrelId: input.barrelId,
-      chassisId: input.chassisId,
+      barrelId,
+      chassisId,
       opticId: input.opticId ?? null,
       suppressorId: input.suppressorId ?? null,
       laserIrId,
@@ -415,7 +446,16 @@ export function createCustomSystem(
     replaceMiscParts(db, id, miscPartIds)
     setPartsStatus(
       db,
-      allReferencedPartIds({ ...input, laserIrId, lightId, miscPartIds }),
+      allReferencedPartIds({
+        actionId: input.actionId,
+        barrelId,
+        chassisId,
+        opticId: input.opticId,
+        suppressorId: input.suppressorId,
+        laserIrId,
+        lightId,
+        miscPartIds
+      }),
       'In Use'
     )
 
@@ -436,13 +476,13 @@ export function createFactorySystem(
     const actionMaintenance = input.factoryActionMaintenance ?? 500
     const barrelMaintenance = input.factoryBarrelMaintenance ?? 300
     const miscPartIds = input.miscPartIds ?? []
-    const laserIrId = platform === 'bolt_action' ? null : (input.laserIrId ?? null)
+    const laserIrId = input.laserIrId ?? null
     const lightId = platform === 'bolt_action' ? null : (input.lightId ?? null)
 
     assertOptionalSlot(db, input.opticId, 'Optic', platform, 'Optic')
     assertOptionalSlot(db, input.suppressorId, 'Suppressor', platform, 'Muzzle device')
+    assertOptionalSlot(db, laserIrId, 'LaserIR', platform, 'Laser/IR')
     if (platform !== 'bolt_action') {
-      assertOptionalSlot(db, laserIrId, 'LaserIR', platform, 'Laser/IR')
       assertOptionalSlot(db, lightId, 'Light', platform, 'Weapon light')
     }
 
@@ -573,7 +613,6 @@ export function updateSystem(
       patch.laserIrId !== undefined ? patch.laserIrId : existing.laserIrId
     let lightId = patch.lightId !== undefined ? patch.lightId : existing.lightId
     if (platform === 'bolt_action') {
-      laserIrId = null
       lightId = null
     }
     const updatedAt = nowIso()
@@ -602,8 +641,8 @@ export function updateSystem(
 
       assertOptionalSlot(db, opticId, 'Optic', platform, 'Optic')
       assertOptionalSlot(db, suppressorId, 'Suppressor', platform, 'Muzzle device')
+      assertOptionalSlot(db, laserIrId, 'LaserIR', platform, 'Laser/IR')
       if (platform !== 'bolt_action') {
-        assertOptionalSlot(db, laserIrId, 'LaserIR', platform, 'Laser/IR')
         assertOptionalSlot(db, lightId, 'Light', platform, 'Weapon light')
       }
 
@@ -621,19 +660,32 @@ export function updateSystem(
       chassisId = synthesized.chassisId
     } else {
       if (existing.buildType === 'factory' && buildType === 'custom') {
-        if (!patch.actionId || !patch.barrelId || !patch.chassisId) {
+        if (isSingleCorePartPlatform(platform)) {
+          if (!patch.actionId) {
+            throw new Error('Switching a factory pistol to custom requires a pistol part')
+          }
+          actionId = patch.actionId
+          barrelId = patch.actionId
+          chassisId = patch.actionId
+        } else if (!patch.actionId || !patch.barrelId || !patch.chassisId) {
           throw new Error(
             'Switching a factory system to custom requires actionId, barrelId, and chassisId'
           )
+        } else {
+          actionId = patch.actionId
+          barrelId = patch.barrelId
+          chassisId = patch.chassisId
         }
-        actionId = patch.actionId
-        barrelId = patch.barrelId
-        chassisId = patch.chassisId
         factoryManufacturer = null
         factoryModel = null
         factoryCartridge = null
         factoryActionMaintenance = null
         factoryBarrelMaintenance = null
+      }
+
+      if (isSingleCorePartPlatform(platform)) {
+        barrelId = actionId
+        chassisId = actionId
       }
 
       validateCustomParts(db, platform, {

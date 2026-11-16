@@ -10,7 +10,7 @@ import {
   type Platform
 } from '../../shared/platforms'
 import { normalizePartPlatforms } from '../../shared/platforms'
-import { requiresSerialNumber } from '../../shared/parts'
+import { isWearStatusTracked, requiresSerialNumber } from '../../shared/parts'
 import type { MuzzleType, Part, PartStatus, PartType } from './types'
 
 type PartRow = {
@@ -108,10 +108,13 @@ function validatePartFields(
   if (requireCore || input.manufacturer !== undefined) {
     if (!input.manufacturer?.trim()) throw new Error('Manufacturer is required')
   }
-  if (requiresSerialNumber(type)) {
+  const muzzleForSerial =
+    type === 'Suppressor' ? (input.muzzleType ?? 'Suppressor') : input.muzzleType
+  if (requiresSerialNumber(type, muzzleForSerial)) {
     if (requireCore || input.serialNumber !== undefined) {
       if (!String(input.serialNumber ?? '').trim()) {
-        throw new Error(`Serial number is required for ${type}`)
+        const label = type === 'Suppressor' ? 'Suppressor' : type
+        throw new Error(`Serial number is required for ${label}`)
       }
     }
   }
@@ -128,8 +131,8 @@ function validatePartFields(
       throw new Error('Muzzle type must be Suppressor or Brake')
     }
   }
-  if (input.status === 'Retired' && type !== 'Barrel') {
-    throw new Error('Only barrels may be Retired')
+  if (input.status === 'Retired' && !isWearStatusTracked(type)) {
+    throw new Error('Only wear parts (Barrel, Trigger) may be Retired')
   }
   if (input.platforms !== undefined && input.platforms !== null) {
     const normalized = normalizePartPlatforms(type, input.platforms)
@@ -191,7 +194,8 @@ export function createPart(db: Database.Database, input: NewPartInput): Part {
     input.type === 'Action' ||
     input.type === 'Barrel' ||
     input.type === 'Suppressor' ||
-    input.type === 'BCG'
+    input.type === 'BCG' ||
+    input.type === 'Pistol'
       ? (input.maintenanceInterval ?? 1000)
       : null
 
@@ -240,8 +244,8 @@ export function updatePart(db: Database.Database, id: string, patch: UpdatePartI
   validatePartFields(existing.type, patch, false)
 
   const nextStatus = patch.status ?? existing.status
-  if (nextStatus === 'Retired' && existing.type !== 'Barrel') {
-    throw new Error('Only barrels may be Retired')
+  if (nextStatus === 'Retired' && !isWearStatusTracked(existing.type)) {
+    throw new Error('Only wear parts (Barrel, Trigger) may be Retired')
   }
 
   const platforms =
@@ -299,8 +303,11 @@ export function updatePart(db: Database.Database, id: string, patch: UpdatePartI
 export function setPartStatus(db: Database.Database, id: string, status: PartStatus): Part {
   const existing = getPart(db, id)
   if (!existing) throw new Error(`Part not found: ${id}`)
-  if (status === 'Retired' && existing.type !== 'Barrel') {
-    throw new Error('Only barrels may be Retired')
+  if (!isWearStatusTracked(existing.type)) {
+    throw new Error('Status changes apply only to wear parts (Barrel, Trigger)')
+  }
+  if (status === 'Retired' && !isWearStatusTracked(existing.type)) {
+    throw new Error('Only wear parts (Barrel, Trigger) may be Retired')
   }
   return updatePart(db, id, { status })
 }

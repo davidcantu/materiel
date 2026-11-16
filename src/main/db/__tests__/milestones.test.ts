@@ -79,7 +79,7 @@ test('evaluateMilestones: each §7.5 rule unlocks independently', () => {
     byId(
       evaluateMilestones(
         emptySnapshot({
-          ownedPartTypes: ['Action', 'Barrel', 'Chassis', 'Optic', 'Suppressor']
+          ownedPartTypes: ['Action', 'Barrel', 'Chassis', 'Optic', 'Suppressor', 'Misc']
         })
       ),
       'full-kit'
@@ -90,7 +90,16 @@ test('evaluateMilestones: each §7.5 rule unlocks independently', () => {
     byId(
       evaluateMilestones(
         emptySnapshot({
-          ownedPartTypes: ['Action', 'Barrel', 'Chassis', 'Optic', 'Suppressor', 'Misc']
+          ownedPartTypes: [
+            'Action',
+            'Barrel',
+            'Chassis',
+            'Optic',
+            'LaserIR',
+            'Suppressor',
+            'Trigger',
+            'Misc'
+          ]
         })
       ),
       'full-kit'
@@ -134,7 +143,18 @@ test('getMilestonesSummary: derives unlocks from DB rows', () => {
     manufacturer: 'Thunder Beast',
     type: 'Suppressor',
     model: 'Ultra 7',
-    muzzleType: 'Suppressor'
+    muzzleType: 'Suppressor',
+    serialNumber: 'TB-1'
+  })
+  createPart(db, {
+    manufacturer: 'Wilcox',
+    type: 'LaserIR',
+    model: 'RAPTAR'
+  })
+  createPart(db, {
+    manufacturer: 'TriggerTech',
+    type: 'Trigger',
+    model: 'Diamond'
   })
   createPart(db, {
     manufacturer: 'Area 419',

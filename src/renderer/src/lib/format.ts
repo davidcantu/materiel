@@ -1,7 +1,7 @@
 import type { PartInfo, PartType } from '../../../shared/parts'
-import { isMaintenanceTracked, partTypeLabel } from '../../../shared/parts'
+import { isMaintenanceTracked, isWearStatusTracked, partTypeLabel } from '../../../shared/parts'
 
-export { partTypeLabel, isMaintenanceTracked }
+export { partTypeLabel, isMaintenanceTracked, isWearStatusTracked }
 
 export function formatCurrency(value: number): string {
   return new Intl.NumberFormat('en-US', {
@@ -29,11 +29,12 @@ export function partPrimaryTitle(part: PartInfo): string {
   return [part.manufacturer, part.model].filter(Boolean).join(' ') || part.manufacturer
 }
 
-/** Build-picker label: manufacturer/model (or caliber) · serial · status. Value is always part.id. */
+/** Build-picker label: manufacturer/model (or caliber) · serial · wear status. Value is always part.id. */
 export function partOptionLabel(part: PartInfo): string {
   const bits = [partPrimaryTitle(part)]
   if (part.serialNumber) bits.push(`S/N ${part.serialNumber}`)
-  bits.push(part.status)
+  if (isWearStatusTracked(part.type)) bits.push(part.status)
+  else if (part.status === 'In Use') bits.push('Attached')
   return bits.join(' · ')
 }
 
