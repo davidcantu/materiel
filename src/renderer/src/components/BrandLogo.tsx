@@ -1,5 +1,5 @@
-import logoDark from '../assets/brand/materiel-logo-horizontal-dark-transparent.png'
-import logoLight from '../assets/brand/materiel-logo-horizontal-light-transparent.png'
+import logoDark from '../assets/brand/materiel-logo-horizontal-dark.png'
+import logoLight from '../assets/brand/materiel-logo-horizontal-light.png'
 
 type BrandLogoProps = {
   className?: string
@@ -8,8 +8,8 @@ type BrandLogoProps = {
 }
 
 /**
- * Theme-swapped horizontal lockup (B1). Uses CSS against html[data-theme]
- * so System / Light / Dark stay in sync without extra JS.
+ * Theme-swapped B1 horizontal lockup (heavy geometric M + stencil wordmark).
+ * Light/dark PNGs derive from locked materiel-logo-b-bold-v1; swap via html[data-theme].
  */
 export function BrandLogo({ className = '', alt = 'Materiel' }: BrandLogoProps): React.JSX.Element {
   const classes = `brand-logo${className ? ` ${className}` : ''}`
