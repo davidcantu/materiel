@@ -3,6 +3,7 @@ import type { AmmoInput, AmmoInventoryInfo } from '../../../shared/ammo'
 import type { LoadDevelopmentInfo, LoadInput } from '../../../shared/loads'
 import { AmmoFormModal } from '../components/AmmoFormModal'
 import { EmptyState } from '../components/EmptyState'
+import { Icon } from '../components/icons/Icon'
 import { LoadFormModal } from '../components/LoadFormModal'
 import { PageFeedback } from '../components/PageFeedback'
 import { PageHeader } from '../components/PageHeader'
@@ -349,12 +350,14 @@ export function AmmoPage(): React.JSX.Element {
 
   const primaryAction =
     subTab === 'inventory' ? (
-      <button type="button" className="btn-primary" onClick={openCreateAmmo}>
-        + Add Ammo
+      <button type="button" className="btn-primary btn-with-icon" onClick={openCreateAmmo}>
+        <Icon name="add" size={16} />
+        Add Ammo
       </button>
     ) : (
-      <button type="button" className="btn-primary" onClick={openCreateLoad}>
-        + New Load
+      <button type="button" className="btn-primary btn-with-icon" onClick={openCreateLoad}>
+        <Icon name="add" size={16} />
+        New Load
       </button>
     )
 
@@ -401,6 +404,7 @@ export function AmmoPage(): React.JSX.Element {
         <>
           {!loading && ammo.length === 0 ? (
             <EmptyState
+              icon="ammo"
               title="No ammunition tracked"
               description="Add factory or handload lots to track on-hand quantity."
               actionLabel="Add first ammo"
@@ -430,6 +434,7 @@ export function AmmoPage(): React.JSX.Element {
         <>
           {!loading && loads.length === 0 ? (
             <EmptyState
+              icon="loads"
               title="No load data yet"
               description="Create a reloading recipe with charge, COAL, and components."
               actionLabel="Create first load"

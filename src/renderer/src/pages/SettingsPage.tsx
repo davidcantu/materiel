@@ -2,15 +2,13 @@ import { useEffect, useState } from 'react'
 import type { LicenseStatusInfo } from '../../../shared/license'
 import type { MilestoneStatus, MilestonesSummary } from '../../../shared/milestones'
 import { hasLocalIdentity, type ProfileInfo, type ProfilePatch } from '../../../shared/profile'
+import { BrandLogo } from '../components/BrandLogo'
+import { Icon } from '../components/icons/Icon'
 import { ImageCropField, type ImageCropValue } from '../components/ImageCropField'
 import { PageHeader } from '../components/PageHeader'
 import { PreferenceInfoButton } from '../components/PreferenceInfoButton'
 import { useToast } from '../components/toast-context'
-import {
-  setStoredThemePreference,
-  THEME_OPTIONS,
-  type ThemePreference
-} from '../lib/theme'
+import { setStoredThemePreference, THEME_OPTIONS, type ThemePreference } from '../lib/theme'
 
 type SettingsPageProps = {
   license: LicenseStatusInfo | null
@@ -232,11 +230,27 @@ export function SettingsPage({
     <div className="page">
       <PageHeader title="Settings" description="Profile, milestones, license, and preferences." />
 
+      <section className="settings-panel">
+        <h2>About</h2>
+        <div className="about-brand">
+          <BrandLogo className="brand-logo-about" alt="Materiel" />
+          <p>
+            Local-first firearms tracker for inventory, builds, logs, ammo, and maintenance. Magpul
+            OD brand kit — display Black Ops One, UI Source Sans 3.
+          </p>
+        </div>
+      </section>
+
       <section className="settings-panel settings-panel-wide">
         <div className="section-header">
           <h2>Profile</h2>
           {profile && !editingProfile ? (
-            <button type="button" className="btn-ghost btn-sm" onClick={startEditProfile}>
+            <button
+              type="button"
+              className="btn-ghost btn-sm btn-with-icon"
+              onClick={startEditProfile}
+            >
+              <Icon name="edit" size={14} />
               Edit Profile
             </button>
           ) : null}
@@ -474,7 +488,12 @@ export function SettingsPage({
       </section>
 
       <section className="settings-panel">
-        <h2>Appearance</h2>
+        <div className="section-header">
+          <h2>Appearance</h2>
+          <span className="status-inline" aria-hidden="true">
+            <Icon name="theme" size={18} />
+          </span>
+        </div>
         <p className="muted">Follow your system theme by default, or lock Light / Dark.</p>
         <div className="theme-toggle" role="group" aria-label="Color theme">
           {THEME_OPTIONS.map((option) => {

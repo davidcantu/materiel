@@ -2,6 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { AppInfo } from '../../shared/app-info'
 import type { LicenseStatusInfo } from '../../shared/license'
 import { hasLocalIdentity, type ProfileInfo } from '../../shared/profile'
+import { BrandLogo } from './components/BrandLogo'
+import { Icon } from './components/icons/Icon'
+import { NAV_ICONS } from './components/icons/nav-icons'
 import { ToastProvider } from './components/Toast'
 import {
   applyThemePreference,
@@ -108,8 +111,7 @@ function AppShell(): React.JSX.Element {
     <div className="app-shell">
       <aside className="sidebar">
         <div className="brand">
-          <div className="brand-mark" aria-hidden="true" />
-          <div className="brand-title">Materiel</div>
+          <BrandLogo className="brand-logo-sidebar" alt="Materiel" />
           <div className="brand-tagline">Firearms tracker</div>
         </div>
 
@@ -118,6 +120,7 @@ function AppShell(): React.JSX.Element {
             .filter((item) => item.visible !== false)
             .map((item) => {
               const isActive = view === item.id
+              const iconName = NAV_ICONS[item.id]
               return (
                 <button
                   key={item.id}
@@ -127,7 +130,9 @@ function AppShell(): React.JSX.Element {
                   aria-current={isActive ? 'page' : undefined}
                   onClick={() => item.enabled && setActive(item.id)}
                 >
-                  <span className="nav-dot" aria-hidden="true" />
+                  <span className="nav-icon" aria-hidden="true">
+                    {iconName ? <Icon name={iconName} size={18} /> : null}
+                  </span>
                   {item.label}
                 </button>
               )

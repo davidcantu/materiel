@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { buildShareMailto, MATERIEL_DOWNLOAD_URL } from '../../../shared/config'
 import { isValidEmailIdentity } from '../../../shared/profile'
+import { BrandLogo } from '../components/BrandLogo'
+import { Icon } from '../components/icons/Icon'
 
 type WelcomePageProps = {
   onComplete: () => void
@@ -71,8 +73,8 @@ export function WelcomePage({ onComplete }: WelcomePageProps): React.JSX.Element
   return (
     <div className="welcome-gate">
       <div className="welcome-panel">
-        <div className="welcome-brand">
-          <div className="brand-mark welcome-mark" aria-hidden="true" />
+        <div className="welcome-brand welcome-brand-with-logo">
+          <BrandLogo className="brand-logo-welcome" alt="" />
           <h1 className="welcome-title">Materiel</h1>
           <p className="welcome-tagline">Firearms tracker — gear, tracked locally</p>
         </div>
@@ -131,7 +133,13 @@ export function WelcomePage({ onComplete }: WelcomePageProps): React.JSX.Element
               <button type="submit" className="btn-primary" disabled={busy}>
                 Continue
               </button>
-              <button type="button" className="btn-ghost" disabled={busy} onClick={handleShare}>
+              <button
+                type="button"
+                className="btn-ghost btn-with-icon"
+                disabled={busy}
+                onClick={handleShare}
+              >
+                <Icon name="share" size={16} />
                 Share via email
               </button>
             </div>
@@ -164,10 +172,17 @@ export function WelcomePage({ onComplete }: WelcomePageProps): React.JSX.Element
               status.
             </p>
             <div className="welcome-actions">
-              <button type="submit" className="btn-primary" disabled={busy}>
+              <button type="submit" className="btn-primary btn-with-icon" disabled={busy}>
+                <Icon name="licenseLocked" size={16} />
                 Activate &amp; continue
               </button>
-              <button type="button" className="btn-ghost" disabled={busy} onClick={handleShare}>
+              <button
+                type="button"
+                className="btn-ghost btn-with-icon"
+                disabled={busy}
+                onClick={handleShare}
+              >
+                <Icon name="share" size={16} />
                 Share via email
               </button>
             </div>

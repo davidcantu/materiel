@@ -6,6 +6,7 @@ import {
   resizeImageFile,
   type CropTransform
 } from '../lib/resize-image'
+import { Icon } from './icons/Icon'
 
 export type ImageCropValue = {
   /** Final compressed JPEG data URI (or null if cleared). */
@@ -170,7 +171,8 @@ export function ImageCropField({
               Remove
             </button>
           ) : null}
-          <label className="btn-link" htmlFor={inputId}>
+          <label className="btn-link btn-with-icon" htmlFor={inputId}>
+            <Icon name="upload" size={14} />
             {previewSrc ? 'Replace photo' : 'Upload photo'}
           </label>
           <input
