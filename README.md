@@ -8,9 +8,24 @@ Local-first Electron desktop **firearms tracker**: component inventory, complete
 
 ## Download
 
-Pre-built installers for **macOS** (`.dmg` for Apple Silicon and Intel), **Windows** (NSIS `.exe`), and **Linux** (AppImage) are on the [Releases](https://github.com/davidcantu/materiel/releases) page.
+Pre-built installers for **macOS** (`.dmg` / `.zip` for Apple Silicon and Intel), **Windows** (NSIS `.exe`), and **Linux** (AppImage) are on the [Releases](https://github.com/davidcantu/materiel/releases) page.
 
-macOS builds are currently **unsigned** (Gatekeeper may warn — right-click → Open the first time). First launch: enter email (that is the username).
+### macOS install (Apple Silicon / Intel)
+
+Builds are **ad-hoc signed** (no Apple Developer ID / notarization). Gatekeeper will warn once; that is expected.
+
+1. Download `Materiel-*-arm64.dmg` (Apple Silicon) or `Materiel-*-x64.dmg` (Intel). A matching `.zip` is also published if you prefer not to use a disk image.
+2. Open the DMG (or unzip) and drag **Materiel** to Applications.
+3. First open:
+   - **macOS 15 Sequoia+:** double-click → if blocked, open **System Settings → Privacy & Security → Open Anyway**, then confirm.
+   - **macOS 14 and earlier:** right-click (or Control-click) the app → **Open** → **Open**.
+4. If macOS still says the app is **damaged** (stale quarantine from an older download), clear quarantine once in Terminal, then open again:
+
+```bash
+xattr -cr /Applications/Materiel.app
+```
+
+First launch: enter email (that is the username).
 
 ## Prerequisites
 

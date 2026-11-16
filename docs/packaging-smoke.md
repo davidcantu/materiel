@@ -57,5 +57,5 @@ npm run smoke:linux
 | --- | --- | --- |
 | Linux AppImage | Yes | Yes |
 | Linux unpacked (`--dir`) | Via CLI | Yes |
-| macOS DMG (universal) | Yes | No |
+| macOS DMG/ZIP (per-arch, ad-hoc signed) | Yes | No |
 | Windows NSIS | Yes | No |
