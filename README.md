@@ -17,6 +17,17 @@ Local-first Electron desktop **firearms tracker**: component inventory, complete
 npm install
 ```
 
+## Mac install
+
+```bash
+git clone https://github.com/davidcantu/materiel.git
+cd materiel
+npm install
+npm run build:mac
+```
+
+Open the `.dmg` under `dist/` and install. First launch: enter email (that is the username).
+
 ## Development
 
 ```bash
@@ -62,15 +73,17 @@ Hourly (configurable) + on quit. Uploads the encrypted DB file.
 
 Set `MAIN_VITE_GOOGLE_CLIENT_ID` / `MAIN_VITE_ONEDRIVE_CLIENT_ID` in the matching env file or CI secrets (never commit secrets). IPC: `getBackupSettings`, `setBackupSettings`, `runBackupNow`, `listBackupLogs`, `getBackupStatus`, `authenticateBackup`.
 
-## License
+## Issuing a license
 
-Free tier: **2** complete firearms. Paid: HMAC `MAT-1-…` key bound to an email (issued manually after Venmo). Email is the username for license pairing. Activation is offline; key stored via `safeStorage`. See [docs/license.md](./docs/license.md).
+From the repo on a machine with the project:
 
 ```bash
-LICENSE_SIGNING_SECRET='…' npm run license:issue -- --email customer@example.com
+npm run license:issue -- --email you@example.com
 ```
 
-Dev unlock: `MAIN_VITE_LICENSE_MODE=unlocked` (already set in `.env.development`).
+Paste the `MAT-1.…` key in the app (Settings / License). Same email as in the app. Note free tier = 2 complete firearms without a key.
+
+Requires `LICENSE_SIGNING_SECRET` in the environment (see [docs/license.md](./docs/license.md)). Dev unlock: `MAIN_VITE_LICENSE_MODE=unlocked` (already set in `.env.development`).
 
 ## Project layout
 
