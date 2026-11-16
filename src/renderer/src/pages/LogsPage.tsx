@@ -11,6 +11,7 @@ import type {
 import type { CompleteSystemInfo } from '../../../shared/systems'
 import { systemHasDueMaintenance } from '../../../shared/system-maintenance'
 import { EmptyState } from '../components/EmptyState'
+import { Icon } from '../components/icons/Icon'
 import { LogSessionModal } from '../components/LogSessionModal'
 import { MaintenanceDueModal } from '../components/MaintenanceDueModal'
 import { PageFeedback } from '../components/PageFeedback'
@@ -212,8 +213,9 @@ export function LogsPage({ onNavigateBuilds }: LogsPageProps = {}): React.JSX.El
         title="Shooting Logs"
         description="Record practice and match sessions; rounds update builds and ammo."
         actions={
-          <button type="button" className="btn-primary" onClick={openCreate}>
-            + Log Session
+          <button type="button" className="btn-primary btn-with-icon" onClick={openCreate}>
+            <Icon name="add" size={16} />
+            Log Session
           </button>
         }
       />
@@ -280,6 +282,7 @@ export function LogsPage({ onNavigateBuilds }: LogsPageProps = {}): React.JSX.El
 
       {!loading && systems.length === 0 ? (
         <EmptyState
+          icon="builds"
           title="No complete firearms yet"
           description="Add a complete build before you can log practice or match sessions."
           actionLabel="Add your first complete build"
@@ -289,6 +292,7 @@ export function LogsPage({ onNavigateBuilds }: LogsPageProps = {}): React.JSX.El
 
       {!loading && systems.length > 0 && logs.length === 0 ? (
         <EmptyState
+          icon="logs"
           title="No shooting logs yet"
           description="Log your first practice or match session to start tracking rounds."
           actionLabel="Log first session"
@@ -298,6 +302,8 @@ export function LogsPage({ onNavigateBuilds }: LogsPageProps = {}): React.JSX.El
 
       {!loading && logs.length > 0 && filtered.length === 0 ? (
         <EmptyState
+          icon="filter"
+          actionIcon="filter"
           title="No shooting logs found for this period"
           description="Clear filters to see every logged session."
           actionLabel="Clear filters"

@@ -4,6 +4,7 @@ import type { CompleteSystemInfo } from '../../../shared/systems'
 import type { LicenseGateDenial, LicenseStatusInfo } from '../../../shared/license'
 import { PLATFORM_CORE_LABELS, PLATFORM_LABELS } from '../../../shared/platforms'
 import { EmptyState } from '../components/EmptyState'
+import { Icon } from '../components/icons/Icon'
 import { MaintenanceDueModal } from '../components/MaintenanceDueModal'
 import { PageFeedback } from '../components/PageFeedback'
 import { PageHeader } from '../components/PageHeader'
@@ -160,15 +161,19 @@ export function BuildsPage({
         title="Complete Builds"
         description="Assemble bolt-action, AR-pattern, or pistol systems from compatible inventory."
         actions={
-          <button type="button" className="btn-primary" onClick={openCreate}>
-            + New Build
+          <button type="button" className="btn-primary btn-with-icon" onClick={openCreate}>
+            <Icon name="add" size={16} />
+            New Build
           </button>
         }
       />
 
       {licenseBanner ? (
         <div className="banner banner-warn" role="alert">
-          <strong>Firearm limit reached</strong>
+          <strong className="status-inline is-locked">
+            <Icon name="licenseLocked" size={16} />
+            Firearm limit reached
+          </strong>
           <p>{licenseBanner.message}</p>
           <p className="muted">
             Using {licenseBanner.license.completeRifleCount} of{' '}
@@ -187,6 +192,7 @@ export function BuildsPage({
 
       {!loading && systems.length === 0 ? (
         <EmptyState
+          icon="builds"
           title="No complete firearms yet"
           description="Assemble a custom build from inventory parts, or add a factory firearm."
           actionLabel="Add your first complete build"

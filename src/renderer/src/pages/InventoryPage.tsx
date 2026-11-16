@@ -8,6 +8,7 @@ import {
   type Platform
 } from '../../../shared/platforms'
 import { EmptyState } from '../components/EmptyState'
+import { Icon } from '../components/icons/Icon'
 import { PageFeedback } from '../components/PageFeedback'
 import { PageHeader } from '../components/PageHeader'
 import { PartFormModal } from '../components/PartFormModal'
@@ -173,8 +174,9 @@ export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Ele
         title="Parts Inventory"
         description="Track components by platform, category, status, and maintenance."
         actions={
-          <button type="button" className="btn-primary" onClick={openCreate}>
-            + Add Part
+          <button type="button" className="btn-primary btn-with-icon" onClick={openCreate}>
+            <Icon name="add" size={16} />
+            Add Part
           </button>
         }
       />
@@ -234,6 +236,7 @@ export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Ele
 
       {!loading && parts.length === 0 ? (
         <EmptyState
+          icon="inventory"
           title="Your armory is empty"
           description="Add bolt-action, AR, or pistol parts to get started."
           actionLabel="Add your first part"
@@ -243,6 +246,8 @@ export function InventoryPage({ trackValue }: InventoryPageProps): React.JSX.Ele
 
       {!loading && parts.length > 0 && filtered.length === 0 ? (
         <EmptyState
+          icon="filter"
+          actionIcon="filter"
           title="No parts match the current filters"
           description="Clear search, platform, and status filters to see your full inventory."
           actionLabel="Clear filters"

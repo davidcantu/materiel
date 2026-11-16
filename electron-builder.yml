@@ -45,6 +45,7 @@ linux:
     - AppImage
   category: Utility
   maintainer: David Cantu
+  icon: icons
   # Keep .desktop StartupWMClass aligned with Chromium's app_id / WM_CLASS.
   syncDesktopName: true
 appImage:

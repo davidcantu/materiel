@@ -1,6 +1,7 @@
 import type { PartInfo } from '../../../shared/parts'
 import type { CompleteSystemInfo } from '../../../shared/systems'
 import { listSystemMaintenance } from '../../../shared/system-maintenance'
+import { Icon } from './icons/Icon'
 import { Modal } from './Modal'
 
 type MaintenanceDueModalProps = {
@@ -55,7 +56,12 @@ export function MaintenanceDueModal({
                 <div className="alert-row-top">
                   <div>
                     <div className="cell-title">{item.title}</div>
-                    <div className="muted">
+                    <div className="muted status-inline">
+                      {item.percent >= 61 ? (
+                        <Icon name="maintenanceDue" size={14} title="Maintenance due" />
+                      ) : (
+                        <Icon name="maintenance" size={14} />
+                      )}
                       {item.kind} · {item.roundsAfterCleaning}/{item.interval} rounds
                       {item.percent >= 61 ? ' · due' : ''}
                     </div>

@@ -1,4 +1,5 @@
 import { useId, useState } from 'react'
+import { Icon } from './icons/Icon'
 import { Modal } from './Modal'
 
 type PreferenceInfoButtonProps = {
@@ -6,7 +7,7 @@ type PreferenceInfoButtonProps = {
   children: React.ReactNode
 }
 
-/** Small “i” control that opens a short explanation popup for a preference. */
+/** Small info control that opens a short explanation popup for a preference. */
 export function PreferenceInfoButton({
   title,
   children
@@ -25,7 +26,7 @@ export function PreferenceInfoButton({
         aria-controls={open ? labelId : undefined}
         onClick={() => setOpen(true)}
       >
-        i
+        <Icon name="info" size={14} />
       </button>
       {open ? (
         <Modal title={title} onClose={() => setOpen(false)}>

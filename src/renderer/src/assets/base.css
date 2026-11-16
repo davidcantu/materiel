@@ -1,13 +1,13 @@
 /*
   Locked Magpul OD brand + light/dark surfaces.
-  Source of truth: docs/materiel-grok-brand-prompt.md / preferences.md
+  Source of truth: preferences.md / materiel brand kit
 
-  Typography:
-  - UI: clear system sans (--font-ui)
-  - Wordmark “Materiel” only: military/stencil stack (--font-display)
-    Intended face when bundled: Stardos Stencil (or similar industrial stencil).
-    Until then: Black Ops One → Arial Black → Impact → condensed sans fallbacks.
+  Typography (locked F2):
+  - UI: Source Sans 3 (--font-ui), bundled under assets/fonts/
+  - Wordmark “Materiel” only: Black Ops One (--font-display)
 */
+
+@import './fonts.css';
 
 :root {
   /* —— Locked brand (mode-invariant) —— */
@@ -33,6 +33,9 @@
   --brand-deep: var(--text);
   /* Wordmark “Materiel” — OD-deep on light; sand on dark for contrast */
   --brand-wordmark: var(--brand-od-deep);
+  /* UI icons: OD on light; sand on dark (OD-muted as secondary accent) */
+  --icon: var(--brand-od);
+  --icon-muted: var(--brand-od-muted);
   --page-canvas: var(--bg);
   --surface: var(--bg-elevated);
   --surface-raised: var(--bg);
@@ -52,20 +55,17 @@
   --focus-offset: 2px;
 
   --font-ui:
+    'Source Sans 3',
     system-ui,
     'Segoe UI',
     'Helvetica Neue',
     'Noto Sans',
     Arial,
     sans-serif;
-  /* Intended: Stardos Stencil (bundle later). Web-safe stencil-ish stack for now. */
   --font-display:
     'Black Ops One',
     'Arial Black',
-    'Arial Narrow',
     Impact,
-    'Haettenschweiler',
-    'Franklin Gothic Heavy',
     sans-serif;
 
   color-scheme: light;
@@ -81,6 +81,8 @@ html[data-theme='dark'] {
   --brand-dark: #c8c4b0;
   --brand-deep: var(--text);
   --brand-wordmark: var(--brand-sand);
+  --icon: var(--brand-sand);
+  --icon-muted: var(--brand-od-muted);
   --page-canvas: var(--bg);
   --surface: var(--bg-elevated);
   --surface-raised: color-mix(in srgb, var(--bg-elevated) 85%, var(--brand-od) 15%);
@@ -102,6 +104,8 @@ html[data-theme='dark'] {
     --brand-dark: #c8c4b0;
     --brand-deep: var(--text);
     --brand-wordmark: var(--brand-sand);
+    --icon: var(--brand-sand);
+    --icon-muted: var(--brand-od-muted);
     --page-canvas: var(--bg);
     --surface: var(--bg-elevated);
     --surface-raised: color-mix(in srgb, var(--bg-elevated) 85%, var(--brand-od) 15%);
