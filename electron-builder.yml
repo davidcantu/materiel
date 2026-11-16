@@ -28,10 +28,13 @@ nsis:
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
 mac:
+  # Separate arch DMGs (not universal): better-sqlite3-multiple-ciphers ships
+  # identical prebuild paths that break @electron/universal merge.
   target:
     - target: dmg
       arch:
-        - universal
+        - arm64
+        - x64
   entitlementsInherit: build/entitlements.mac.plist
   extendInfo:
     - NSDocumentsFolderUsageDescription: Materiel stores local inventory data and encrypted backups.
@@ -39,7 +42,7 @@ mac:
   category: public.app-category.utilities
   notarize: false
 dmg:
-  artifactName: Materiel-${version}.${ext}
+  artifactName: Materiel-${version}-${arch}.${ext}
 linux:
   target:
     - AppImage

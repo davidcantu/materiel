@@ -8,7 +8,7 @@ Local-first Electron desktop **firearms tracker**: component inventory, complete
 
 ## Download
 
-Pre-built installers for **macOS** (`.dmg`), **Windows** (NSIS `.exe`), and **Linux** (AppImage) are on the [Releases](https://github.com/davidcantu/materiel/releases) page.
+Pre-built installers for **macOS** (`.dmg` for Apple Silicon and Intel), **Windows** (NSIS `.exe`), and **Linux** (AppImage) are on the [Releases](https://github.com/davidcantu/materiel/releases) page.
 
 macOS builds are currently **unsigned** (Gatekeeper may warn — right-click → Open the first time). First launch: enter email (that is the username).
 
