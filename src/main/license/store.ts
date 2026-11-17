@@ -5,6 +5,7 @@
 
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'fs'
 import { dirname, join } from 'path'
+import { isProductionAppEnv } from '../env'
 
 export type StoredLicense = {
   email: string
@@ -67,6 +68,11 @@ export function getLicenseFilePath(options: LicenseStoreOptions = {}): string {
 function encodePayload(json: string, safeStorage: SafeStorageLike | null): Buffer {
   if (safeStorage?.isEncryptionAvailable()) {
     return safeStorage.encryptString(json)
+  }
+  if (isProductionAppEnv()) {
+    throw new Error(
+      'Cannot store license: OS secure storage (safeStorage) is unavailable in production.'
+    )
   }
   // Dev / headless fallback — file stays under userData, never committed.
   return Buffer.from(json, 'utf8')

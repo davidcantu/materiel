@@ -1,10 +1,12 @@
 /**
  * Persist OAuth refresh tokens via Electron safeStorage when available.
+ * Production refuses plaintext fallback (same posture as the DB key).
  */
 
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'fs'
 import { dirname, join } from 'path'
 import { app, safeStorage } from 'electron'
+import { isProductionAppEnv } from '../env'
 import type { BackupProviderId } from './types'
 
 export type StoredOAuthTokens = {
@@ -28,6 +30,11 @@ function tokenPath(providerId: BackupProviderId): string {
 function encodePayload(json: string): Buffer {
   if (safeStorage.isEncryptionAvailable()) {
     return safeStorage.encryptString(json)
+  }
+  if (isProductionAppEnv()) {
+    throw new Error(
+      'Cannot store OAuth tokens: OS secure storage (safeStorage) is unavailable in production.'
+    )
   }
   // Dev / headless fallback — still keep off git; file lives under userData.
   return Buffer.from(json, 'utf8')

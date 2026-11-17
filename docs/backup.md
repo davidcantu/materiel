@@ -26,7 +26,7 @@ When a real provider’s client ID is missing, `isConfigured()` is false and aut
 
 ## OAuth setup (test / prod)
 
-Desktop flow: **authorization code + PKCE** with a loopback redirect (`http://127.0.0.1:<ephemeral>/oauth2/callback`). Refresh tokens are stored under `{userData}/backup-oauth/` via Electron `safeStorage` when available.
+Desktop flow: **authorization code + PKCE** with a loopback redirect (`http://127.0.0.1:<ephemeral>/oauth2/callback`), including an OAuth `state` parameter. Public clients only — **do not** put OAuth client secrets in `MAIN_VITE_*` or the packaged app. Refresh tokens are stored under `{userData}/backup-oauth/` via Electron `safeStorage`. Production builds **fail closed** if `safeStorage` is unavailable (no plaintext token files).
 
 ### Google Drive
 
@@ -35,13 +35,11 @@ Desktop flow: **authorization code + PKCE** with a loopback redirect (`http://12
 3. Configure OAuth consent screen (External or Internal).
 4. Create OAuth client ID type **Desktop app**.
 5. Copy the client ID (and secret if the console still issues one for desktop).
-6. Set locally (never commit secrets):
+6. Set locally (client ID only — public desktop / PKCE):
 
 ```bash
 MAIN_VITE_BACKUP_PROVIDER=google-drive
 MAIN_VITE_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
-# Optional for older desktop clients:
-# MAIN_VITE_GOOGLE_CLIENT_SECRET=
 ```
 
 7. Scope used: `https://www.googleapis.com/auth/drive.file`  
@@ -60,9 +58,9 @@ MAIN_VITE_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 ```bash
 MAIN_VITE_BACKUP_PROVIDER=onedrive
 MAIN_VITE_ONEDRIVE_CLIENT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-# Optional if you use a confidential client (not typical for public desktop):
-# MAIN_VITE_ONEDRIVE_CLIENT_SECRET=
 ```
+
+Use a **public** desktop/mobile client registration. Materiel does not send client secrets.
 
 Files land under OneDrive folder **Materiel Backups**.
 
@@ -74,7 +72,7 @@ Files land under OneDrive folder **Materiel Backups**.
 | `npm run build:test` | test OAuth apps / client IDs in CI secrets or local `.env.test` |
 | `npm run build:prod` | production OAuth clients; `.env.production` sets `google-drive` by default |
 
-Put client IDs in the env file for that mode or inject via CI. **Do not commit client secrets.**
+Put client IDs in the env file for that mode or inject via CI. **Do not commit or package client secrets** (not used by the app).
 
 ## IPC (preload `window.api`)
 

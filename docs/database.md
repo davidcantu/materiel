@@ -14,7 +14,7 @@ Precedence when opening the DB:
 2. **`passphrase` option** — user-chosen unlock string; hashed with SHA-256 to 32 bytes.
 3. **Env** — `MATERIEL_DB_KEY` or `MAIN_VITE_DB_KEY` (hex 64-char or any string → SHA-256).
 4. **Electron `safeStorage` (default for the app)** — on first launch a random 32-byte key is generated, encrypted with the OS keychain/DPAPI via `safeStorage.encryptString`, and written beside the DB as `materiel.db.key`. Later opens decrypt that blob automatically when the OS user session allows it.
-5. **Dev-file fallback** — if `safeStorage` is unavailable (common on Linux without a keyring) and `MAIN_VITE_APP_ENV=development` (or `MAIN_VITE_ALLOW_DEV_DB_KEY=true`), a plaintext `materiel.db.key.dev` hex file is used. Not for production.
+5. **Dev-file fallback** — if `safeStorage` is unavailable (common on Linux without a keyring) and the app is **not** production (`MAIN_VITE_APP_ENV≠production`) and `MAIN_VITE_APP_ENV=development` / `NODE_ENV=development` / `MAIN_VITE_ALLOW_DEV_DB_KEY=true`, a plaintext `materiel.db.key.dev` hex file (mode `0600`) is used. **Production always refuses** this path, even if `ALLOW_DEV_DB_KEY` is set. Encrypted `materiel.db.key` blobs are also written with mode `0600`.
 
 Local-first default is **safeStorage auto-unlock** (no extra password on every launch). A user passphrase unlock UI can call `openDatabase({ passphrase })` later without changing the schema.
 

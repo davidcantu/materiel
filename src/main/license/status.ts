@@ -15,7 +15,7 @@ import type { Platform } from '../../shared/platforms'
 import { resolveLicenseMode } from './mode'
 import { loadStoredLicense, type LicenseStoreOptions } from './store'
 import { ensureLicenseState, readLicenseState } from './state'
-import { verifyLicenseKey, resolveSigningSecret } from './crypto'
+import { verifyLicenseKey, type LicenseKeyInput } from './crypto'
 
 export type GetLicenseStatusOptions = LicenseStoreOptions & {
   /** Override per-platform counts (tests). */
@@ -27,6 +27,8 @@ export type GetLicenseStatusOptions = LicenseStoreOptions & {
   completeRifleCount?: number
   /** Skip DB (tests that only exercise store + mode). */
   skipDb?: boolean
+  /** Test-only: override embedded verify public key. */
+  publicKey?: LicenseKeyInput | null
 }
 
 export function getLicenseStatus(options: GetLicenseStatusOptions = {}): LicenseStatusInfo {
@@ -39,9 +41,8 @@ export function getLicenseStatus(options: GetLicenseStatusOptions = {}): License
   let tier: LicenseStatusInfo['tier'] = 'free'
 
   if (stored) {
-    const secret = resolveSigningSecret()
     const verified = verifyLicenseKey(stored.key, {
-      secret,
+      publicKey: options.publicKey,
       claimedEmail: stored.email
     })
     if (verified.ok) {
@@ -50,7 +51,7 @@ export function getLicenseStatus(options: GetLicenseStatusOptions = {}): License
       activatedEmail = verified.email
       activatedUsername = stored.username?.trim() || null
     } else {
-      // Corrupt / wrong-secret key on disk — treat as free.
+      // Corrupt / wrong-key signature on disk — treat as free.
       keyPresent = false
       activatedEmail = null
       activatedUsername = null

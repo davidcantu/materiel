@@ -3,7 +3,7 @@
  *
  * Free tier: up to FREE_PER_PLATFORM_LIMIT complete firearms per platform
  * (bolt / pistol / AR). Paid when exceeding 2 of any one platform.
- * Paid: MAT-1-… HMAC key bound to an email, stored via safeStorage.
+ * Paid: MAT-1-… Ed25519 key bound to an email, stored via safeStorage.
  * Dev: MAIN_VITE_LICENSE_MODE=unlocked always allows creates.
  */
 
@@ -13,9 +13,13 @@ export {
   verifyLicenseKey,
   validateLicenseKeyFormat,
   normalizeEmail,
-  resolveSigningSecret,
+  resolveSigningPrivateKey,
   licenseKeyFingerprint,
-  parseLicenseKey
+  parseLicenseKey,
+  parsePrivateKey,
+  parsePublicKey,
+  getMaterielLicensePublicKey,
+  MATERIEL_LICENSE_PUBLIC_KEY_SPKI_B64
 } from './crypto'
 export { resolveLicenseMode, isLicenseUnlocked } from './mode'
 export { getLicenseStatus, buildRifleLimitDenial } from './status'

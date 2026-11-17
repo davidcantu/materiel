@@ -1,12 +1,20 @@
 import type { LicenseActivateResult } from '../../shared/license'
 import { updateProfile } from '../db/profile'
 import { requireDatabase } from '../db/connection'
-import { isValidEmailShape, normalizeEmail, resolveSigningSecret, verifyLicenseKey } from './crypto'
+import {
+  isValidEmailShape,
+  normalizeEmail,
+  verifyLicenseKey,
+  type LicenseKeyInput
+} from './crypto'
 import { markLicenseActivated, markLicenseCleared } from './state'
 import { clearStoredLicense, saveStoredLicense, type LicenseStoreOptions } from './store'
 import { getLicenseStatus } from './status'
 
-export type ActivateOptions = LicenseStoreOptions
+export type ActivateOptions = LicenseStoreOptions & {
+  /** Test-only: override embedded verify public key. */
+  publicKey?: LicenseKeyInput | null
+}
 
 export function activateLicense(
   input: { email: string; key: string; username?: string },
@@ -29,18 +37,10 @@ export function activateLicense(
   // when it differs; identity always follows the verified license email.
   void input.username
 
-  const secret = resolveSigningSecret()
-  if (!secret) {
-    return {
-      ok: false,
-      code: 'LICENSE_SECRET_MISSING',
-      message:
-        'License verification is not configured (missing LICENSE_SIGNING_SECRET / MAIN_VITE_LICENSE_SIGNING_SECRET).',
-      license: license()
-    }
-  }
-
-  const verified = verifyLicenseKey(key, { secret, claimedEmail: email })
+  const verified = verifyLicenseKey(key, {
+    publicKey: options.publicKey,
+    claimedEmail: email
+  })
   if (!verified.ok) {
     if (verified.reason === 'email') {
       return {
@@ -50,18 +50,10 @@ export function activateLicense(
         license: license()
       }
     }
-    if (verified.reason === 'format' || verified.reason === 'signature') {
-      return {
-        ok: false,
-        code: 'LICENSE_INVALID_KEY',
-        message: 'Invalid license key. Check the key and try again.',
-        license: license()
-      }
-    }
     return {
       ok: false,
-      code: 'LICENSE_SECRET_MISSING',
-      message: 'License verification is not configured.',
+      code: 'LICENSE_INVALID_KEY',
+      message: 'Invalid license key. Check the key and try again.',
       license: license()
     }
   }

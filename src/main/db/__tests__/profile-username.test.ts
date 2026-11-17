@@ -95,3 +95,20 @@ test('updateProfile stores profile image data URI', () => {
     db.close()
   }
 })
+
+test('updateProfile rejects non-JPEG profile image URLs', () => {
+  const db = openTestDatabase(tempDbPath())
+  try {
+    ensureLocalProfile(db)
+    assert.throws(
+      () => updateProfile(db, { profileImageUrl: 'https://evil.example/a.png' }),
+      /JPEG data URL/
+    )
+    assert.throws(
+      () => updateProfile(db, { profileImageUrl: 'data:image/png;base64,aaaa' }),
+      /JPEG data URL/
+    )
+  } finally {
+    db.close()
+  }
+})

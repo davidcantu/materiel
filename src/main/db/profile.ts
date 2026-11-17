@@ -53,8 +53,25 @@ export type ProfilePatch = {
 
 const LOCAL_PROFILE_ID = 'local-profile'
 
+/** Cap ~1.2MB of data-URI text (~900KB binary) — matches baked JPEG avatars. */
+const MAX_PROFILE_IMAGE_DATA_URI_CHARS = 1_200_000
+
 function nowIso(): string {
   return new Date().toISOString()
+}
+
+/** Accept null/empty clear, or a JPEG data URL only (renderer bakes JPEG). */
+export function assertValidProfileImageUrl(value: string | null | undefined): void {
+  if (value === undefined || value === null || value === '') return
+  if (typeof value !== 'string') {
+    throw new Error('Profile image must be a JPEG data URL')
+  }
+  if (value.length > MAX_PROFILE_IMAGE_DATA_URI_CHARS) {
+    throw new Error('Profile image is too large')
+  }
+  if (!/^data:image\/jpeg;base64,[A-Za-z0-9+/=\s]+$/.test(value)) {
+    throw new Error('Profile image must be a JPEG data URL')
+  }
 }
 
 function mapProfile(row: ProfileRow): Profile {
@@ -162,6 +179,10 @@ export function updateProfile(db: Database.Database, patch: ProfilePatch): Profi
 
   if (patch.trackedPlatforms !== undefined && nextPlatforms.length === 0) {
     throw new Error('Select at least one firearm type to track')
+  }
+
+  if (patch.profileImageUrl !== undefined) {
+    assertValidProfileImageUrl(patch.profileImageUrl)
   }
 
   db.prepare(

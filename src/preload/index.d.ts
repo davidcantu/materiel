@@ -1,4 +1,3 @@
-import { ElectronAPI } from '@electron-toolkit/preload'
 import type { AppInfo, DatabaseHealthInfo } from '../shared/app-info'
 import type {
   BackupLogInfo,
@@ -41,7 +40,6 @@ import type { UpdateCheckResult } from '../shared/updates'
 
 declare global {
   interface Window {
-    electron: ElectronAPI
     api: {
       getAppInfo: () => Promise<AppInfo>
       getDatabaseHealth: () => Promise<DatabaseHealthInfo>

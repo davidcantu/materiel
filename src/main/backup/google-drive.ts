@@ -33,11 +33,6 @@ function clientId(): string | undefined {
   return id || undefined
 }
 
-function clientSecret(): string | undefined {
-  const secret = process.env.MAIN_VITE_GOOGLE_CLIENT_SECRET?.trim()
-  return secret || undefined
-}
-
 function requireClientId(): string {
   const id = clientId()
   if (!id) {
@@ -79,7 +74,6 @@ async function getValidAccessToken(): Promise<string> {
   const refreshed = await refreshAccessToken({
     tokenUrl: TOKEN_URL,
     clientId: id,
-    clientSecret: clientSecret(),
     refreshToken: stored.refreshToken
   })
   const next = tokensFromResponse(refreshed, stored)
@@ -137,7 +131,6 @@ export const googleDriveBackupProvider: BackupProvider = {
       authorizeUrl: AUTHORIZE_URL,
       tokenUrl: TOKEN_URL,
       clientId: id,
-      clientSecret: clientSecret(),
       scopes: SCOPES,
       authorizeExtra: {
         access_type: 'offline',

@@ -96,15 +96,15 @@ Set `MAIN_VITE_GOOGLE_CLIENT_ID` / `MAIN_VITE_ONEDRIVE_CLIENT_ID` in the matchin
 
 ## Issuing a license
 
-From the repo on a machine with the project:
+Ed25519 offline keys: the app embeds only the **public** key; you sign with a private key that never ships in the binary.
 
 ```bash
+npm run license:keypair   # once — embed public SPKI in src/main/license/public-key.ts
+export LICENSE_SIGNING_PRIVATE_KEY="$(cat materiel-license.pem)"
 npm run license:issue -- --email you@example.com
 ```
 
-Paste the `MAT-1.…` key in the app (Settings / License). Same email as in the app. Note free tier = up to 2 firearms per platform (bolt / pistol / AR) without a key.
-
-Requires `LICENSE_SIGNING_SECRET` in the environment (see [docs/license.md](./docs/license.md)). Dev unlock: `MAIN_VITE_LICENSE_MODE=unlocked` (already set in `.env.development`).
+Paste the `MAT-1.…` key in the app (Settings / License). Same email as in the app. Free tier = up to 2 firearms per platform (bolt / pistol / AR) without a key. See [docs/license.md](./docs/license.md). Dev unlock: `MAIN_VITE_LICENSE_MODE=unlocked` (already set in `.env.development`).
 
 ## Project layout
 

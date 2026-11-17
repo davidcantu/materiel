@@ -1,10 +1,11 @@
 /**
  * Desktop OAuth 2.0 authorization-code + PKCE via loopback HTTP.
+ * Public clients only (no client_secret). Includes CSRF `state` and escaped HTML.
  */
 
-import { createHash, randomBytes } from 'crypto'
+import { createHash, randomBytes, timingSafeEqual } from 'crypto'
 import { createServer, type IncomingMessage, type ServerResponse } from 'http'
-import { shell } from 'electron'
+import { safeOpenExternal } from '../security/open-external'
 
 export type OAuthTokenResponse = {
   access_token: string
@@ -18,13 +19,14 @@ export type LoopbackAuthOptions = {
   authorizeUrl: string
   tokenUrl: string
   clientId: string
-  clientSecret?: string
   scopes: string[]
   /** Extra authorize query params (e.g. access_type=offline). */
   authorizeExtra?: Record<string, string>
   /** Extra token body fields. */
   tokenExtra?: Record<string, string>
   timeoutMs?: number
+  /** Injected for tests. */
+  openExternal?: (url: string) => Promise<void>
 }
 
 function base64Url(buf: Buffer): string {
@@ -41,9 +43,26 @@ function readRequestUrl(req: IncomingMessage): URL {
   return new URL(req.url ?? '/', 'http://127.0.0.1')
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 function sendHtml(res: ServerResponse, status: number, body: string): void {
   res.writeHead(status, { 'Content-Type': 'text/html; charset=utf-8' })
   res.end(body)
+}
+
+function statesEqual(expected: string, actual: string | null): boolean {
+  if (!actual) return false
+  const a = Buffer.from(expected)
+  const b = Buffer.from(actual)
+  if (a.length !== b.length) return false
+  return timingSafeEqual(a, b)
 }
 
 /**
@@ -53,7 +72,9 @@ export async function authorizeWithLoopback(
   options: LoopbackAuthOptions
 ): Promise<OAuthTokenResponse> {
   const { verifier, challenge } = createPkce()
+  const state = base64Url(randomBytes(24))
   const timeoutMs = options.timeoutMs ?? 5 * 60 * 1000
+  const openExternal = options.openExternal ?? ((url: string) => safeOpenExternal(url))
 
   return new Promise<OAuthTokenResponse>((resolve, reject) => {
     let settled = false
@@ -67,10 +88,20 @@ export async function authorizeWithLoopback(
           return
         }
 
+        if (!statesEqual(state, url.searchParams.get('state'))) {
+          sendHtml(res, 400, '<h1>Authorization failed</h1><p>Invalid OAuth state.</p>')
+          finish(new Error('OAuth state mismatch'))
+          return
+        }
+
         const error = url.searchParams.get('error')
         if (error) {
           const desc = url.searchParams.get('error_description') ?? error
-          sendHtml(res, 400, `<h1>Authorization failed</h1><p>${desc}</p>`)
+          sendHtml(
+            res,
+            400,
+            `<h1>Authorization failed</h1><p>${escapeHtml(desc)}</p>`
+          )
           finish(new Error(`OAuth error: ${desc}`))
           return
         }
@@ -94,7 +125,6 @@ export async function authorizeWithLoopback(
           redirect_uri: redirectUri,
           client_id: options.clientId,
           code_verifier: verifier,
-          ...(options.clientSecret ? { client_secret: options.clientSecret } : {}),
           ...options.tokenExtra
         })
 
@@ -147,6 +177,7 @@ export async function authorizeWithLoopback(
       authorize.searchParams.set('scope', options.scopes.join(' '))
       authorize.searchParams.set('code_challenge', challenge)
       authorize.searchParams.set('code_challenge_method', 'S256')
+      authorize.searchParams.set('state', state)
       for (const [k, v] of Object.entries(options.authorizeExtra ?? {})) {
         authorize.searchParams.set(k, v)
       }
@@ -155,7 +186,7 @@ export async function authorizeWithLoopback(
         finish(new Error('OAuth timed out — complete sign-in in the browser'))
       }, timeoutMs)
 
-      void shell.openExternal(authorize.toString()).catch((err) => {
+      void openExternal(authorize.toString()).catch((err) => {
         finish(err instanceof Error ? err : new Error(String(err)))
       })
     })
@@ -167,14 +198,12 @@ export async function authorizeWithLoopback(
 export async function refreshAccessToken(options: {
   tokenUrl: string
   clientId: string
-  clientSecret?: string
   refreshToken: string
 }): Promise<OAuthTokenResponse> {
   const body = new URLSearchParams({
     grant_type: 'refresh_token',
     refresh_token: options.refreshToken,
-    client_id: options.clientId,
-    ...(options.clientSecret ? { client_secret: options.clientSecret } : {})
+    client_id: options.clientId
   })
 
   const res = await fetch(options.tokenUrl, {

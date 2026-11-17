@@ -195,7 +195,12 @@ export function SettingsPage({
     setMessage(null)
     setError(null)
     try {
-      await window.api.clearLicense()
+      const before = Boolean(license?.keyPresent)
+      const next = await window.api.clearLicense()
+      // Main shows a confirm dialog; cancel leaves keyPresent unchanged.
+      if (before && next.keyPresent) {
+        return
+      }
       setMessage('License cleared — free tier restored.')
       toast.success('License cleared.')
       onRefresh()
