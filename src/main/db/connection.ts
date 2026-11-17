@@ -6,10 +6,19 @@
 import { mkdirSync } from 'fs'
 import { dirname } from 'path'
 import Database from 'better-sqlite3-multiple-ciphers'
+import { DatabaseInitError } from './init-error'
 import { DB_CIPHER, keyFingerprint, resolveDatabaseKey, type ResolveKeyOptions } from './key'
-import { getAppliedMigrationVersion, migrate } from './migrate'
+import { getAppliedMigrationVersion, migrate, MIGRATIONS } from './migrate'
+import { backupDatabaseBeforeMigrate, type PreMigrateBackupResult } from './pre-migrate-backup'
 import { seedDemoIfEmpty } from './seed'
 import type { DatabaseHealth } from './types'
+
+/** True when an existing schema will be upgraded (skip empty first-launch DBs). */
+function shouldBackupBeforeMigrate(db: Database.Database): boolean {
+  const applied = getAppliedMigrationVersion(db)
+  const latest = MIGRATIONS[MIGRATIONS.length - 1]?.id ?? 0
+  return applied > 0 && applied < latest
+}
 
 export type DatabaseHandle = {
   path: string
@@ -18,6 +27,13 @@ export type DatabaseHandle = {
   keySource: string
   keyFingerprint: string
   db: Database.Database
+  /** Set when a pre-migrate backup was written for this open. */
+  preMigrateBackupDir: string | null
+}
+
+export type OpenDatabaseDeps = {
+  migrate?: typeof migrate
+  backupBeforeMigrate?: typeof backupDatabaseBeforeMigrate
 }
 
 export type OpenDatabaseOptions = {
@@ -28,6 +44,8 @@ export type OpenDatabaseOptions = {
   keyFilePath?: string
   seedDemo?: boolean
   allowEnvKey?: boolean
+  /** Test-only injectable deps (backup / migrate). */
+  deps?: OpenDatabaseDeps
 }
 
 let handle: DatabaseHandle | null = null
@@ -53,38 +71,79 @@ export function openDatabase(options: OpenDatabaseOptions): DatabaseHandle {
     return handle
   }
 
-  const resolved = resolveDatabaseKey({
-    dbPath: options.path,
-    key: options.key,
-    passphrase: options.passphrase,
-    safeStorage: options.safeStorage,
-    keyFilePath: options.keyFilePath,
-    allowEnvKey: options.allowEnvKey
-  })
+  const runMigrate = options.deps?.migrate ?? migrate
+  const runBackup = options.deps?.backupBeforeMigrate ?? backupDatabaseBeforeMigrate
 
-  const db = openEncryptedConnection(options.path, resolved.key)
-  const migrationVersion = migrate(db)
+  let backup: PreMigrateBackupResult | null = null
 
-  if (shouldSeedDemo(options)) {
-    const seeded = seedDemoIfEmpty(db)
-    if (seeded) {
-      console.info('[db] demo seed applied')
+  try {
+    const resolved = resolveDatabaseKey({
+      dbPath: options.path,
+      key: options.key,
+      passphrase: options.passphrase,
+      safeStorage: options.safeStorage,
+      keyFilePath: options.keyFilePath,
+      allowEnvKey: options.allowEnvKey
+    })
+
+    const db = openEncryptedConnection(options.path, resolved.key)
+    let migrationVersion: number
+    try {
+      // Snapshot before upgrading an existing schema — never deletes the live files.
+      if (shouldBackupBeforeMigrate(db)) {
+        backup = runBackup(options.path)
+        if (backup) {
+          console.info(
+            `[db] pre-migrate backup → ${backup.backupDir} (${backup.copiedFiles.join(', ')})`
+          )
+        }
+      }
+
+      migrationVersion = runMigrate(db)
+    } catch (error) {
+      try {
+        db.close()
+      } catch (closeError) {
+        console.warn('[db] close after migrate failure', closeError)
+      }
+      throw new DatabaseInitError('Materiel could not upgrade its local database.', {
+        dbPath: options.path,
+        backupDir: backup?.backupDir ?? null,
+        cause: error
+      })
     }
-  }
 
-  handle = {
-    path: options.path,
-    ready: true,
-    migrationVersion,
-    keySource: resolved.source,
-    keyFingerprint: keyFingerprint(resolved.key),
-    db
-  }
+    if (shouldSeedDemo(options)) {
+      const seeded = seedDemoIfEmpty(db)
+      if (seeded) {
+        console.info('[db] demo seed applied')
+      }
+    }
 
-  console.info(
-    `[db] ready path=${options.path} migrations=${migrationVersion} keySource=${resolved.source}`
-  )
-  return handle
+    handle = {
+      path: options.path,
+      ready: true,
+      migrationVersion,
+      keySource: resolved.source,
+      keyFingerprint: keyFingerprint(resolved.key),
+      db,
+      preMigrateBackupDir: backup?.backupDir ?? null
+    }
+
+    console.info(
+      `[db] ready path=${options.path} migrations=${migrationVersion} keySource=${resolved.source}`
+    )
+    return handle
+  } catch (error) {
+    if (error instanceof DatabaseInitError) {
+      throw error
+    }
+    throw new DatabaseInitError('Materiel could not open its local database.', {
+      dbPath: options.path,
+      backupDir: backup?.backupDir ?? null,
+      cause: error
+    })
+  }
 }
 
 export function getDatabase(): DatabaseHandle | null {

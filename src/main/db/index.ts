@@ -72,6 +72,19 @@ export { getMilestonesSummary } from './milestones'
 export { migrate, getAppliedMigrationVersion, MIGRATIONS } from './migrate'
 export { seedDemoIfEmpty } from './seed'
 export { resolveDatabaseKey, DB_CIPHER } from './key'
+export {
+  backupDatabaseBeforeMigrate,
+  formatBackupTimestamp,
+  resolvePreMigrateBackupDir
+} from './pre-migrate-backup'
+export type { PreMigrateBackupResult } from './pre-migrate-backup'
+export {
+  DatabaseInitError,
+  toDatabaseInitFailure,
+  buildDatabaseInitFailureDetail,
+  buildDatabaseInitFailureHtml
+} from './init-error'
+export type { DatabaseInitFailure } from './init-error'
 export { openTestDatabase, openEncryptedConnection } from './connection'
 export {
   ALLOWED_BACKUP_INTERVAL_HOURS,
