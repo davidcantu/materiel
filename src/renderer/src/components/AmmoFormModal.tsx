@@ -3,8 +3,10 @@ import type { AmmoInput, AmmoInventoryInfo, AmmoType } from '../../../shared/amm
 import { AMMO_TYPES } from '../../../shared/ammo'
 import { todayIsoDate } from '../../../shared/ammo-from-load'
 import {
+  BRASS_MANUFACTURERS,
   BULLET_MANUFACTURERS,
   CARTRIDGE_OPTIONS,
+  FACTORY_AMMO_MANUFACTURERS,
   POWDER_MANUFACTURERS,
   PRIMER_MANUFACTURERS,
   productsForBulletManufacturer,
@@ -351,7 +353,7 @@ export function AmmoFormModal({
               onChange={(e) => setField('manufacturer', e.target.value)}
             />
             <datalist id="ammo-factory-mfr">
-              {BULLET_MANUFACTURERS.map((item) => (
+              {FACTORY_AMMO_MANUFACTURERS.map((item) => (
                 <option key={item} value={item} />
               ))}
             </datalist>
@@ -483,9 +485,15 @@ export function AmmoFormModal({
             <label className="field">
               <span className="field-label">Brass Manufacturer</span>
               <input
+                list="ammo-brass-mfr"
                 value={form.caseManufacturer}
                 onChange={(e) => setField('caseManufacturer', e.target.value)}
               />
+              <datalist id="ammo-brass-mfr">
+                {BRASS_MANUFACTURERS.map((item) => (
+                  <option key={item} value={item} />
+                ))}
+              </datalist>
             </label>
             <label className="field">
               <span className="field-label">Seating Depth / CBTO</span>

@@ -6,7 +6,7 @@ import type {
   CustomSystemInputInfo,
   FactorySystemInputInfo
 } from '../../../shared/systems'
-import { CARTRIDGE_OPTIONS } from '../../../shared/catalogs'
+import { CARTRIDGE_OPTIONS, factoryManufacturersForPlatform } from '../../../shared/catalogs'
 import {
   ACCESSORY_SLOT_LABELS,
   ACCESSORY_SLOT_TYPE,
@@ -590,18 +590,10 @@ export function SystemFormModal({
                 />
                 <datalist id="factory-mfr-suggestions">
                   {[
-                    ...new Set(
-                      parts
-                        .map((part) => part.manufacturer)
-                        .filter(Boolean)
-                        .concat(
-                          form.platform === 'pistol'
-                            ? ['Glock', 'Sig Sauer', 'Smith & Wesson', 'CZ']
-                            : form.platform === 'ar_pattern'
-                              ? ['Daniel Defense', 'BCM', 'Sons of Liberty', 'Aero Precision']
-                              : ['Bergara', 'Tikka', 'Remington', 'Howa', 'Savage']
-                        )
-                    )
+                    ...new Set([
+                      ...factoryManufacturersForPlatform(form.platform),
+                      ...parts.map((part) => part.manufacturer).filter(Boolean)
+                    ])
                   ].map((item) => (
                     <option key={item} value={item} />
                   ))}
