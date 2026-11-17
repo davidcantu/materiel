@@ -8,24 +8,52 @@ Local-first Electron desktop **firearms tracker**: component inventory, complete
 
 ## Download
 
-Pre-built installers for **macOS** (`.dmg` / `.zip` for Apple Silicon and Intel), **Windows** (NSIS `.exe`), and **Linux** (AppImage) are on the [Releases](https://github.com/davidcantu/materiel/releases) page.
+Get the latest build from **[GitHub Releases](https://github.com/davidcantu/materiel/releases/latest)**.
 
-### macOS install (Apple Silicon / Intel)
+| OS | Download | Notes |
+| --- | --- | --- |
+| **macOS Apple Silicon** (M1/M2/M3…) | `Materiel-*-arm64.dmg` | Prefer DMG; matching `-arm64-mac.zip` also published |
+| **macOS Intel** | `Materiel-*-x64.dmg` | Matching `-mac.zip` also published |
+| **Windows** (x64) | `Materiel-*-setup.exe` | NSIS installer |
+| **Linux** (x64) | `Materiel-*.AppImage` | Make executable, then run |
+
+First launch on every platform: enter **email** (that is the username).
+
+### macOS install
 
 Builds are **ad-hoc signed** (no Apple Developer ID / notarization). Gatekeeper will warn once; that is expected.
 
-1. Download `Materiel-*-arm64.dmg` (Apple Silicon) or `Materiel-*-x64.dmg` (Intel). A matching `.zip` is also published if you prefer not to use a disk image.
-2. Open the DMG (or unzip) and drag **Materiel** to Applications.
+1. Download the arm64 or x64 DMG from [Releases](https://github.com/davidcantu/materiel/releases/latest).
+2. Open the DMG and drag **Materiel** to Applications.
 3. First open:
-   - **macOS 15 Sequoia+:** double-click → if blocked, open **System Settings → Privacy & Security → Open Anyway**, then confirm.
-   - **macOS 14 and earlier:** right-click (or Control-click) the app → **Open** → **Open**.
-4. If macOS still says the app is **damaged** (stale quarantine from an older download), clear quarantine once in Terminal, then open again:
+   - **macOS 15 Sequoia+:** double-click → if blocked, **System Settings → Privacy & Security → Open Anyway**, then confirm.
+   - **macOS 14 and earlier:** right-click (Control-click) the app → **Open** → **Open**.
+4. If macOS still says the app is **damaged** (stale quarantine), clear it once, then open again:
 
 ```bash
 xattr -cr /Applications/Materiel.app
 ```
 
-First launch: enter email (that is the username).
+### Windows install
+
+Builds are **unsigned** (no Authenticode cert yet). SmartScreen may warn once; that is expected.
+
+1. Download `Materiel-*-setup.exe` from [Releases](https://github.com/davidcantu/materiel/releases/latest).
+2. Run the installer. If SmartScreen appears: **More info** → **Run anyway**.
+3. Finish the NSIS setup (desktop shortcut is created by default).
+4. Launch **Materiel** from the Start menu or desktop.
+
+### Linux install (AppImage)
+
+1. Download `Materiel-*.AppImage` from [Releases](https://github.com/davidcantu/materiel/releases/latest).
+2. Make it executable and run:
+
+```bash
+chmod +x Materiel-*.AppImage
+./Materiel-*.AppImage
+```
+
+If your desktop lacks FUSE, extract and run instead: `./Materiel-*.AppImage --appimage-extract-and-run`.
 
 ## Prerequisites
 
@@ -115,7 +143,7 @@ Env templates: `.env.development`, `.env.test`, `.env.production`, and `.env.exa
 
 - Settings UI for backup provider / interval
 - Restore-from-cloud UX
-- Inventory, Builds, Logs, Ammo, Dashboard modules
+- Optional Apple Developer ID / notarization and Windows Authenticode signing (fewer Gatekeeper / SmartScreen prompts)
 
 ## License
 
