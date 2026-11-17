@@ -197,3 +197,26 @@ export function coreSlotPartType(platform: Platform, slot: CoreSlot): PartType {
   if (slot === 'barrel') return slots.barrel
   return slots.furniture
 }
+
+/** Complete-system counts keyed by platform. */
+export type PlatformSystemCounts = Record<Platform, number>
+
+export function emptyPlatformCounts(): PlatformSystemCounts {
+  return { bolt_action: 0, ar_pattern: 0, pistol: 0 }
+}
+
+export function totalPlatformCounts(counts: PlatformSystemCounts): number {
+  return PLATFORMS.reduce((sum, platform) => sum + (counts[platform] ?? 0), 0)
+}
+
+export function normalizePlatformCounts(
+  raw?: Partial<PlatformSystemCounts> | null
+): PlatformSystemCounts {
+  const next = emptyPlatformCounts()
+  if (!raw) return next
+  for (const platform of PLATFORMS) {
+    const value = raw[platform]
+    next[platform] = typeof value === 'number' && value > 0 ? Math.floor(value) : 0
+  }
+  return next
+}

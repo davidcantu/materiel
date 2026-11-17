@@ -5,7 +5,7 @@ import {
   MATERIEL_DOWNLOAD_URL,
   SHARE_EMAIL_BODY,
   SHARE_EMAIL_SUBJECT
-} from '../../../shared/config'
+} from '../config'
 
 test('share mailto includes subject, body, and download URL', () => {
   const href = buildShareMailto()

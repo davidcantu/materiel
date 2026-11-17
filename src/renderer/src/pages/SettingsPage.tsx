@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { formatPlatformCountsSummary, type LicenseStatusInfo } from '../../../shared/license'
 import {
   MILESTONE_TIER_LABELS,
   type MilestoneStatus,
@@ -7,7 +6,7 @@ import {
   type MilestonesSummary
 } from '../../../shared/milestones'
 import { PLATFORMS, PLATFORM_LABELS, type Platform } from '../../../shared/platforms'
-import { hasLocalIdentity, type ProfileInfo, type ProfilePatch } from '../../../shared/profile'
+import { type ProfileInfo, type ProfilePatch } from '../../../shared/profile'
 import type { UpdateCheckResult } from '../../../shared/updates'
 import { BrandLogo } from '../components/BrandLogo'
 import { Icon } from '../components/icons/Icon'
@@ -18,7 +17,6 @@ import { useToast } from '../components/toast-context'
 import { setStoredThemePreference, THEME_OPTIONS, type ThemePreference } from '../lib/theme'
 
 type SettingsPageProps = {
-  license: LicenseStatusInfo | null
   profile: ProfileInfo | null
   onRefresh: () => void
   themePreference: ThemePreference
@@ -90,19 +88,12 @@ function draftFromProfile(profile: ProfileInfo): ProfileDraft {
 }
 
 export function SettingsPage({
-  license,
   profile,
   onRefresh,
   themePreference,
   onThemePreferenceChange
 }: SettingsPageProps): React.JSX.Element {
   const toast = useToast()
-  const [emailDraft, setEmailDraft] = useState<string | null>(null)
-  const email = emailDraft ?? profile?.email ?? ''
-  const [key, setKey] = useState('')
-  const [message, setMessage] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
   const [milestones, setMilestones] = useState<MilestonesSummary | null>(null)
   const [milestonesError, setMilestonesError] = useState<string | null>(null)
   const [editingProfile, setEditingProfile] = useState(false)
@@ -147,71 +138,6 @@ export function SettingsPage({
       cancelled = true
     }
   }, [])
-
-  const profileEmail = profile?.email?.trim().toLowerCase() || null
-  const licenseEmail = license?.activatedEmail?.trim().toLowerCase() || null
-  const emailMismatch =
-    Boolean(profileEmail && licenseEmail && profileEmail !== licenseEmail) ||
-    Boolean(
-      profileEmail &&
-      emailDraft !== null &&
-      emailDraft.trim() &&
-      profileEmail !== emailDraft.trim().toLowerCase() &&
-      key.trim()
-    )
-  const identityReady = hasLocalIdentity(profile)
-
-  async function handleActivate(event: React.FormEvent): Promise<void> {
-    event.preventDefault()
-    setBusy(true)
-    setMessage(null)
-    setError(null)
-    try {
-      const result = await window.api.activateLicense({
-        email: email.trim(),
-        key: key.trim()
-      })
-      if (!result.ok) {
-        setError(`${result.code}: ${result.message}`)
-        toast.error(result.message)
-      } else {
-        setMessage('License activated.')
-        toast.success('License activated.')
-        setKey('')
-        setEmailDraft(null)
-        onRefresh()
-      }
-    } catch (err) {
-      const text = err instanceof Error ? err.message : 'Activation failed'
-      setError(text)
-      toast.error(text)
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function handleClear(): Promise<void> {
-    setBusy(true)
-    setMessage(null)
-    setError(null)
-    try {
-      const before = Boolean(license?.keyPresent)
-      const next = await window.api.clearLicense()
-      // Main shows a confirm dialog; cancel leaves keyPresent unchanged.
-      if (before && next.keyPresent) {
-        return
-      }
-      setMessage('License cleared — free tier restored.')
-      toast.success('License cleared.')
-      onRefresh()
-    } catch (err) {
-      const text = err instanceof Error ? err.message : 'Clear failed'
-      setError(text)
-      toast.error(text)
-    } finally {
-      setBusy(false)
-    }
-  }
 
   async function toggleTrackValue(): Promise<void> {
     if (!profile) return
@@ -340,7 +266,7 @@ export function SettingsPage({
 
   return (
     <div className="page">
-      <PageHeader title="Settings" description="Profile, milestones, license, and preferences." />
+      <PageHeader title="Settings" description="Profile, milestones, and preferences." />
 
       <section className="settings-panel">
         <h2>About</h2>
@@ -467,8 +393,8 @@ export function SettingsPage({
                 />
               </label>
               <p className="muted field-span settings-note">
-                Email is your local identity and the username paired with your license. Changing it
-                here updates that pairing for future license activation.
+                Email is your local identity (no password). It is also your username for this
+                install.
               </p>
               {profileError ? <p className="form-error field-span">{profileError}</p> : null}
               <div className="row-actions field-span">
@@ -520,9 +446,8 @@ export function SettingsPage({
         )}
         {!editingProfile ? (
           <p className="muted settings-note">
-            Email is your local identity (no password) and the username paired with your license.
-            After reinstall, enter the same email with your email-bound license key to restore paid
-            access.
+            Email is your local identity (no password). Reinstall recovery for inventory is via
+            backup restore — not a license key.
           </p>
         ) : null}
       </section>
@@ -552,86 +477,6 @@ export function SettingsPage({
             ))}
           </div>
         ) : null}
-      </section>
-
-      <section className="settings-panel">
-        <h2>License</h2>
-        {license ? (
-          <dl className="meta-list">
-            <div>
-              <dt>Tier</dt>
-              <dd>
-                {license.tier}
-                {license.mode === 'unlocked' ? ' · unlocked' : ''}
-              </dd>
-            </div>
-            <div>
-              <dt>Free tier</dt>
-              <dd>Up to {license.freeRifleLimit} per platform (bolt, pistol, AR)</dd>
-            </div>
-            <div>
-              <dt>Firearms</dt>
-              <dd>
-                {formatPlatformCountsSummary(license.countsByPlatform, license.freeRifleLimit)}
-                {license.completeRifleCount > 0 ? ` · ${license.completeRifleCount} total` : ''}
-              </dd>
-            </div>
-            <div>
-              <dt>Key</dt>
-              <dd>{license.keyPresent ? (license.activatedEmail ?? 'Present') : 'None'}</dd>
-            </div>
-          </dl>
-        ) : (
-          <p className="muted">Loading license…</p>
-        )}
-
-        {profile && profileEmail && licenseEmail && profileEmail !== licenseEmail ? (
-          <p className="form-error" role="status">
-            Profile email ({profile.email}) differs from the activated license email (
-            {license?.activatedEmail}). Keys are email-bound — activate with the issued email;
-            successful activation updates the local profile email to match.
-          </p>
-        ) : null}
-
-        <form className="form-grid settings-form" onSubmit={(e) => void handleActivate(e)}>
-          <label className="field">
-            <span className="field-label">Email</span>
-            <input value={email} onChange={(e) => setEmailDraft(e.target.value)} required />
-          </label>
-          <label className="field">
-            <span className="field-label">License key</span>
-            <input
-              value={key}
-              onChange={(e) => setKey(e.target.value)}
-              placeholder="MAT-1.…"
-              required
-            />
-          </label>
-          {emailMismatch && key.trim() ? (
-            <p className="muted field-span">
-              Activating will bind this key’s email and update the local profile email if it
-              differs.
-            </p>
-          ) : null}
-          <div className="row-actions field-span">
-            <button type="submit" className="btn-primary" disabled={busy || !identityReady}>
-              Activate
-            </button>
-            <button
-              type="button"
-              className="btn-ghost"
-              disabled={busy || !license?.keyPresent}
-              onClick={() => void handleClear()}
-            >
-              Clear license
-            </button>
-          </div>
-        </form>
-        {!identityReady ? (
-          <p className="form-error">Set your email on first launch before activating a license.</p>
-        ) : null}
-        {message ? <p className="form-success">{message}</p> : null}
-        {error ? <p className="form-error">{error}</p> : null}
       </section>
 
       <section className="settings-panel">

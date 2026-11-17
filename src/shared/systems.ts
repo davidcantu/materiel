@@ -1,4 +1,3 @@
-import type { LicenseGateDenial, LicenseStatusInfo } from './license'
 import type { Platform } from './platforms'
 
 /** Mirrors main-process CompleteSystem for preload typing (subset is fine for IPC). */
@@ -62,9 +61,3 @@ export type FactorySystemInputInfo = {
   imageScale?: number | null
   notes?: string | null
 }
-
-export type GatedSystemCreateResult =
-  { ok: true; system: CompleteSystemInfo } | { ok: false; error: LicenseGateDenial }
-
-export type RestoreLicenseCheckResult =
-  { ok: true; license: LicenseStatusInfo } | { ok: false; error: LicenseGateDenial }

@@ -25,7 +25,6 @@ export type IconName =
   | 'warning'
   | 'success'
   | 'maintenanceDue'
-  | 'licenseLocked'
 
 type IconProps = {
   name: IconName
@@ -230,15 +229,6 @@ function paths(name: IconName): React.ReactNode {
           <path d="M7.5 12h2.2M7.5 14.8h3.5" />
           <circle cx="17.2" cy="16.8" r="3.6" />
           <path d="M17.2 15.2v1.8l1.2.8" />
-        </>
-      )
-    case 'licenseLocked':
-      return (
-        <>
-          <rect x="6" y="10.5" width="12" height="9" rx="2" />
-          <path d="M8.8 10.5V8.2a3.2 3.2 0 0 1 6.4 0v2.3" />
-          <rect x="10.2" y="13.2" width="3.6" height="3.6" rx="0.6" />
-          <path d="M12 13.8l.55.4L12 15.2l-.55-.4z" fill="currentColor" stroke="none" />
         </>
       )
     default:

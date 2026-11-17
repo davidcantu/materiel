@@ -7,12 +7,6 @@ import type {
   BackupStatusInfo
 } from '../shared/backup'
 import type {
-  LicenseActivateRequest,
-  LicenseActivateResult,
-  LicenseStatusInfo,
-  PlatformSystemCounts
-} from '../shared/license'
-import type {
   PartInfo,
   PartInput,
   PartsListFilter,
@@ -23,9 +17,7 @@ import type { ProfileInfo, ProfilePatch } from '../shared/profile'
 import type {
   CompleteSystemInfo,
   CustomSystemInputInfo,
-  FactorySystemInputInfo,
-  GatedSystemCreateResult,
-  RestoreLicenseCheckResult
+  FactorySystemInputInfo
 } from '../shared/systems'
 import type { AmmoInput, AmmoInventoryInfo, AmmoUpdateInput } from '../shared/ammo'
 import type { LoadDevelopmentInfo, LoadInput, LoadUpdateInput } from '../shared/loads'
@@ -50,9 +42,6 @@ declare global {
       getBackupStatus: () => Promise<BackupStatusInfo>
       authenticateBackup: () => Promise<BackupStatusInfo>
       disconnectBackup: () => Promise<BackupStatusInfo>
-      getLicenseStatus: () => Promise<LicenseStatusInfo>
-      activateLicense: (request: LicenseActivateRequest) => Promise<LicenseActivateResult>
-      clearLicense: () => Promise<LicenseStatusInfo>
       getProfile: () => Promise<ProfileInfo>
       updateProfile: (patch: ProfilePatch) => Promise<ProfileInfo>
       listParts: (filter?: PartsListFilter) => Promise<PartInfo[]>
@@ -69,8 +58,8 @@ declare global {
       countSystems: () => Promise<number>
       listSystems: () => Promise<CompleteSystemInfo[]>
       getSystem: (id: string) => Promise<CompleteSystemInfo | null>
-      createCustomSystem: (input: CustomSystemInputInfo) => Promise<GatedSystemCreateResult>
-      createFactorySystem: (input: FactorySystemInputInfo) => Promise<GatedSystemCreateResult>
+      createCustomSystem: (input: CustomSystemInputInfo) => Promise<CompleteSystemInfo>
+      createFactorySystem: (input: FactorySystemInputInfo) => Promise<CompleteSystemInfo>
       updateSystem: (
         id: string,
         patch: Partial<CustomSystemInputInfo & FactorySystemInputInfo> & {
@@ -78,9 +67,6 @@ declare global {
         }
       ) => Promise<CompleteSystemInfo>
       deleteSystem: (id: string) => Promise<{ ok: true }>
-      assertRestoreAllowed: (
-        payload: number | PlatformSystemCounts
-      ) => Promise<RestoreLicenseCheckResult>
       listLogs: () => Promise<ShootingLogInfo[]>
       getLog: (id: string) => Promise<ShootingLogInfo | null>
       addLog: (input: NewShootingLogInputInfo) => Promise<ShootingLogInfo>

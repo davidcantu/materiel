@@ -1,6 +1,6 @@
 /**
  * Single local profile row (settings: email identity, tracking prefs, platforms).
- * Email is the username for license pairing; `username` column mirrors email.
+ * Email is the username; `username` column mirrors email.
  */
 
 import type Database from 'better-sqlite3-multiple-ciphers'

@@ -13,7 +13,11 @@ import {
 } from './db'
 import { promptDatabaseInitFailure } from './db-init-failure'
 import { initBackupSubsystem } from './backup'
-import { initLicenseSubsystem } from './license'
+import { registerSystemsIpc } from './systems/ipc'
+import { registerPartsIpc } from './parts/ipc'
+import { registerLogsIpc } from './logs/ipc'
+import { registerAmmoIpc } from './ammo/ipc'
+import { registerDashboardIpc } from './dashboard/ipc'
 import { initUpdateChecker } from './updates'
 import { registerUpdatesIpc } from './updates/ipc'
 import { safeOpenExternal } from './security/open-external'
@@ -72,24 +76,20 @@ function createWindow(options: CreateWindowOptions = {}): BrowserWindow {
   return mainWindow
 }
 
+function registerDomainIpc(): void {
+  registerSystemsIpc()
+  registerPartsIpc()
+  registerLogsIpc()
+  registerAmmoIpc()
+  registerDashboardIpc()
+}
+
 function registerMinimalFailureIpc(failure: DatabaseInitFailure): void {
   ipcMain.handle('app:get-info', () => ({
     name: 'Materiel',
     version: app.getVersion(),
     env: process.env.MAIN_VITE_APP_ENV ?? import.meta.env.MODE,
-    backupProvider: 'unavailable',
-    license: {
-      tier: 'free' as const,
-      freeRifleLimit: 2,
-      completeRifleCount: 0,
-      countsByPlatform: { bolt_action: 0, ar_pattern: 0, pistol: 0 },
-      canCreateRifle: false,
-      keyPresent: false,
-      activatedEmail: null,
-      activatedUsername: null,
-      mode: 'enforced' as const,
-      blockReason: failure.message
-    }
+    backupProvider: 'unavailable'
   }))
 
   ipcMain.handle('db:health', () => ({
@@ -132,14 +132,13 @@ app
     }
 
     const backupProvider = initBackupSubsystem()
-    const license = initLicenseSubsystem()
+    registerDomainIpc()
 
     ipcMain.handle('app:get-info', () => ({
       name: 'Materiel',
       version: app.getVersion(),
       env: process.env.MAIN_VITE_APP_ENV ?? import.meta.env.MODE,
-      backupProvider: backupProvider.id,
-      license
+      backupProvider: backupProvider.id
     }))
 
     ipcMain.handle('db:health', () => getHealth())

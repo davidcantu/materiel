@@ -1,5 +1,5 @@
 /**
- * App environment helpers shared by key storage, OAuth tokens, and license store.
+ * App environment helpers shared by key storage and OAuth tokens.
  */
 
 export function resolveAppEnv(env: NodeJS.ProcessEnv = process.env): string {

@@ -9,13 +9,13 @@ import {
 export type ProfileInfo = {
   id: string
   /**
-   * Local identity mirror of email (license pairing / legacy column).
+   * Local identity mirror of email (legacy column).
    * Prefer `email` — username is kept in sync when email is set.
    */
   username: string
   firstName: string
   lastName: string
-  /** Primary local identity — email IS the username for license pairing. */
+  /** Primary local identity — email is the username. */
   email: string | null
   city: string
   state: string
@@ -56,7 +56,7 @@ export function normalizeEmailIdentity(email: string): string {
   return email.trim().toLowerCase()
 }
 
-/** Practical email shape — one @ and a dotted domain (same bar as license keys). */
+/** Practical email shape — one @ and a dotted domain. */
 export function isValidEmailIdentity(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeEmailIdentity(email))
 }

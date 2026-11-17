@@ -8,12 +8,6 @@ import type {
   BackupStatusInfo
 } from '../shared/backup'
 import type {
-  LicenseActivateRequest,
-  LicenseActivateResult,
-  LicenseStatusInfo,
-  PlatformSystemCounts
-} from '../shared/license'
-import type {
   PartInfo,
   PartInput,
   PartsListFilter,
@@ -24,9 +18,7 @@ import type { ProfileInfo, ProfilePatch } from '../shared/profile'
 import type {
   CompleteSystemInfo,
   CustomSystemInputInfo,
-  FactorySystemInputInfo,
-  GatedSystemCreateResult,
-  RestoreLicenseCheckResult
+  FactorySystemInputInfo
 } from '../shared/systems'
 import type { AmmoInput, AmmoInventoryInfo, AmmoUpdateInput } from '../shared/ammo'
 import type { LoadDevelopmentInfo, LoadInput, LoadUpdateInput } from '../shared/loads'
@@ -51,10 +43,6 @@ const api = {
   getBackupStatus: (): Promise<BackupStatusInfo> => ipcRenderer.invoke('backup:get-status'),
   authenticateBackup: (): Promise<BackupStatusInfo> => ipcRenderer.invoke('backup:authenticate'),
   disconnectBackup: (): Promise<BackupStatusInfo> => ipcRenderer.invoke('backup:disconnect'),
-  getLicenseStatus: (): Promise<LicenseStatusInfo> => ipcRenderer.invoke('license:get-status'),
-  activateLicense: (request: LicenseActivateRequest): Promise<LicenseActivateResult> =>
-    ipcRenderer.invoke('license:activate', request),
-  clearLicense: (): Promise<LicenseStatusInfo> => ipcRenderer.invoke('license:clear'),
   getProfile: (): Promise<ProfileInfo> => ipcRenderer.invoke('profile:get'),
   updateProfile: (patch: ProfilePatch) => ipcRenderer.invoke('profile:update', patch),
   listParts: (filter?: PartsListFilter): Promise<PartInfo[]> =>
@@ -75,9 +63,9 @@ const api = {
   listSystems: (): Promise<CompleteSystemInfo[]> => ipcRenderer.invoke('systems:list'),
   getSystem: (id: string): Promise<CompleteSystemInfo | null> =>
     ipcRenderer.invoke('systems:get', id),
-  createCustomSystem: (input: CustomSystemInputInfo): Promise<GatedSystemCreateResult> =>
+  createCustomSystem: (input: CustomSystemInputInfo): Promise<CompleteSystemInfo> =>
     ipcRenderer.invoke('systems:create-custom', input),
-  createFactorySystem: (input: FactorySystemInputInfo): Promise<GatedSystemCreateResult> =>
+  createFactorySystem: (input: FactorySystemInputInfo): Promise<CompleteSystemInfo> =>
     ipcRenderer.invoke('systems:create-factory', input),
   updateSystem: (
     id: string,
@@ -86,10 +74,6 @@ const api = {
     }
   ): Promise<CompleteSystemInfo> => ipcRenderer.invoke('systems:update', id, patch),
   deleteSystem: (id: string): Promise<{ ok: true }> => ipcRenderer.invoke('systems:delete', id),
-  assertRestoreAllowed: (
-    payload: number | PlatformSystemCounts
-  ): Promise<RestoreLicenseCheckResult> =>
-    ipcRenderer.invoke('systems:assert-restore-allowed', payload),
   listLogs: (): Promise<ShootingLogInfo[]> => ipcRenderer.invoke('logs:list'),
   getLog: (id: string): Promise<ShootingLogInfo | null> => ipcRenderer.invoke('logs:get', id),
   addLog: (input: NewShootingLogInputInfo): Promise<ShootingLogInfo> =>

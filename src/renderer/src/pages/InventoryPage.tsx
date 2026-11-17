@@ -186,17 +186,13 @@ export function InventoryPage({
         [part.manufacturer, part.model].filter(Boolean).join(' ').trim() ||
         partPrimaryTitle(part) ||
         'Pistol'
-      const result = await window.api.createCustomSystem({
+      await window.api.createCustomSystem({
         name,
         platform: 'pistol',
         actionId: part.id,
         barrelId: part.id,
         chassisId: part.id
       })
-      if (!result.ok) {
-        toast.error(result.error.message)
-        return
-      }
       toast.success('Pistol build created — you can log rounds against it.')
       setPendingPistolBuild(null)
       await load()

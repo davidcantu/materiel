@@ -1,5 +1,5 @@
 /**
- * Email is the single local identity (username for license pairing).
+ * Email is the single local identity (username).
  * Prefer existing email; if missing and username looks like an email, promote it.
  * Always mirror username ← email when email is present.
  */

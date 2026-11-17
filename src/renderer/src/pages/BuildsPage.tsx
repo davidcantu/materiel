@@ -2,11 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { PartInfo } from '../../../shared/parts'
 import type { CompleteSystemInfo } from '../../../shared/systems'
 import {
-  formatPlatformCountsSummary,
-  type LicenseGateDenial,
-  type LicenseStatusInfo
-} from '../../../shared/license'
-import {
   PLATFORM_CORE_LABELS,
   PLATFORM_LABELS,
   PLATFORMS,
@@ -24,22 +19,14 @@ import { formatCurrency, maintenancePercent, partPrimaryTitle } from '../lib/for
 type BuildsPageProps = {
   trackValue: boolean
   trackedPlatforms?: Platform[]
-  license: LicenseStatusInfo | null
-  onLicenseChange: () => void
 }
 
-export function BuildsPage({
-  trackValue,
-  trackedPlatforms,
-  license,
-  onLicenseChange
-}: BuildsPageProps): React.JSX.Element {
+export function BuildsPage({ trackValue, trackedPlatforms }: BuildsPageProps): React.JSX.Element {
   const toast = useToast()
   const [systems, setSystems] = useState<CompleteSystemInfo[]>([])
   const [parts, setParts] = useState<PartInfo[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [licenseBanner, setLicenseBanner] = useState<LicenseGateDenial | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<CompleteSystemInfo | null>(null)
   const [maintenanceSystem, setMaintenanceSystem] = useState<CompleteSystemInfo | null>(null)
@@ -101,17 +88,6 @@ export function BuildsPage({
   }, [])
 
   function openCreate(): void {
-    setLicenseBanner(null)
-    if (license && !license.canCreateRifle) {
-      setLicenseBanner({
-        code: 'LICENSE_RIFLE_LIMIT',
-        message:
-          license.blockReason ??
-          `Free tier allows ${license.freeRifleLimit} firearms per platform (bolt, pistol, AR). Activate a license to add more.`,
-        license
-      })
-      return
-    }
     setEditing(null)
     setModalOpen(true)
   }
@@ -119,14 +95,7 @@ export function BuildsPage({
   async function handleCreateCustom(
     input: Parameters<typeof window.api.createCustomSystem>[0]
   ): Promise<void> {
-    const result = await window.api.createCustomSystem(input)
-    if (!result.ok) {
-      setLicenseBanner(result.error)
-      onLicenseChange()
-      toast.error(result.error.message)
-      throw new Error(result.error.message)
-    }
-    onLicenseChange()
+    await window.api.createCustomSystem(input)
     toast.success('Build created.')
     await load()
   }
@@ -134,14 +103,7 @@ export function BuildsPage({
   async function handleCreateFactory(
     input: Parameters<typeof window.api.createFactorySystem>[0]
   ): Promise<void> {
-    const result = await window.api.createFactorySystem(input)
-    if (!result.ok) {
-      setLicenseBanner(result.error)
-      onLicenseChange()
-      toast.error(result.error.message)
-      throw new Error(result.error.message)
-    }
-    onLicenseChange()
+    await window.api.createFactorySystem(input)
     toast.success('Factory firearm created.')
     await load()
   }
@@ -161,7 +123,6 @@ export function BuildsPage({
     }
     try {
       await window.api.deleteSystem(system.id)
-      onLicenseChange()
       toast.success('Build deleted.')
       await load()
     } catch (err) {
@@ -191,24 +152,6 @@ export function BuildsPage({
           </button>
         }
       />
-
-      {licenseBanner ? (
-        <div className="banner banner-warn" role="alert">
-          <strong className="status-inline is-locked">
-            <Icon name="licenseLocked" size={16} />
-            Firearm limit reached
-          </strong>
-          <p>{licenseBanner.message}</p>
-          <p className="muted">
-            Free usage:{' '}
-            {formatPlatformCountsSummary(
-              licenseBanner.license.countsByPlatform,
-              licenseBanner.license.freeRifleLimit
-            )}
-            {licenseBanner.license.mode === 'unlocked' ? ' (dev unlocked)' : ''}.
-          </p>
-        </div>
-      ) : null}
 
       <PageFeedback
         loading={loading}
@@ -355,7 +298,6 @@ export function BuildsPage({
                       type="button"
                       className="btn-ghost btn-sm"
                       onClick={() => {
-                        setLicenseBanner(null)
                         setEditing(system)
                         setModalOpen(true)
                       }}

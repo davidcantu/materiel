@@ -9,7 +9,7 @@
 
 import { randomUUID } from 'crypto'
 import type Database from 'better-sqlite3-multiple-ciphers'
-import { emptyPlatformCounts, type PlatformSystemCounts } from '../../shared/license'
+import { emptyPlatformCounts, type PlatformSystemCounts } from '../../shared/platforms'
 import {
   PLATFORM_CORE_SLOTS,
   accessoryListTypes,

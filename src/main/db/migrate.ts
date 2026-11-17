@@ -7,6 +7,7 @@ import * as migration005 from './migrations/005_platforms'
 import * as migration006 from './migrations/006_simplify_platform_parts'
 import * as migration007 from './migrations/007_ux_prefs_barrel_ammo_date'
 import * as migration008 from './migrations/008_sold_note_match_place'
+import * as migration009 from './migrations/009_drop_license_state'
 
 export type Migration = {
   id: number
@@ -22,7 +23,8 @@ export const MIGRATIONS: Migration[] = [
   { id: migration005.id, name: migration005.name, sql: migration005.sql },
   { id: migration006.id, name: migration006.name, sql: migration006.sql },
   { id: migration007.id, name: migration007.name, sql: migration007.sql },
-  { id: migration008.id, name: migration008.name, sql: migration008.sql }
+  { id: migration008.id, name: migration008.name, sql: migration008.sql },
+  { id: migration009.id, name: migration009.name, sql: migration009.sql }
 ]
 
 export function getAppliedMigrationVersion(db: Database.Database): number {

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { AppInfo } from '../../shared/app-info'
-import { formatPlatformCountsSummary, type LicenseStatusInfo } from '../../shared/license'
 import { hasLocalIdentity, needsOnboarding, type ProfileInfo } from '../../shared/profile'
 import { BrandLogo } from './components/BrandLogo'
 import { Icon } from './components/icons/Icon'
@@ -27,7 +26,6 @@ type NavItem = { id: NavId; label: string; enabled: boolean; visible?: boolean }
 
 function AppShell(): React.JSX.Element {
   const [info, setInfo] = useState<AppInfo | null>(null)
-  const [license, setLicense] = useState<LicenseStatusInfo | null>(null)
   const [profile, setProfile] = useState<ProfileInfo | null>(null)
   const [active, setActive] = useState<NavId>('dashboard')
   const [bootstrapped, setBootstrapped] = useState(false)
@@ -63,13 +61,11 @@ function AppShell(): React.JSX.Element {
   )
 
   const refresh = useCallback(async () => {
-    const [nextInfo, nextLicense, nextProfile] = await Promise.all([
+    const [nextInfo, nextProfile] = await Promise.all([
       window.api.getAppInfo(),
-      window.api.getLicenseStatus(),
       window.api.getProfile()
     ])
     setInfo(nextInfo)
-    setLicense(nextLicense)
     setProfile(nextProfile)
   }, [])
 
@@ -78,13 +74,9 @@ function AppShell(): React.JSX.Element {
     void window.api
       .getAppInfo()
       .then(async (nextInfo) => {
-        const [nextLicense, nextProfile] = await Promise.all([
-          window.api.getLicenseStatus(),
-          window.api.getProfile()
-        ])
+        const nextProfile = await window.api.getProfile()
         if (cancelled) return
         setInfo(nextInfo)
-        setLicense(nextLicense)
         setProfile(nextProfile)
         setBootstrapped(true)
       })
@@ -154,14 +146,6 @@ function AppShell(): React.JSX.Element {
           <div>
             User: <strong>{profile?.email || '…'}</strong>
           </div>
-          <div>
-            License:{' '}
-            <strong>
-              {license
-                ? `${license.tier}${license.mode === 'unlocked' ? ' · unlocked' : ''} (${formatPlatformCountsSummary(license.countsByPlatform, license.freeRifleLimit)})`
-                : '…'}
-            </strong>
-          </div>
         </div>
       </aside>
 
@@ -177,8 +161,6 @@ function AppShell(): React.JSX.Element {
           <BuildsPage
             trackValue={profile?.trackValue ?? true}
             trackedPlatforms={profile?.trackedPlatforms}
-            license={license}
-            onLicenseChange={() => void refresh()}
           />
         ) : null}
         {view === 'logs' ? <LogsPage onNavigateBuilds={() => setActive('builds')} /> : null}
@@ -187,7 +169,6 @@ function AppShell(): React.JSX.Element {
         ) : null}
         {view === 'settings' ? (
           <SettingsPage
-            license={license}
             profile={profile}
             onRefresh={() => void refresh()}
             themePreference={themePreference}
