@@ -3,25 +3,35 @@
  * Issue a Materiel paid license key after Venmo (or other manual payment).
  *
  * Usage:
- *   LICENSE_SIGNING_SECRET='…' npm run license:issue -- --email user@example.com
+ *   LICENSE_SIGNING_PRIVATE_KEY="$(cat materiel-license.pem)" \
+ *     npm run license:issue -- --email user@example.com
+ *
+ * Generate a keypair (once): npm run license:keypair
+ * Embed the printed public SPKI base64 in src/main/license/public-key.ts
+ * Keep the private PEM only in a password manager — never commit it.
  *
  * Prints the key to stdout for you to email to the customer.
- * Never commit the production signing secret.
  */
 
-import { issueLicenseKey, isValidEmailShape, normalizeEmail } from '../src/main/license/crypto'
+import {
+  issueLicenseKey,
+  isValidEmailShape,
+  normalizeEmail,
+  resolveSigningPrivateKey
+} from '../src/main/license/crypto'
 
 function printUsage(): void {
   console.error(`Usage:
-  LICENSE_SIGNING_SECRET='…' npm run license:issue -- --email user@example.com
+  LICENSE_SIGNING_PRIVATE_KEY="$(cat materiel-license.pem)" \\
+    npm run license:issue -- --email user@example.com
 
 Options:
   --email <addr>   Customer email the key is bound to (required)
   --help           Show this help
 
-The same secret must be available to the desktop app as
-MAIN_VITE_LICENSE_SIGNING_SECRET (or LICENSE_SIGNING_SECRET) so activation
-can verify the key offline.`)
+The desktop app verifies with the embedded Ed25519 public key only
+(see src/main/license/public-key.ts). Generate a pair with:
+  npm run license:keypair`)
 }
 
 function parseArgs(argv: string[]): { email: string | null; help: boolean } {
@@ -47,9 +57,11 @@ function main(): void {
     process.exit(0)
   }
 
-  const secret = process.env.LICENSE_SIGNING_SECRET?.trim()
-  if (!secret) {
-    console.error('Error: set LICENSE_SIGNING_SECRET in the environment (do not commit it).')
+  const privateKey = resolveSigningPrivateKey()
+  if (!privateKey) {
+    console.error(
+      'Error: set LICENSE_SIGNING_PRIVATE_KEY to a PKCS8 PEM (or base64 DER) Ed25519 private key.'
+    )
     printUsage()
     process.exit(1)
   }
@@ -67,8 +79,7 @@ function main(): void {
   }
 
   try {
-    const key = issueLicenseKey(normalized, secret)
-    // Human-readable lines on stderr; key alone on stdout for piping.
+    const key = issueLicenseKey(normalized, privateKey)
     console.error(`Issued Materiel license for ${normalized}`)
     console.error(
       'Email this key to the customer. They activate with the same email + key in Settings.'

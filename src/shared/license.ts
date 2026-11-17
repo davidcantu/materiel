@@ -9,7 +9,7 @@ export const FREE_PER_PLATFORM_LIMIT = 2
  */
 export const FREE_RIFLE_LIMIT = FREE_PER_PLATFORM_LIMIT
 
-/** Human-facing prefix; full keys look like `MAT-1.<emailB64>.<sigB64>`. */
+/** Human-facing prefix; full keys look like `MAT-1.<emailB64>.<ed25519SigB64>`. */
 export const LICENSE_KEY_PREFIX = 'MAT-1.'
 
 export type LicenseTier = 'free' | 'paid'
@@ -154,6 +154,7 @@ export type LicenseErrorCode =
   | 'LICENSE_USERNAME_REQUIRED'
   /** @deprecated Email is the username; no longer returned. */
   | 'LICENSE_USERNAME_MISMATCH'
+  /** @deprecated Ed25519 verify uses an embedded public key; no longer returned. */
   | 'LICENSE_SECRET_MISSING'
   | 'LICENSE_STORAGE_UNAVAILABLE'
   | 'LICENSE_NOT_ACTIVATED'

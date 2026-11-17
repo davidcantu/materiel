@@ -30,7 +30,8 @@
     "build:win": "npm run build:prod -- --win",
     "build:mac": "npm run build:prod -- --mac",
     "build:linux": "npm run build:prod -- --linux",
-    "license:issue": "tsx scripts/issue-license.ts"
+    "license:issue": "tsx scripts/issue-license.ts",
+    "license:keypair": "tsx scripts/generate-license-keypair.ts"
   },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",

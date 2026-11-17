@@ -1,6 +1,6 @@
 # Materiel licensing
 
-Local-first paid unlock. **No server** is required to activate: the app verifies a signed key offline and stores it encrypted on the device.
+Local-first paid unlock. **No server** is required to activate: the app verifies a signed key offline (Ed25519 public key embedded in the binary) and stores the activated key encrypted on the device.
 
 ## Free tier
 
@@ -27,7 +27,7 @@ Restore preflight: `systems:assert-restore-allowed` with per-platform counts (pr
 
 First launch collects a single **email** (no password). That email **is** the username for license pairing and is shown in Settings and the sidebar.
 
-License keys are **email-bound** (`MAT-1.…` HMAC over the normalized email). Activation uses email + key only:
+License keys are **email-bound** (`MAT-1.…` Ed25519 signature over the normalized email). Activation uses email + key only:
 
 - Set on first-run (“Get started”), **or**
 - Entered together on the welcome “Restore license” form / `activateLicense({ email, key })`.
@@ -50,11 +50,21 @@ The app verifies the key offline and restores paid status. The cryptographic key
 
 v1 payment is **manual**: customer Venmos you → you issue a key → you email the key.
 
+### Generate a keypair (once)
+
+```bash
+npm run license:keypair
+```
+
+1. Copy the printed **SPKI base64** into `src/main/license/public-key.ts` (`MATERIEL_LICENSE_PUBLIC_KEY_SPKI_B64`).
+2. Store the **private PEM** in a password manager. Never commit it. Never put it in `MAIN_VITE_*` or the packaged app.
+3. Ship / rebuild the app so the embedded public key matches the private key you will use to issue.
+
 ### Issue a key (operator)
 
 ```bash
-# Never commit the production secret. Keep it in a password manager / CI secret store.
-export LICENSE_SIGNING_SECRET='your-long-random-secret'
+# PKCS8 PEM contents (or base64 DER). Never commit this value.
+export LICENSE_SIGNING_PRIVATE_KEY="$(cat materiel-license.pem)"
 
 npm run license:issue -- --email customer@example.com
 ```
@@ -64,16 +74,19 @@ Stdout is the key only (safe to pipe). Stderr has a short human note.
 The key format is:
 
 ```text
-MAT-1.<base64url(email)>.<base64url(HMAC-SHA256)>
+MAT-1.<base64url(email)>.<base64url(Ed25519 signature)>
 ```
 
-The HMAC covers the canonical string `v1|<normalized-email>` (email trimmed + lowercased). The same secret must be available to the desktop app as `MAIN_VITE_LICENSE_SIGNING_SECRET` or `LICENSE_SIGNING_SECRET` so activation can verify offline.
+The signature covers the canonical string `v1|<normalized-email>` (email trimmed + lowercased). The desktop app verifies with the **embedded public key only** — no signing secret is required (or accepted) in the app env.
 
-### Trust model (important)
+### Trust model
 
-Any secret **baked into the desktop binary** (including `MAIN_VITE_LICENSE_SIGNING_SECRET`) is extractable. Offline HMAC verify is therefore **best-effort / honor-system**, not DRM. Prefer keeping the issue secret only on the operator machine when issuing keys; do not treat an in-app HMAC secret as confidential once a release ships with it.
+| Material | Where | Purpose |
+| -------- | ----- | ------- |
+| Ed25519 **public** key | Embedded in app (`public-key.ts`) | Offline verify |
+| Ed25519 **private** key | Operator machine / password manager only | Issue keys via CLI |
 
-**Follow-up (not in current release):** migrate to **Ed25519** — issue with a private key offline; embed only the public key in the app for verify — while still accepting existing `MAT-1.…` HMAC keys during a transition window.
+Anyone can read the public key from the binary; they cannot forge keys without the private key.
 
 ### Activate (customer)
 
@@ -103,7 +116,7 @@ When `unlocked` (aliases: `always-allow`, `dev`), create/restore gates always al
 | ------- | ------- |
 | `license:get-status` | `LicenseStatusInfo` (tier, counts, `canCreateRifle`, mode, activated email, …) |
 | `license:activate` | `{ email, key }` → activate result |
-| `license:clear` | Remove local key (dev / support) |
+| `license:clear` | Remove local key (dev / support; confirms in a native dialog) |
 | `systems:create-custom` | Gated create |
 | `systems:create-factory` | Gated create |
 | `systems:assert-restore-allowed` | Preflight restore by per-platform counts (or total) |
@@ -115,8 +128,7 @@ Preload wrappers: `getLicenseStatus`, `activateLicense`, `clearLicense`, `create
 
 | Variable | Where | Purpose |
 | -------- | ----- | ------- |
-| `LICENSE_SIGNING_SECRET` | Issuer shell / optional app | HMAC secret for issue + verify |
-| `MAIN_VITE_LICENSE_SIGNING_SECRET` | Electron env files / CI | Same secret for the packaged app |
+| `LICENSE_SIGNING_PRIVATE_KEY` | Issuer shell only | PKCS8 PEM or base64 DER Ed25519 private key for `license:issue` |
 | `MAIN_VITE_LICENSE_MODE` | Env files | `unlocked` (dev) or `enforced` |
 
-Do **not** commit production secrets. `.env.example` documents the names only.
+Do **not** set `MAIN_VITE_LICENSE_SIGNING_SECRET` (removed). Do **not** commit private keys. `.env.example` documents names only.

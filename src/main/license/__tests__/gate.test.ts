@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { generateKeyPairSync, type KeyObject } from 'node:crypto'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -17,16 +18,26 @@ import {
 import { getLicenseStatus } from '../status'
 import type { Platform } from '../../../shared/platforms'
 
-const SECRET = 'test-license-signing-secret-do-not-use-in-prod'
+type StoreOpts = {
+  userDataPath: string
+  filePath: string
+  publicKey: KeyObject
+  safeStorage: null
+}
+
 const dirs: string[] = []
 const originalMode = process.env.MAIN_VITE_LICENSE_MODE
-const originalSecret = process.env.LICENSE_SIGNING_SECRET
 const originalSeed = process.env.MAIN_VITE_SEED_DEMO
+
+let testPrivateKey: KeyObject
+let testPublicKey: KeyObject
 
 beforeEach(() => {
   process.env.MAIN_VITE_LICENSE_MODE = 'enforced'
-  process.env.LICENSE_SIGNING_SECRET = SECRET
   process.env.MAIN_VITE_SEED_DEMO = 'false'
+  const pair = generateKeyPairSync('ed25519')
+  testPrivateKey = pair.privateKey
+  testPublicKey = pair.publicKey
   closeDatabase()
 })
 
@@ -38,13 +49,11 @@ afterEach(() => {
   }
   if (originalMode === undefined) delete process.env.MAIN_VITE_LICENSE_MODE
   else process.env.MAIN_VITE_LICENSE_MODE = originalMode
-  if (originalSecret === undefined) delete process.env.LICENSE_SIGNING_SECRET
-  else process.env.LICENSE_SIGNING_SECRET = originalSecret
   if (originalSeed === undefined) delete process.env.MAIN_VITE_SEED_DEMO
   else process.env.MAIN_VITE_SEED_DEMO = originalSeed
 })
 
-function setup(): { userData: string; storeOpts: { userDataPath: string; filePath: string } } {
+function setup(): { userData: string; storeOpts: StoreOpts } {
   const userData = mkdtempSync(join(tmpdir(), 'materiel-license-'))
   dirs.push(userData)
   openDatabase({
@@ -54,7 +63,12 @@ function setup(): { userData: string; storeOpts: { userDataPath: string; filePat
     allowEnvKey: false,
     safeStorage: null
   })
-  const storeOpts = { userDataPath: userData, filePath: join(userData, 'license.dat') }
+  const storeOpts: StoreOpts = {
+    userDataPath: userData,
+    filePath: join(userData, 'license.dat'),
+    publicKey: testPublicKey,
+    safeStorage: null
+  }
   clearLicense(storeOpts)
   return { userData, storeOpts }
 }
@@ -206,7 +220,7 @@ test('paid activation unlocks beyond free tier', () => {
   const before = checkCreateCompleteSystem({ ...storeOpts, platform: 'bolt_action' })
   assert.equal(before.ok, false)
 
-  const key = issueLicenseKey('shooter@example.com', SECRET)
+  const key = issueLicenseKey('shooter@example.com', testPrivateKey)
   const result = activateLicense({ email: 'shooter@example.com', key }, storeOpts)
   assert.equal(result.ok, true)
   if (result.ok) {
@@ -225,7 +239,7 @@ test('paid activation unlocks beyond free tier', () => {
 
 test('activate rejects email mismatch', () => {
   const { storeOpts } = setup()
-  const key = issueLicenseKey('a@example.com', SECRET)
+  const key = issueLicenseKey('a@example.com', testPrivateKey)
   const result = activateLicense({ email: 'b@example.com', key }, storeOpts)
   assert.equal(result.ok, false)
   if (!result.ok) {
@@ -235,7 +249,7 @@ test('activate rejects email mismatch', () => {
 
 test('activate requires a valid email shape', () => {
   const { storeOpts } = setup()
-  const key = issueLicenseKey('shooter@example.com', SECRET)
+  const key = issueLicenseKey('shooter@example.com', testPrivateKey)
   const result = activateLicense({ email: 'not-an-email', key }, storeOpts)
   assert.equal(result.ok, false)
   if (!result.ok) {
@@ -245,7 +259,7 @@ test('activate requires a valid email shape', () => {
 
 test('reinstall recovery: email + key restores paid', () => {
   const { storeOpts } = setup()
-  const key = issueLicenseKey('shooter@example.com', SECRET)
+  const key = issueLicenseKey('shooter@example.com', testPrivateKey)
   const first = activateLicense({ email: 'shooter@example.com', key }, storeOpts)
   assert.equal(first.ok, true)
   clearLicense(storeOpts)
