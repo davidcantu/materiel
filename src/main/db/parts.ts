@@ -32,6 +32,7 @@ type PartRow = {
   barrel_life: number | null
   muzzle_type: MuzzleType | null
   notes: string | null
+  sold_to_note: string | null
   created_at: string
   updated_at: string
 }
@@ -55,9 +56,14 @@ export type NewPartInput = {
   barrelLife?: number | null
   muzzleType?: MuzzleType | null
   notes?: string | null
+  soldToNote?: string | null
 }
 
 export type UpdatePartInput = Partial<Omit<NewPartInput, 'id' | 'type'>>
+
+export type SetPartStatusOptions = {
+  soldToNote?: string | null
+}
 
 export type ListPartsOptions = {
   types?: PartType[]
@@ -90,6 +96,7 @@ function mapPart(row: PartRow): Part {
     barrelLife: row.barrel_life,
     muzzleType: row.muzzle_type,
     notes: row.notes,
+    soldToNote: row.sold_to_note ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at
   }
@@ -210,12 +217,12 @@ export function createPart(db: Database.Database, input: NewPartInput): Part {
     `INSERT INTO parts (
       id, manufacturer, value, type, status, platforms, name, model, serial_number,
       total_round_count, rounds_after_cleaning, maintenance_interval,
-      caliber, gunsmith, twist_rate, barrel_life, muzzle_type, notes,
+      caliber, gunsmith, twist_rate, barrel_life, muzzle_type, notes, sold_to_note,
       created_at, updated_at
     ) VALUES (
       @id, @manufacturer, @value, @type, @status, @platforms, @name, @model, @serialNumber,
       @totalRoundCount, @roundsAfterCleaning, @maintenanceInterval,
-      @caliber, @gunsmith, @twistRate, @barrelLife, @muzzleType, @notes,
+      @caliber, @gunsmith, @twistRate, @barrelLife, @muzzleType, @notes, @soldToNote,
       @createdAt, @updatedAt
     )`
   ).run({
@@ -238,6 +245,7 @@ export function createPart(db: Database.Database, input: NewPartInput): Part {
     muzzleType:
       input.type === 'Suppressor' ? (input.muzzleType ?? 'Suppressor') : (input.muzzleType ?? null),
     notes: input.notes?.trim() || null,
+    soldToNote: input.soldToNote?.trim() || null,
     createdAt,
     updatedAt: createdAt
   })
@@ -287,6 +295,7 @@ export function updatePart(db: Database.Database, id: string, patch: UpdatePartI
       barrel_life = @barrelLife,
       muzzle_type = @muzzleType,
       notes = @notes,
+      sold_to_note = @soldToNote,
       updated_at = @updatedAt
     WHERE id = @id`
   ).run({
@@ -311,25 +320,52 @@ export function updatePart(db: Database.Database, id: string, patch: UpdatePartI
     barrelLife: patch.barrelLife !== undefined ? patch.barrelLife : existing.barrelLife,
     muzzleType: patch.muzzleType !== undefined ? patch.muzzleType : existing.muzzleType,
     notes: patch.notes !== undefined ? patch.notes?.trim() || null : existing.notes,
+    soldToNote:
+      patch.soldToNote !== undefined ? patch.soldToNote?.trim() || null : existing.soldToNote,
     updatedAt
   })
 
   return getPart(db, id)!
 }
 
-export function setPartStatus(db: Database.Database, id: string, status: PartStatus): Part {
+/**
+ * Status rules:
+ * - Sold is available for all parts (with optional sold-to note).
+ * - Return to stock from Sold is available for all parts.
+ * - In Use / Retired / other wear transitions stay Barrel + Trigger only.
+ */
+export function setPartStatus(
+  db: Database.Database,
+  id: string,
+  status: PartStatus,
+  options?: SetPartStatusOptions
+): Part {
   const existing = getPart(db, id)
   if (!existing) throw new Error(`Part not found: ${id}`)
-  if (!isWearStatusTracked(existing.type)) {
-    throw new Error('Status changes apply only to wear parts (Barrel, Trigger)')
+
+  if (status === 'Sold') {
+    return updatePart(db, id, {
+      status: 'Sold',
+      soldToNote: options?.soldToNote !== undefined ? options.soldToNote : existing.soldToNote
+    })
   }
+
+  if (status === 'In Stock' && existing.status === 'Sold') {
+    return updatePart(db, id, { status: 'In Stock' })
+  }
+
+  if (!isWearStatusTracked(existing.type)) {
+    throw new Error('Only wear parts (Barrel, Trigger) support this status change')
+  }
+
   if (status === 'Retired' && !isWearStatusTracked(existing.type)) {
     throw new Error('Only wear parts (Barrel, Trigger) may be Retired')
   }
+
   return updatePart(db, id, { status })
 }
 
-/** Reset roundsAfterCleaning to 0 for Action / Barrel / Muzzle / BCG. */
+/** Reset roundsAfterCleaning to 0 for Action / Barrel / Muzzle / BCG / Pistol. */
 export function resetPartMaintenance(db: Database.Database, id: string): Part {
   const existing = getPart(db, id)
   if (!existing) throw new Error(`Part not found: ${id}`)
@@ -337,9 +373,12 @@ export function resetPartMaintenance(db: Database.Database, id: string): Part {
     existing.type !== 'Action' &&
     existing.type !== 'Barrel' &&
     existing.type !== 'Suppressor' &&
-    existing.type !== 'BCG'
+    existing.type !== 'BCG' &&
+    existing.type !== 'Pistol'
   ) {
-    throw new Error('Maintenance reset applies only to Action, Barrel, Muzzle Device, and BCG')
+    throw new Error(
+      'Maintenance reset applies only to Action, Barrel, Muzzle Device, BCG, and Pistol'
+    )
   }
   return updatePart(db, id, { roundsAfterCleaning: 0 })
 }

@@ -50,6 +50,8 @@ export type PartInfo = {
   barrelLife: number | null
   muzzleType: MuzzleType | null
   notes: string | null
+  /** Buyer / sold-to note; kept with the item after Mark as Sold. */
+  soldToNote: string | null
   createdAt: string
   updatedAt: string
 }
@@ -74,6 +76,7 @@ export type PartInput = {
   barrelLife?: number | null
   muzzleType?: MuzzleType | null
   notes?: string | null
+  soldToNote?: string | null
 }
 
 export type PartUpdateInput = Partial<Omit<PartInput, 'id' | 'type'>> & {

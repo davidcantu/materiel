@@ -8,6 +8,7 @@ import type {
   SessionType,
   ShootingLogInfo
 } from '../../../shared/shooting-logs'
+import { formatPercentOfWinner, formatPlacement } from '../../../shared/shooting-logs'
 import type { CompleteSystemInfo } from '../../../shared/systems'
 import { systemHasDueMaintenance } from '../../../shared/system-maintenance'
 import { EmptyState } from '../components/EmptyState'
@@ -67,6 +68,7 @@ export function LogsPage({ onNavigateBuilds }: LogsPageProps = {}): React.JSX.El
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<ShootingLogInfo | null>(null)
   const [maintenanceSystemId, setMaintenanceSystemId] = useState<string | null>(null)
+  const [visibleCount, setVisibleCount] = useState(10)
 
   const systemsById = useMemo(() => {
     const map = new Map<string, CompleteSystemInfo>()
@@ -152,6 +154,13 @@ export function LogsPage({ onNavigateBuilds }: LogsPageProps = {}): React.JSX.El
       return hay.includes(q)
     })
   }, [logs, search, systemFilter, sessionFilter, timeRange, systemsById, ammoById])
+
+  useEffect(() => {
+    setVisibleCount(10)
+  }, [search, systemFilter, sessionFilter, timeRange])
+
+  const visibleLogs = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount])
+  const hasMore = filtered.length > visibleCount
 
   function openCreate(): void {
     setEditing(null)
@@ -312,67 +321,96 @@ export function LogsPage({ onNavigateBuilds }: LogsPageProps = {}): React.JSX.El
             setSystemFilter('All')
             setSessionFilter('All')
             setTimeRange('all')
+            setVisibleCount(10)
           }}
         />
       ) : null}
 
       {!loading && filtered.length > 0 ? (
-        <div className="table-wrap">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>System</th>
-                <th>Location</th>
-                <th>Rounds</th>
-                <th>Cartridge</th>
-                <th>Velocity</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((log) => {
-                const system = systemsById.get(log.systemId)
-                return (
-                  <tr key={log.id}>
-                    <td>
-                      <div className="cell-title">{formatLogDate(log.date)}</div>
-                      <div className="cell-sub">{log.sessionType}</div>
-                    </td>
-                    <td>{system?.name ?? 'Unknown system'}</td>
-                    <td>{log.location}</td>
-                    <td>
-                      <span className="rounds-badge">{log.roundsFired}</span>
-                    </td>
-                    <td>{cartridgeLabel(log, ammoById)}</td>
-                    <td>{log.velocity != null ? `${log.velocity} fps` : '—'}</td>
-                    <td>
-                      <div className="row-actions">
-                        <button
-                          type="button"
-                          className="btn-ghost btn-sm"
-                          onClick={() => {
-                            setEditing(log)
-                            setModalOpen(true)
-                          }}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          className="btn-ghost btn-sm"
-                          onClick={() => void handleDelete(log)}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+        <>
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>System</th>
+                  <th>Location</th>
+                  <th>Rounds</th>
+                  <th>Cartridge</th>
+                  <th>Place</th>
+                  <th>% of Winner</th>
+                  <th>Velocity</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visibleLogs.map((log) => {
+                  const system = systemsById.get(log.systemId)
+                  return (
+                    <tr key={log.id}>
+                      <td>
+                        <div className="cell-title">{formatLogDate(log.date)}</div>
+                        <div className="cell-sub">{log.sessionType}</div>
+                      </td>
+                      <td>{system?.name ?? 'Unknown system'}</td>
+                      <td>{log.location}</td>
+                      <td>
+                        <span className="rounds-badge">{log.roundsFired}</span>
+                      </td>
+                      <td>{cartridgeLabel(log, ammoById)}</td>
+                      <td>
+                        {log.sessionType === 'Match' && log.placement != null
+                          ? formatPlacement(log.placement)
+                          : '—'}
+                      </td>
+                      <td>
+                        {log.sessionType === 'Match' && log.percentOfWinner != null
+                          ? formatPercentOfWinner(log.percentOfWinner)
+                          : '—'}
+                      </td>
+                      <td>{log.velocity != null ? `${log.velocity} fps` : '—'}</td>
+                      <td>
+                        <div className="row-actions">
+                          <button
+                            type="button"
+                            className="btn-ghost btn-sm"
+                            onClick={() => {
+                              setEditing(log)
+                              setModalOpen(true)
+                            }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-ghost btn-sm"
+                            onClick={() => void handleDelete(log)}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+          {hasMore ? (
+            <div className="see-more-row">
+              <button
+                type="button"
+                className="btn-ghost"
+                onClick={() => setVisibleCount((n) => n + 10)}
+              >
+                See More
+              </button>
+              <span className="muted">
+                Showing {visibleLogs.length} of {filtered.length}
+              </span>
+            </div>
+          ) : null}
+        </>
       ) : null}
 
       {modalOpen ? (

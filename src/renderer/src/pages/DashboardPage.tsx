@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
-import type { DashboardSummary } from '../../../shared/dashboard'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import type { DashboardSummary, DashboardTrendWindow } from '../../../shared/dashboard'
+import { sliceMatchTrends } from '../../../shared/dashboard'
+import { formatPercentOfWinner, formatPlacement } from '../../../shared/shooting-logs'
 import { PageFeedback } from '../components/PageFeedback'
 import { PageHeader } from '../components/PageHeader'
 import { formatCurrency } from '../lib/format'
@@ -7,6 +9,13 @@ import { formatCurrency } from '../lib/format'
 type DashboardPageProps = {
   onNavigateLogs: () => void
 }
+
+const TREND_WINDOWS: Array<{ id: DashboardTrendWindow; label: string }> = [
+  { id: 10, label: '10' },
+  { id: 20, label: '20' },
+  { id: 50, label: '50' },
+  { id: 'all', label: 'All' }
+]
 
 function formatLogDate(iso: string): string {
   const date = new Date(`${iso.slice(0, 10)}T12:00:00`)
@@ -22,6 +31,8 @@ export function DashboardPage({ onNavigateLogs }: DashboardPageProps): React.JSX
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [placementWindow, setPlacementWindow] = useState<DashboardTrendWindow>(10)
+  const [percentWindow, setPercentWindow] = useState<DashboardTrendWindow>(10)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -56,6 +67,15 @@ export function DashboardPage({ onNavigateLogs }: DashboardPageProps): React.JSX
       cancelled = true
     }
   }, [])
+
+  const placementTrend = useMemo(
+    () => (summary ? sliceMatchTrends(summary.matchTrends, placementWindow) : []),
+    [summary, placementWindow]
+  )
+  const percentTrend = useMemo(
+    () => (summary ? sliceMatchTrends(summary.matchTrends, percentWindow) : []),
+    [summary, percentWindow]
+  )
 
   if (loading && !summary) {
     return (
@@ -97,13 +117,24 @@ export function DashboardPage({ onNavigateLogs }: DashboardPageProps): React.JSX
 
   const title = summary.firstName ? `Welcome back, ${summary.firstName}` : 'Welcome'
   const maxMonthRounds = Math.max(1, ...summary.monthlyRounds.map((m) => m.rounds))
+  const placementPoints = placementTrend.filter((p) => p.placement != null)
+  const percentPoints = percentTrend.filter((p) => p.percentOfWinner != null)
+  const maxPlace = Math.max(1, ...placementPoints.map((p) => p.placement ?? 1))
+  const kpiClass = [
+    'kpi-grid',
+    summary.trackValue && summary.trackAmmo
+      ? 'kpi-grid-5'
+      : summary.trackValue || summary.trackAmmo
+        ? 'kpi-grid-4'
+        : 'kpi-grid-3'
+  ].join(' ')
 
   return (
     <div className="page dashboard-page">
       <PageHeader title={title} description="Your firearms, rounds, and maintenance at a glance." />
 
       <section className="dash-top" aria-label="Key metrics">
-        <div className={`kpi-grid${summary.trackValue ? ' kpi-grid-4' : ' kpi-grid-3'}`}>
+        <div className={kpiClass}>
           <article className="kpi-card">
             <div className="kpi-label">Total Rounds</div>
             <div className="kpi-value">{summary.totalRounds.toLocaleString()}</div>
@@ -116,6 +147,12 @@ export function DashboardPage({ onNavigateLogs }: DashboardPageProps): React.JSX
             <div className="kpi-label">Inventory Items</div>
             <div className="kpi-value">{summary.inventoryItems.toLocaleString()}</div>
           </article>
+          {summary.trackAmmo && summary.ammoRoundsTotal != null ? (
+            <article className="kpi-card">
+              <div className="kpi-label">Ammo Rounds</div>
+              <div className="kpi-value">{summary.ammoRoundsTotal.toLocaleString()}</div>
+            </article>
+          ) : null}
           {summary.trackValue ? (
             <article className="kpi-card">
               <div className="kpi-label">Total Value</div>
@@ -152,6 +189,94 @@ export function DashboardPage({ onNavigateLogs }: DashboardPageProps): React.JSX
                 )
               })}
             </div>
+          </article>
+
+          <article className="dash-panel">
+            <header className="dash-panel-header dash-panel-header-stack">
+              <div>
+                <h2>Placement trend</h2>
+                <p className="dash-panel-sub">Match place over last N matches (lower is better)</p>
+              </div>
+              <div className="chip-row" role="group" aria-label="Placement window">
+                {TREND_WINDOWS.map((opt) => (
+                  <button
+                    key={`place-${opt.id}`}
+                    type="button"
+                    className={`chip${placementWindow === opt.id ? ' active' : ''}`}
+                    onClick={() => setPlacementWindow(opt.id)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </header>
+            {placementPoints.length === 0 ? (
+              <p className="muted dash-empty">Log match sessions with a place to see this trend.</p>
+            ) : (
+              <div
+                className="trend-chart"
+                role="img"
+                aria-label="Match placement trend"
+              >
+                {placementPoints.map((point) => {
+                  const place = point.placement ?? 0
+                  const height = Math.max(8, Math.round(((maxPlace + 1 - place) / maxPlace) * 100))
+                  return (
+                    <div key={point.id} className="trend-bar-col">
+                      <div
+                        className="trend-bar"
+                        style={{ height: `${height}%` }}
+                        title={`${formatLogDate(point.date)} · ${formatPlacement(place)} · ${point.systemName}`}
+                      />
+                      <span className="trend-bar-label">{formatPlacement(place)}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </article>
+
+          <article className="dash-panel">
+            <header className="dash-panel-header dash-panel-header-stack">
+              <div>
+                <h2>% of Winner trend</h2>
+                <p className="dash-panel-sub">Match score vs winner over last N matches</p>
+              </div>
+              <div className="chip-row" role="group" aria-label="% of Winner window">
+                {TREND_WINDOWS.map((opt) => (
+                  <button
+                    key={`pct-${opt.id}`}
+                    type="button"
+                    className={`chip${percentWindow === opt.id ? ' active' : ''}`}
+                    onClick={() => setPercentWindow(opt.id)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </header>
+            {percentPoints.length === 0 ? (
+              <p className="muted dash-empty">
+                Log match sessions with % of Winner to see this trend.
+              </p>
+            ) : (
+              <div className="trend-chart" role="img" aria-label="% of Winner trend">
+                {percentPoints.map((point) => {
+                  const pct = point.percentOfWinner ?? 0
+                  const height = Math.max(8, Math.round(pct))
+                  return (
+                    <div key={point.id} className="trend-bar-col">
+                      <div
+                        className="trend-bar trend-bar-pct"
+                        style={{ height: `${height}%` }}
+                        title={`${formatLogDate(point.date)} · ${formatPercentOfWinner(pct)} · ${point.systemName}`}
+                      />
+                      <span className="trend-bar-label">{pct.toFixed(0)}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </article>
 
           <article className="dash-panel">

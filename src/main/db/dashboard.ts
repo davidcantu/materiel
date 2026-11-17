@@ -8,6 +8,7 @@ import {
   trailing12MonthRounds,
   type DashboardSummary,
   type MaintenanceAlertItem,
+  type MatchTrendPoint,
   type RecentActivityItem
 } from '../../shared/dashboard'
 import { listParts } from './parts'
@@ -32,7 +33,13 @@ function buildMaintenanceAlerts(parts: ReturnType<typeof listParts>): Maintenanc
   const scored: Array<{ alert: MaintenanceAlertItem; sortKey: number }> = []
 
   for (const part of parts) {
-    if (part.type !== 'Action' && part.type !== 'Barrel' && part.type !== 'Suppressor') {
+    if (
+      part.type !== 'Action' &&
+      part.type !== 'Barrel' &&
+      part.type !== 'Suppressor' &&
+      part.type !== 'Pistol' &&
+      part.type !== 'BCG'
+    ) {
       continue
     }
 
@@ -95,6 +102,24 @@ function buildRecentActivity(
   })
 }
 
+function buildMatchTrends(
+  db: Database.Database,
+  logs: ReturnType<typeof listShootingLogs>
+): MatchTrendPoint[] {
+  const systems = listSystems(db)
+  const systemsById = new Map(systems.map((s) => [s.id, s.name]))
+
+  return logs
+    .filter((log) => log.sessionType === 'Match')
+    .map((log) => ({
+      id: log.id,
+      date: log.date,
+      systemName: systemsById.get(log.systemId) ?? 'Unknown System',
+      placement: log.placement,
+      percentOfWinner: log.percentOfWinner
+    }))
+}
+
 export function getDashboardSummary(db: Database.Database): DashboardSummary {
   const profile = ensureLocalProfile(db)
   const logs = listShootingLogs(db)
@@ -103,18 +128,24 @@ export function getDashboardSummary(db: Database.Database): DashboardSummary {
   const totalRounds = logs.reduce((sum, log) => sum + log.roundsFired, 0)
   const inventoryItems = parts.length
   const totalValue = parts.reduce((sum, part) => sum + part.value, 0)
+  const ammoRoundsTotal = profile.trackAmmo
+    ? listAmmoInventory(db).reduce((sum, item) => sum + item.quantity, 0)
+    : null
 
   const firstName = profile.firstName.trim() || profile.email?.trim() || profile.username.trim()
 
   return {
     firstName,
     trackValue: profile.trackValue,
+    trackAmmo: profile.trackAmmo,
     totalRounds,
+    ammoRoundsTotal,
     activeSystems,
     inventoryItems,
     totalValue,
     monthlyRounds: trailing12MonthRounds(logs),
     recentActivity: buildRecentActivity(db, logs),
-    maintenanceAlerts: buildMaintenanceAlerts(parts)
+    maintenanceAlerts: buildMaintenanceAlerts(parts),
+    matchTrends: buildMatchTrends(db, logs)
   }
 }

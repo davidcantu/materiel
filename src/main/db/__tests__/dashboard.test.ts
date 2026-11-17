@@ -119,21 +119,36 @@ test('getDashboardSummary: KPIs, alerts, hides value when trackValue false', () 
     roundsFired: 80
   })
 
+  addShootingLog(db, {
+    systemId: system.id,
+    date: dayOffset(1, now),
+    location: 'PRS',
+    roundsFired: 45,
+    sessionType: 'Match',
+    placement: 7,
+    percentOfWinner: 88.5
+  })
+
   const summary = getDashboardSummary(db)
   assert.equal(summary.firstName, 'David')
   assert.equal(summary.trackValue, true)
-  assert.equal(summary.totalRounds, 200)
+  assert.equal(summary.totalRounds, 245)
   assert.equal(summary.activeSystems, 1)
   assert.equal(summary.inventoryItems, 4)
   assert.equal(summary.totalValue, 1400 + 850 + 1200 + 3000)
   assert.equal(summary.monthlyRounds.length, 12)
-  assert.equal(summary.recentActivity.length, 2)
+  assert.equal(summary.recentActivity.length, 3)
   assert.equal(summary.recentActivity[0].systemName, 'Match 6.5')
   assert.ok(summary.maintenanceAlerts.length >= 1)
   assert.equal(summary.maintenanceAlerts[0].kind, 'Maintenance')
   assert.ok(summary.maintenanceAlerts[0].percent >= 90)
+  assert.equal(summary.matchTrends.length, 1)
+  assert.equal(summary.matchTrends[0].placement, 7)
+  assert.equal(summary.matchTrends[0].percentOfWinner, 88.5)
 
-  updateProfile(db, { trackValue: false })
+  updateProfile(db, { trackValue: false, trackAmmo: false })
   const hidden = getDashboardSummary(db)
   assert.equal(hidden.trackValue, false)
+  assert.equal(hidden.trackAmmo, false)
+  assert.equal(hidden.ammoRoundsTotal, null)
 })

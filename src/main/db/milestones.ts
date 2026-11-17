@@ -48,13 +48,31 @@ function readMilestoneSnapshot(db: Database.Database): MilestoneSnapshot {
     .map((row) => row.type)
     .filter((type): type is PartType => (PART_TYPES as string[]).includes(type))
 
+  const bestMatchPlaceRow = db
+    .prepare(
+      `SELECT MIN(placement) AS best
+       FROM shooting_logs
+       WHERE session_type = 'Match' AND placement IS NOT NULL`
+    )
+    .get() as { best: number | null }
+
+  const bestPercentRow = db
+    .prepare(
+      `SELECT MAX(percent_of_winner) AS best
+       FROM shooting_logs
+       WHERE session_type = 'Match' AND percent_of_winner IS NOT NULL`
+    )
+    .get() as { best: number | null }
+
   return {
     systemCount,
     totalRounds,
     matchSessionCount,
     hasHandloadAmmo,
     maxBarrelRounds,
-    ownedPartTypes
+    ownedPartTypes,
+    bestMatchPlace: bestMatchPlaceRow.best ?? null,
+    bestPercentOfWinner: bestPercentRow.best ?? null
   }
 }
 

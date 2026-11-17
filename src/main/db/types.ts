@@ -75,6 +75,7 @@ export type Part = {
   barrelLife: number | null
   muzzleType: MuzzleType | null
   notes: string | null
+  soldToNote: string | null
   createdAt: string
   updatedAt: string
 }
@@ -115,6 +116,8 @@ export type ShootingLog = {
   roundsFired: number
   velocity: number | null
   sessionType: SessionType
+  placement: number | null
+  percentOfWinner: number | null
   notes: string | null
   createdAt: string
   updatedAt: string
@@ -217,6 +220,8 @@ export type NewShootingLogInput = {
   roundsFired: number
   velocity?: number | null
   sessionType?: SessionType
+  placement?: number | null
+  percentOfWinner?: number | null
   notes?: string | null
 }
 

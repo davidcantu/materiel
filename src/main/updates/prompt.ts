@@ -28,7 +28,16 @@ export async function promptUpdateAvailable(
   const title = 'Update available'
   const nameBit = update.releaseName ? ` (${update.releaseName})` : ''
   const message = `Materiel ${update.latestVersion}${nameBit} is available.`
-  const detail = `You are running ${update.currentVersion}.\n\nOpen the GitHub release to download the update.`
+  const detail = [
+    `You are running ${update.currentVersion}.`,
+    '',
+    'What to expect:',
+    '1. Open the GitHub Releases page and download the installer for your OS.',
+    '2. Quit Materiel, then run the installer (macOS: Open Anyway if Gatekeeper warns).',
+    '3. Relaunch Materiel — your local encrypted data stays on this machine.',
+    '',
+    'Updates are soft-checked against GitHub Releases; nothing installs automatically.'
+  ].join('\n')
 
   const boxOptions: Electron.MessageBoxOptions = {
     type: 'info',

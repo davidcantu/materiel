@@ -27,16 +27,31 @@ export type MaintenanceAlertItem = {
   tone: 'ok' | 'warn' | 'high'
 }
 
+export type MatchTrendPoint = {
+  id: string
+  date: string
+  systemName: string
+  placement: number | null
+  percentOfWinner: number | null
+}
+
+export type DashboardTrendWindow = 10 | 20 | 50 | 'all'
+
 export type DashboardSummary = {
   firstName: string
   trackValue: boolean
+  trackAmmo: boolean
   totalRounds: number
+  /** Sum of on-hand ammo quantity when trackAmmo; otherwise null. */
+  ammoRoundsTotal: number | null
   activeSystems: number
   inventoryItems: number
   totalValue: number
   monthlyRounds: MonthlyRounds[]
   recentActivity: RecentActivityItem[]
   maintenanceAlerts: MaintenanceAlertItem[]
+  /** Match sessions newest-first for placement / % winner charts. */
+  matchTrends: MatchTrendPoint[]
 }
 
 const MONTH_SHORT = [
@@ -102,4 +117,13 @@ export function maintenanceTone(percent: number): 'ok' | 'warn' | 'high' {
   if (percent <= 60) return 'ok'
   if (percent <= 90) return 'warn'
   return 'high'
+}
+
+/** Slice newest-first match trends to the selected window (oldest → newest for charts). */
+export function sliceMatchTrends(
+  points: MatchTrendPoint[],
+  window: DashboardTrendWindow
+): MatchTrendPoint[] {
+  const sliced = window === 'all' ? points : points.slice(0, window)
+  return [...sliced].reverse()
 }

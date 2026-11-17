@@ -12,6 +12,7 @@ export type DatabaseHealthInfo = {
 
 export type AppInfo = {
   name: string
+  version: string
   env: string
   backupProvider: string
   license: LicenseStatusInfo
