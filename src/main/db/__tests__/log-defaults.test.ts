@@ -43,6 +43,8 @@ function log(
     roundsFired: 10,
     velocity: null,
     sessionType: 'Practice',
+    placement: null,
+    percentOfWinner: null,
     notes: null,
     createdAt: partial.date,
     updatedAt: partial.date,
@@ -73,6 +75,7 @@ test('systemCaliber uses factory cartridge or barrel caliber', () => {
         barrelLife: 3000,
         muzzleType: null,
         notes: null,
+        soldToNote: null,
         createdAt: '2026-01-01T00:00:00.000Z',
         updatedAt: '2026-01-01T00:00:00.000Z'
       }

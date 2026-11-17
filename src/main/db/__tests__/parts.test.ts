@@ -118,7 +118,15 @@ test('suppressor requires serial; brake does not; wear status only for barrel/tr
     model: 'Razor'
   })
   assert.equal(optic.serialNumber, null)
-  assert.throws(() => setPartStatus(db, optic.id, 'Sold'), /wear parts/)
+  assert.throws(() => setPartStatus(db, optic.id, 'Retired'), /wear parts/)
+
+  const soldOptic = setPartStatus(db, optic.id, 'Sold', { soldToNote: 'Local buyer' })
+  assert.equal(soldOptic.status, 'Sold')
+  assert.equal(soldOptic.soldToNote, 'Local buyer')
+
+  const restored = setPartStatus(db, optic.id, 'In Stock')
+  assert.equal(restored.status, 'In Stock')
+  assert.equal(restored.soldToNote, 'Local buyer')
 })
 
 test('barrel requires name; optic serial is optional', () => {

@@ -173,3 +173,71 @@ test('ammo row is removed when quantity reaches zero', () => {
     db.close()
   }
 })
+
+test('match logs store place and % of winner; practice clears them', () => {
+  const db = setup()
+  try {
+    const log = addShootingLog(db, {
+      id: 'match-1',
+      systemId: 'sys-1',
+      date: '2026-11-12',
+      location: 'PRS Local',
+      roundsFired: 10,
+      sessionType: 'Match',
+      placement: 4,
+      percentOfWinner: 91.125
+    })
+    assert.equal(log.placement, 4)
+    assert.equal(log.percentOfWinner, 91.125)
+
+    const practice = updateShootingLog(db, {
+      id: 'match-1',
+      sessionType: 'Practice',
+      placement: 1,
+      percentOfWinner: 99
+    })
+    assert.equal(practice.sessionType, 'Practice')
+    assert.equal(practice.placement, null)
+    assert.equal(practice.percentOfWinner, null)
+  } finally {
+    db.close()
+  }
+})
+
+test('pistol builds receive round count deltas', () => {
+  const db = setup()
+  try {
+    const createdAt = '2026-01-01T00:00:00.000Z'
+    db.prepare(
+      `INSERT INTO parts (
+        id, manufacturer, value, type, status, platforms, model, serial_number,
+        total_round_count, rounds_after_cleaning, maintenance_interval,
+        caliber, created_at, updated_at
+      ) VALUES (
+        'pistol-1', 'Glock', 500, 'Pistol', 'In Stock', '["pistol"]', '19', 'G19',
+        0, 0, 500, '9mm', ?, ?
+      )`
+    ).run(createdAt, createdAt)
+
+    createCustomSystem(db, {
+      id: 'sys-pistol',
+      name: 'G19 Carry',
+      platform: 'pistol',
+      actionId: 'pistol-1',
+      barrelId: 'pistol-1',
+      chassisId: 'pistol-1'
+    })
+
+    addShootingLog(db, {
+      systemId: 'sys-pistol',
+      date: '2026-11-12',
+      location: 'Bay 2',
+      roundsFired: 50,
+      cartridge: '9mm'
+    })
+
+    assert.deepEqual(partRounds(db, 'pistol-1'), { total: 50, after: 50 })
+  } finally {
+    db.close()
+  }
+})

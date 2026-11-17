@@ -36,6 +36,8 @@ type FormState = {
   location: string
   velocity: string
   sessionType: SessionType
+  placement: string
+  percentOfWinner: string
   notes: string
 }
 
@@ -119,6 +121,8 @@ function blankForm(
     location: sticky.location ?? '',
     velocity: '',
     sessionType: 'Practice',
+    placement: '',
+    percentOfWinner: '',
     notes: ''
   }
 }
@@ -133,6 +137,8 @@ function fromLog(log: ShootingLogInfo): FormState {
     location: log.location,
     velocity: log.velocity != null ? String(log.velocity) : '',
     sessionType: log.sessionType,
+    placement: log.placement != null ? String(log.placement) : '',
+    percentOfWinner: log.percentOfWinner != null ? log.percentOfWinner.toFixed(3) : '',
     notes: log.notes ?? ''
   }
 }
@@ -310,6 +316,25 @@ export function LogSessionModal({
       }
     }
 
+    let placement: number | null = null
+    let percentOfWinner: number | null = null
+    if (form.sessionType === 'Match') {
+      if (form.placement.trim()) {
+        placement = Number(form.placement)
+        if (!Number.isFinite(placement) || !Number.isInteger(placement) || placement < 1) {
+          setError('Place must be a whole number ≥ 1.')
+          return null
+        }
+      }
+      if (form.percentOfWinner.trim()) {
+        percentOfWinner = Number(form.percentOfWinner)
+        if (!Number.isFinite(percentOfWinner) || percentOfWinner < 0 || percentOfWinner > 100) {
+          setError('% of Winner must be between 0 and 100.')
+          return null
+        }
+      }
+    }
+
     return {
       systemId: form.systemId,
       ammoId: isManual ? null : form.ammoChoice,
@@ -319,6 +344,8 @@ export function LogSessionModal({
       roundsFired,
       velocity,
       sessionType: form.sessionType,
+      placement,
+      percentOfWinner,
       notes: form.notes.trim() || null
     }
   }
@@ -579,6 +606,36 @@ export function LogSessionModal({
               ))}
             </div>
           </div>
+
+          {form.sessionType === 'Match' ? (
+            <>
+              <label className="field">
+                <span className="field-label">Place</span>
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={form.placement}
+                  onChange={(e) => setField('placement', e.target.value)}
+                  placeholder="e.g. 1"
+                  disabled={confirming}
+                />
+              </label>
+              <label className="field">
+                <span className="field-label">% of Winner</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={0.001}
+                  value={form.percentOfWinner}
+                  onChange={(e) => setField('percentOfWinner', e.target.value)}
+                  placeholder="e.g. 97.250"
+                  disabled={confirming}
+                />
+              </label>
+            </>
+          ) : null}
 
           <label className="field field-span">
             <span className="field-label">Notes</span>

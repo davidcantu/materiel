@@ -398,8 +398,20 @@ export function AmmoPage({
   return (
     <div className="page">
       <PageHeader
-        title="Ammo & Reloading"
-        description="Track ammunition lots and reloading load development."
+        title={
+          showInventory && showLoads
+            ? 'Ammo & Reloading'
+            : showLoads
+              ? 'Load Data'
+              : 'Ammo Inventory'
+        }
+        description={
+          showInventory && !showLoads
+            ? 'Track ammunition lots on hand.'
+            : !showInventory && showLoads
+              ? 'Reloading load development recipes.'
+              : 'Track ammunition lots and reloading load development.'
+        }
         actions={
           <>
             {showInventory && showLoads ? (
@@ -424,7 +436,7 @@ export function AmmoPage({
                 </button>
               </div>
             ) : null}
-            {primaryAction}
+            {showInventory || showLoads ? primaryAction : null}
           </>
         }
       />

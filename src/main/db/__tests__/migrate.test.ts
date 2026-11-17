@@ -67,7 +67,7 @@ test('migrations run forward from empty encrypted DB', () => {
     // Re-open / re-migrate is a no-op.
     const versionAgain = getAppliedMigrationVersion(db)
     assert.equal(versionAgain, MIGRATIONS[MIGRATIONS.length - 1].id)
-    assert.equal(versionAgain, 7)
+    assert.equal(versionAgain, 8)
 
     const partCols = db.prepare(`PRAGMA table_info(parts)`).all() as Array<{ name: string }>
     assert.ok(
@@ -83,6 +83,17 @@ test('migrations run forward from empty encrypted DB', () => {
     assert.ok(
       ammoCols.some((c) => c.name === 'acquired_date'),
       'ammo_inventory.acquired_date column missing'
+    )
+
+    assert.ok(
+      partCols.some((c) => c.name === 'sold_to_note'),
+      'parts.sold_to_note column missing'
+    )
+    const logCols = db.prepare(`PRAGMA table_info(shooting_logs)`).all() as Array<{ name: string }>
+    assert.ok(logCols.some((c) => c.name === 'placement'), 'shooting_logs.placement missing')
+    assert.ok(
+      logCols.some((c) => c.name === 'percent_of_winner'),
+      'shooting_logs.percent_of_winner missing'
     )
 
     const profileCols = db.prepare(`PRAGMA table_info(profile)`).all() as Array<{ name: string }>
@@ -190,7 +201,7 @@ test('upgrade from v4 with referencing rows survives parts rebuild (005/006)', (
       `INSERT INTO system_misc_parts (system_id, part_id, position) VALUES ('sys-1', 'opt-1', 0)`
     ).run()
 
-    assert.equal(migrate(db), 7)
+    assert.equal(migrate(db), 8)
     assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), [])
 
     const system = db.prepare(`SELECT action_id, barrel_id, platform FROM systems WHERE id = 'sys-1'`).get() as {
@@ -240,7 +251,7 @@ test('upgrade from v5 Frame→Pistol rebuild with pistol system refs', () => {
       )`
     ).run({ t })
 
-    assert.equal(migrate(db), 7)
+    assert.equal(migrate(db), 8)
     assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), [])
 
     const frame = db.prepare(`SELECT type FROM parts WHERE id = 'frame-1'`).get() as { type: string }

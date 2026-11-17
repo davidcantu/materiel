@@ -37,6 +37,7 @@ import type {
 } from '../shared/shooting-logs'
 import type { DashboardSummary } from '../shared/dashboard'
 import type { MilestonesSummary } from '../shared/milestones'
+import type { UpdateCheckResult } from '../shared/updates'
 
 declare global {
   interface Window {
@@ -61,7 +62,11 @@ declare global {
       createPart: (input: PartInput) => Promise<PartInfo>
       updatePart: (id: string, patch: PartUpdateInput) => Promise<PartInfo>
       deletePart: (id: string) => Promise<{ ok: true }>
-      setPartStatus: (id: string, status: PartStatus) => Promise<PartInfo>
+      setPartStatus: (
+        id: string,
+        status: PartStatus,
+        options?: { soldToNote?: string | null }
+      ) => Promise<PartInfo>
       resetPartMaintenance: (id: string) => Promise<PartInfo>
       countSystems: () => Promise<number>
       listSystems: () => Promise<CompleteSystemInfo[]>
@@ -96,6 +101,7 @@ declare global {
       deleteLoad: (id: string) => Promise<{ ok: true }>
       getDashboard: () => Promise<DashboardSummary>
       getMilestones: () => Promise<MilestonesSummary>
+      checkForUpdates: () => Promise<UpdateCheckResult>
     }
   }
 }

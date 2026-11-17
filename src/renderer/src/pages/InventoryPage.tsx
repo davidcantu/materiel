@@ -44,6 +44,9 @@ export function InventoryPage({
   const [statuses, setStatuses] = useState<PartStatus[]>(DEFAULT_STATUSES)
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<PartInfo | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [pendingPistolBuild, setPendingPistolBuild] = useState<PartInfo | null>(null)
+  const [pistolBuildBusy, setPistolBuildBusy] = useState(false)
 
   const availablePlatforms = useMemo(
     () =>
@@ -116,16 +119,32 @@ export function InventoryPage({
       if (!part.platforms.some((p) => platformSet.has(p))) return false
       if (platformFilter !== 'All' && !part.platforms.includes(platformFilter)) return false
       if (typeFilter !== 'All' && part.type !== typeFilter) return false
-      // Wear status filter applies only to barrels/triggers; other parts always pass.
-      if (isWearStatusTracked(part.type) && !statuses.includes(part.status)) return false
+      // Wear status filter applies only to barrels/triggers; sold items of any type respect Sold chip.
+      if (part.status === 'Sold') {
+        if (!statuses.includes('Sold')) return false
+      } else if (isWearStatusTracked(part.type) && !statuses.includes(part.status)) {
+        return false
+      }
       if (!q) return true
-      const hay = [part.name, part.manufacturer, part.model, part.caliber, part.serialNumber]
+      const hay = [
+        part.name,
+        part.manufacturer,
+        part.model,
+        part.caliber,
+        part.serialNumber,
+        part.soldToNote
+      ]
         .filter(Boolean)
         .join(' ')
         .toLowerCase()
       return hay.includes(q)
     })
   }, [parts, search, platformFilter, typeFilter, statuses, availablePlatforms])
+
+  const selected = useMemo(
+    () => (selectedId ? (parts.find((p) => p.id === selectedId) ?? null) : null),
+    [parts, selectedId]
+  )
 
   function toggleStatus(status: PartStatus): void {
     setStatuses((prev) => {
@@ -146,11 +165,46 @@ export function InventoryPage({
     if (editing) {
       await window.api.updatePart(editing.id, input)
       toast.success('Part updated.')
-    } else {
-      await window.api.createPart(input)
-      toast.success('Part added.')
+      await load()
+      return
     }
+
+    const created = await window.api.createPart(input)
+    toast.success('Part added.')
     await load()
+    setSelectedId(created.id)
+
+    if (created.type === 'Pistol' && created.platforms.includes('pistol')) {
+      setPendingPistolBuild(created)
+    }
+  }
+
+  async function createPistolAsBuild(part: PartInfo): Promise<void> {
+    setPistolBuildBusy(true)
+    try {
+      const name =
+        [part.manufacturer, part.model].filter(Boolean).join(' ').trim() ||
+        partPrimaryTitle(part) ||
+        'Pistol'
+      const result = await window.api.createCustomSystem({
+        name,
+        platform: 'pistol',
+        actionId: part.id,
+        barrelId: part.id,
+        chassisId: part.id
+      })
+      if (!result.ok) {
+        toast.error(result.error.message)
+        return
+      }
+      toast.success('Pistol build created — you can log rounds against it.')
+      setPendingPistolBuild(null)
+      await load()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not create build')
+    } finally {
+      setPistolBuildBusy(false)
+    }
   }
 
   async function handleDelete(part: PartInfo): Promise<void> {
@@ -158,9 +212,25 @@ export function InventoryPage({
     try {
       await window.api.deletePart(part.id)
       toast.success('Part deleted.')
+      if (selectedId === part.id) setSelectedId(null)
       await load()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Delete failed')
+    }
+  }
+
+  async function handleMarkSold(part: PartInfo): Promise<void> {
+    const note = window.prompt(
+      'Sold to (optional note that stays with this item):',
+      part.soldToNote ?? ''
+    )
+    if (note === null) return
+    try {
+      await window.api.setPartStatus(part.id, 'Sold', { soldToNote: note.trim() || null })
+      toast.success('Marked as sold.')
+      await load()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Status update failed')
     }
   }
 
@@ -235,7 +305,7 @@ export function InventoryPage({
               type="button"
               className={`chip${statuses.includes(status) ? ' active' : ''}`}
               onClick={() => toggleStatus(status)}
-              title="Filters barrels and triggers only"
+              title="Filters barrels and triggers; Sold also hides sold items of any type"
             >
               {status}
             </button>
@@ -284,8 +354,6 @@ export function InventoryPage({
                 <th>Type</th>
                 <th>Platform</th>
                 <th>Part</th>
-                <th>Details</th>
-                <th>Status</th>
                 <th>Maintenance</th>
                 {trackValue ? <th>Value</th> : null}
                 <th>Actions</th>
@@ -294,8 +362,14 @@ export function InventoryPage({
             <tbody>
               {filtered.map((part) => {
                 const percent = maintenancePercent(part)
+                const isSelected = selectedId === part.id
                 return (
-                  <tr key={part.id}>
+                  <tr
+                    key={part.id}
+                    className={isSelected ? 'row-selected' : undefined}
+                    onClick={() => setSelectedId(part.id)}
+                    style={{ cursor: 'pointer' }}
+                  >
                     <td>
                       <span className="type-pill">{partTypeLabel(part.type)}</span>
                     </td>
@@ -307,30 +381,11 @@ export function InventoryPage({
                       {part.serialNumber ? (
                         <div className="cell-sub">S/N {part.serialNumber}</div>
                       ) : null}
-                    </td>
-                    <td className="cell-meta">
-                      {isMaintenanceTracked(part.type) ? (
-                        <div>Rounds: {part.totalRoundCount}</div>
+                      {part.status === 'Sold' ? (
+                        <div className="cell-sub">Sold</div>
+                      ) : isWearStatusTracked(part.type) ? (
+                        <div className="cell-sub">{part.status}</div>
                       ) : null}
-                      {part.type === 'Barrel' ? (
-                        <>
-                          {part.name ? (
-                            <div>
-                              {[part.manufacturer, part.caliber].filter(Boolean).join(' ')}
-                            </div>
-                          ) : null}
-                          <div>Twist 1:{part.twistRate ?? '—'}</div>
-                          <div>{part.gunsmith}</div>
-                        </>
-                      ) : null}
-                      {part.type === 'Suppressor' ? <div>{part.muzzleType}</div> : null}
-                    </td>
-                    <td>
-                      {isWearStatusTracked(part.type) ? (
-                        <StatusBadge status={part.status} />
-                      ) : (
-                        <span className="muted">—</span>
-                      )}
                     </td>
                     <td>
                       {percent != null ? (
@@ -345,20 +400,13 @@ export function InventoryPage({
                             />
                           </div>
                           <span className="muted">{percent}%</span>
-                          <button
-                            type="button"
-                            className="btn-link"
-                            onClick={() => void handleReset(part)}
-                          >
-                            Reset
-                          </button>
                         </div>
                       ) : (
                         <span className="muted">—</span>
                       )}
                     </td>
                     {trackValue ? <td>{formatCurrency(part.value)}</td> : null}
-                    <td>
+                    <td onClick={(e) => e.stopPropagation()}>
                       <div className="row-actions">
                         <button
                           type="button"
@@ -377,34 +425,6 @@ export function InventoryPage({
                         >
                           Delete
                         </button>
-                        {isWearStatusTracked(part.type) && part.status !== 'Sold' ? (
-                          <button
-                            type="button"
-                            className="btn-link"
-                            onClick={() => void handleStatus(part, 'Sold')}
-                          >
-                            Mark sold
-                          </button>
-                        ) : null}
-                        {isWearStatusTracked(part.type) && part.status !== 'Retired' ? (
-                          <button
-                            type="button"
-                            className="btn-link"
-                            onClick={() => void handleStatus(part, 'Retired')}
-                          >
-                            Retire
-                          </button>
-                        ) : null}
-                        {isWearStatusTracked(part.type) &&
-                        (part.status === 'Sold' || part.status === 'Retired') ? (
-                          <button
-                            type="button"
-                            className="btn-link"
-                            onClick={() => void handleStatus(part, 'In Stock')}
-                          >
-                            Return to stock
-                          </button>
-                        ) : null}
                       </div>
                     </td>
                   </tr>
@@ -412,6 +432,189 @@ export function InventoryPage({
               })}
             </tbody>
           </table>
+        </div>
+      ) : null}
+
+      {selected ? (
+        <article className="inventory-detail-card" aria-label="Part details">
+          <header className="inventory-detail-header">
+            <div>
+              <h2>{partPrimaryTitle(selected)}</h2>
+              <p className="muted">
+                {partTypeLabel(selected.type)} ·{' '}
+                {selected.platforms.map((p) => PLATFORM_LABELS[p]).join(', ')}
+              </p>
+            </div>
+            <button type="button" className="btn-ghost btn-sm" onClick={() => setSelectedId(null)}>
+              Close
+            </button>
+          </header>
+
+          <dl className="meta-list inventory-detail-meta">
+            {selected.serialNumber ? (
+              <div>
+                <dt>Serial</dt>
+                <dd>{selected.serialNumber}</dd>
+              </div>
+            ) : null}
+            {selected.caliber ? (
+              <div>
+                <dt>Cartridge</dt>
+                <dd>{selected.caliber}</dd>
+              </div>
+            ) : null}
+            {isWearStatusTracked(selected.type) || selected.status === 'Sold' ? (
+              <div>
+                <dt>Status</dt>
+                <dd>
+                  {isWearStatusTracked(selected.type) ? (
+                    <StatusBadge status={selected.status} />
+                  ) : (
+                    selected.status
+                  )}
+                </dd>
+              </div>
+            ) : null}
+            {selected.soldToNote ? (
+              <div>
+                <dt>Sold to</dt>
+                <dd>{selected.soldToNote}</dd>
+              </div>
+            ) : null}
+            {isMaintenanceTracked(selected.type) ? (
+              <div>
+                <dt>Rounds</dt>
+                <dd>{selected.totalRoundCount}</dd>
+              </div>
+            ) : null}
+            {selected.type === 'Barrel' ? (
+              <>
+                <div>
+                  <dt>Twist</dt>
+                  <dd>1:{selected.twistRate ?? '—'}</dd>
+                </div>
+                <div>
+                  <dt>Gunsmith</dt>
+                  <dd>{selected.gunsmith || '—'}</dd>
+                </div>
+              </>
+            ) : null}
+            {selected.type === 'Suppressor' ? (
+              <div>
+                <dt>Muzzle</dt>
+                <dd>{selected.muzzleType ?? '—'}</dd>
+              </div>
+            ) : null}
+            {trackValue ? (
+              <div>
+                <dt>Value</dt>
+                <dd>{formatCurrency(selected.value)}</dd>
+              </div>
+            ) : null}
+            {selected.notes ? (
+              <div>
+                <dt>Notes</dt>
+                <dd>{selected.notes}</dd>
+              </div>
+            ) : null}
+          </dl>
+
+          <div className="row-actions inventory-detail-actions">
+            <button
+              type="button"
+              className="btn-ghost btn-sm"
+              onClick={() => {
+                setEditing(selected)
+                setModalOpen(true)
+              }}
+            >
+              Edit
+            </button>
+            <button
+              type="button"
+              className="btn-ghost btn-sm"
+              onClick={() => void handleDelete(selected)}
+            >
+              Delete
+            </button>
+            {selected.status !== 'Sold' ? (
+              <button
+                type="button"
+                className="btn-ghost btn-sm"
+                onClick={() => void handleMarkSold(selected)}
+              >
+                Mark as Sold
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="btn-ghost btn-sm"
+                onClick={() => void handleStatus(selected, 'In Stock')}
+              >
+                Return to stock
+              </button>
+            )}
+            {isWearStatusTracked(selected.type) &&
+            selected.status !== 'Retired' &&
+            selected.status !== 'Sold' ? (
+              <button
+                type="button"
+                className="btn-ghost btn-sm"
+                onClick={() => void handleStatus(selected, 'Retired')}
+              >
+                Retire
+              </button>
+            ) : null}
+            {isWearStatusTracked(selected.type) && selected.status === 'Retired' ? (
+              <button
+                type="button"
+                className="btn-ghost btn-sm"
+                onClick={() => void handleStatus(selected, 'In Stock')}
+              >
+                Return to stock
+              </button>
+            ) : null}
+            {maintenancePercent(selected) != null ? (
+              <button
+                type="button"
+                className="btn-ghost btn-sm"
+                onClick={() => void handleReset(selected)}
+              >
+                Reset maintenance
+              </button>
+            ) : null}
+          </div>
+        </article>
+      ) : null}
+
+      {pendingPistolBuild ? (
+        <div className="inventory-pistol-prompt" role="dialog" aria-label="Create pistol build">
+          <div className="inventory-pistol-prompt-card">
+            <h3>Shoot without accessories?</h3>
+            <p>
+              Many pistol shooters don’t add optics or lights. Create{' '}
+              <strong>{partPrimaryTitle(pendingPistolBuild)}</strong> as a build now so you can log
+              rounds against it?
+            </p>
+            <div className="row-actions">
+              <button
+                type="button"
+                className="btn-ghost"
+                disabled={pistolBuildBusy}
+                onClick={() => setPendingPistolBuild(null)}
+              >
+                Not now
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={pistolBuildBusy}
+                onClick={() => void createPistolAsBuild(pendingPistolBuild)}
+              >
+                {pistolBuildBusy ? 'Creating…' : 'Create as build'}
+              </button>
+            </div>
+          </div>
         </div>
       ) : null}
 

@@ -34,15 +34,35 @@ type LogRow = {
   rounds_fired: number
   velocity: number | null
   session_type: SessionType
+  placement: number | null
+  percent_of_winner: number | null
   notes: string | null
   created_at: string
   updated_at: string
 }
 
-const ROUND_TRACKED_TYPES = new Set(['Action', 'Barrel', 'Suppressor'])
+/** Parts that receive round-count deltas when a session is logged. */
+const ROUND_TRACKED_TYPES = new Set(['Action', 'Barrel', 'Suppressor', 'BCG', 'Pistol', 'Lower'])
 
 function nowIso(): string {
   return new Date().toISOString()
+}
+
+function normalizePlacement(value: number | null | undefined): number | null {
+  if (value == null) return null
+  if (!Number.isFinite(value) || !Number.isInteger(value) || value < 1) {
+    throw new Error('Placement must be a whole number ≥ 1')
+  }
+  return value
+}
+
+function normalizePercentOfWinner(value: number | null | undefined): number | null {
+  if (value == null) return null
+  if (!Number.isFinite(value) || value < 0 || value > 100) {
+    throw new Error('% of Winner must be between 0 and 100')
+  }
+  // Persist at 3-decimal precision.
+  return Math.round(value * 1000) / 1000
 }
 
 function mapLog(row: LogRow): ShootingLog {
@@ -57,6 +77,8 @@ function mapLog(row: LogRow): ShootingLog {
     roundsFired: row.rounds_fired,
     velocity: row.velocity,
     sessionType: row.session_type,
+    placement: row.placement ?? null,
+    percentOfWinner: row.percent_of_winner ?? null,
     notes: row.notes,
     createdAt: row.created_at,
     updatedAt: row.updated_at
@@ -85,7 +107,7 @@ function trackedPartIds(db: Database.Database, system: SystemRow): string[] {
   const ids = [system.action_id, system.barrel_id]
   if (system.suppressor_id) ids.push(system.suppressor_id)
   ids.push(...getMiscPartIds(db, system.id))
-  return ids
+  return [...new Set(ids)]
 }
 
 function applyRoundDelta(db: Database.Database, partIds: string[], delta: number): void {
@@ -120,7 +142,8 @@ function applyAmmoDelta(
   if (!ammoId || ammoId === 'manual' || delta === 0) return
 
   const ammo = db.prepare(`SELECT id, quantity FROM ammo_inventory WHERE id = ?`).get(ammoId) as
-    { id: string; quantity: number } | undefined
+    | { id: string; quantity: number }
+    | undefined
 
   if (!ammo) {
     // On delete/update reverse: ammo may already be gone — ignore restore if missing.
@@ -153,6 +176,20 @@ function applyLogSideEffects(
   applyAmmoDelta(db, ammoId, direction * -1 * roundsFired)
 }
 
+function resolveMatchFields(
+  sessionType: SessionType,
+  placement: number | null | undefined,
+  percentOfWinner: number | null | undefined
+): { placement: number | null; percentOfWinner: number | null } {
+  if (sessionType !== 'Match') {
+    return { placement: null, percentOfWinner: null }
+  }
+  return {
+    placement: normalizePlacement(placement),
+    percentOfWinner: normalizePercentOfWinner(percentOfWinner)
+  }
+}
+
 export function getShootingLog(db: Database.Database, id: string): ShootingLog | null {
   const row = db.prepare(`SELECT * FROM shooting_logs WHERE id = ?`).get(id) as LogRow | undefined
   return row ? mapLog(row) : null
@@ -176,14 +213,17 @@ export function addShootingLog(db: Database.Database, input: NewShootingLogInput
     const createdAt = nowIso()
     const sessionType: SessionType = input.sessionType ?? 'Practice'
     const ammoId = input.ammoId && input.ammoId !== 'manual' ? input.ammoId : null
+    const match = resolveMatchFields(sessionType, input.placement, input.percentOfWinner)
 
     db.prepare(
       `INSERT INTO shooting_logs (
         id, system_id, barrel_id, ammo_id, cartridge, date, location,
-        rounds_fired, velocity, session_type, notes, created_at, updated_at
+        rounds_fired, velocity, session_type, placement, percent_of_winner,
+        notes, created_at, updated_at
       ) VALUES (
         @id, @systemId, @barrelId, @ammoId, @cartridge, @date, @location,
-        @roundsFired, @velocity, @sessionType, @notes, @createdAt, @updatedAt
+        @roundsFired, @velocity, @sessionType, @placement, @percentOfWinner,
+        @notes, @createdAt, @updatedAt
       )`
     ).run({
       id,
@@ -196,6 +236,8 @@ export function addShootingLog(db: Database.Database, input: NewShootingLogInput
       roundsFired: input.roundsFired,
       velocity: input.velocity ?? null,
       sessionType,
+      placement: match.placement,
+      percentOfWinner: match.percentOfWinner,
       notes: input.notes ?? null,
       createdAt,
       updatedAt: createdAt
@@ -245,6 +287,12 @@ export function updateShootingLog(
 
     const ammoIdRaw = input.ammoId !== undefined ? input.ammoId : existing.ammoId
     const ammoId = ammoIdRaw && ammoIdRaw !== 'manual' ? ammoIdRaw : null
+    const sessionType = input.sessionType ?? existing.sessionType
+    const match = resolveMatchFields(
+      sessionType,
+      input.placement !== undefined ? input.placement : existing.placement,
+      input.percentOfWinner !== undefined ? input.percentOfWinner : existing.percentOfWinner
+    )
     const updatedAt = nowIso()
 
     db.prepare(
@@ -258,6 +306,8 @@ export function updateShootingLog(
         rounds_fired = @roundsFired,
         velocity = @velocity,
         session_type = @sessionType,
+        placement = @placement,
+        percent_of_winner = @percentOfWinner,
         notes = @notes,
         updated_at = @updatedAt
       WHERE id = @id`
@@ -271,7 +321,9 @@ export function updateShootingLog(
       location: input.location ?? existing.location,
       roundsFired,
       velocity: input.velocity !== undefined ? input.velocity : existing.velocity,
-      sessionType: input.sessionType ?? existing.sessionType,
+      sessionType,
+      placement: match.placement,
+      percentOfWinner: match.percentOfWinner,
       notes: input.notes !== undefined ? input.notes : existing.notes,
       updatedAt
     })

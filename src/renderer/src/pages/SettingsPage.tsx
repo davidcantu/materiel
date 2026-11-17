@@ -1,8 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { formatPlatformCountsSummary, type LicenseStatusInfo } from '../../../shared/license'
-import type { MilestoneStatus, MilestonesSummary } from '../../../shared/milestones'
+import {
+  MILESTONE_TIER_LABELS,
+  type MilestoneStatus,
+  type MilestoneTier,
+  type MilestonesSummary
+} from '../../../shared/milestones'
 import { PLATFORMS, PLATFORM_LABELS, type Platform } from '../../../shared/platforms'
 import { hasLocalIdentity, type ProfileInfo, type ProfilePatch } from '../../../shared/profile'
+import type { UpdateCheckResult } from '../../../shared/updates'
 import { BrandLogo } from '../components/BrandLogo'
 import { Icon } from '../components/icons/Icon'
 import { ImageCropField, type ImageCropValue } from '../components/ImageCropField'
@@ -47,6 +53,27 @@ function MilestoneCard({ milestone }: { milestone: MilestoneStatus }): React.JSX
   )
 }
 
+function updateStatusMessage(result: UpdateCheckResult, currentVersion: string): string {
+  switch (result.status) {
+    case 'available':
+      return `Materiel ${result.latestVersion} is available (you have ${result.currentVersion}). Download from GitHub Releases, quit the app, install, then relaunch — your local data stays on this machine.`
+    case 'up-to-date':
+      return `You’re on the latest release (${result.currentVersion}).`
+    case 'skipped':
+      if (result.reason === 'offline') {
+        return `Couldn’t reach GitHub Releases (offline or timed out). You’re running ${currentVersion}. Try again when you’re online.`
+      }
+      if (result.reason === 'no-release') {
+        return `No published release found yet. You’re running ${currentVersion}.`
+      }
+      return `Update check didn’t complete (${result.reason}${result.detail ? `: ${result.detail}` : ''}). You’re running ${currentVersion}.`
+    default: {
+      const _exhaustive: never = result
+      return _exhaustive
+    }
+  }
+}
+
 function draftFromProfile(profile: ProfileInfo): ProfileDraft {
   return {
     firstName: profile.firstName,
@@ -82,6 +109,24 @@ export function SettingsPage({
   const [profileDraft, setProfileDraft] = useState<ProfileDraft | null>(null)
   const [profileBusy, setProfileBusy] = useState(false)
   const [profileError, setProfileError] = useState<string | null>(null)
+  const [appVersion, setAppVersion] = useState<string>('…')
+  const [updateBusy, setUpdateBusy] = useState(false)
+  const [updateMessage, setUpdateMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    void window.api
+      .getAppInfo()
+      .then((info) => {
+        if (!cancelled) setAppVersion(info.version)
+      })
+      .catch(() => {
+        if (!cancelled) setAppVersion('unknown')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -255,6 +300,39 @@ export function SettingsPage({
 
   const displayName = [profile?.firstName, profile?.lastName].filter(Boolean).join(' ').trim()
 
+  const milestonesByTier = useMemo(() => {
+    if (!milestones) return null
+    const tiers: MilestoneTier[] = ['new', 'mid', 'advanced']
+    return tiers.map((tier) => ({
+      tier,
+      label: MILESTONE_TIER_LABELS[tier],
+      items: milestones.milestones.filter((m) => m.tier === tier)
+    }))
+  }, [milestones])
+
+  async function handleCheckUpdates(): Promise<void> {
+    setUpdateBusy(true)
+    setUpdateMessage(null)
+    try {
+      const result = await window.api.checkForUpdates()
+      const text = updateStatusMessage(result, appVersion)
+      setUpdateMessage(text)
+      if (result.status === 'available') {
+        toast.success(`Update ${result.latestVersion} available`)
+      } else if (result.status === 'up-to-date') {
+        toast.success('You’re up to date')
+      } else {
+        toast.error('Update check incomplete')
+      }
+    } catch (err) {
+      const text = err instanceof Error ? err.message : 'Update check failed'
+      setUpdateMessage(text)
+      toast.error(text)
+    } finally {
+      setUpdateBusy(false)
+    }
+  }
+
   return (
     <div className="page">
       <PageHeader title="Settings" description="Profile, milestones, license, and preferences." />
@@ -264,10 +342,33 @@ export function SettingsPage({
         <div className="about-brand">
           <BrandLogo className="brand-logo-about" alt="Materiel" />
           <p>
-            Local-first firearms tracker for inventory, builds, logs, ammo, and maintenance. Magpul
-            OD brand kit — display Black Ops One, UI Source Sans 3.
+            Materiel is the local-first firearms tracker built for shooters who actually log —
+            bolt guns, ARs, and pistols. Inventory and builds, session logs, ammo and loads,
+            maintenance alerts, and encrypted data that stays on your machine. No cloud required.
+            Just your kit, your rounds, and a clean record of what you’ve run.
           </p>
+          <p className="muted">Version {appVersion}</p>
         </div>
+      </section>
+
+      <section className="settings-panel">
+        <h2>Updates</h2>
+        <p className="muted">
+          Materiel soft-checks GitHub Releases. Nothing installs automatically — when an update is
+          available, download the installer for your OS, quit Materiel, run it, then relaunch. Your
+          encrypted local database stays on this computer.
+        </p>
+        <div className="row-actions">
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={updateBusy}
+            onClick={() => void handleCheckUpdates()}
+          >
+            {updateBusy ? 'Checking…' : 'Check for updates'}
+          </button>
+        </div>
+        {updateMessage ? <p className="settings-note">{updateMessage}</p> : null}
       </section>
 
       <section className="settings-panel settings-panel-wide">
@@ -432,10 +533,17 @@ export function SettingsPage({
         </div>
         {milestonesError ? <p className="form-error">{milestonesError}</p> : null}
         {!milestones && !milestonesError ? <p className="muted">Loading milestones…</p> : null}
-        {milestones ? (
-          <div className="milestone-grid">
-            {milestones.milestones.map((milestone) => (
-              <MilestoneCard key={milestone.id} milestone={milestone} />
+        {milestonesByTier ? (
+          <div className="milestone-tiers">
+            {milestonesByTier.map((group) => (
+              <div key={group.tier} className="milestone-tier">
+                <h3 className="milestone-tier-label">{group.label}</h3>
+                <div className="milestone-grid">
+                  {group.items.map((milestone) => (
+                    <MilestoneCard key={milestone.id} milestone={milestone} />
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         ) : null}

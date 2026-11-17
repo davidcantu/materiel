@@ -28,6 +28,7 @@ function part(partial: Partial<PartInfo> & Pick<PartInfo, 'id' | 'type'>): PartI
     barrelLife: partial.type === 'Barrel' ? 3000 : null,
     muzzleType: null,
     notes: null,
+    soldToNote: null,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
     ...partial

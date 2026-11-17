@@ -38,6 +38,7 @@ import type {
 } from '../shared/shooting-logs'
 import type { DashboardSummary } from '../shared/dashboard'
 import type { MilestonesSummary } from '../shared/milestones'
+import type { UpdateCheckResult } from '../shared/updates'
 
 const api = {
   getAppInfo: (): Promise<AppInfo> => ipcRenderer.invoke('app:get-info'),
@@ -65,8 +66,11 @@ const api = {
   updatePart: (id: string, patch: PartUpdateInput): Promise<PartInfo> =>
     ipcRenderer.invoke('parts:update', id, patch),
   deletePart: (id: string): Promise<{ ok: true }> => ipcRenderer.invoke('parts:delete', id),
-  setPartStatus: (id: string, status: PartStatus): Promise<PartInfo> =>
-    ipcRenderer.invoke('parts:set-status', id, status),
+  setPartStatus: (
+    id: string,
+    status: PartStatus,
+    options?: { soldToNote?: string | null }
+  ): Promise<PartInfo> => ipcRenderer.invoke('parts:set-status', id, status, options),
   resetPartMaintenance: (id: string): Promise<PartInfo> =>
     ipcRenderer.invoke('parts:reset-maintenance', id),
   countSystems: (): Promise<number> => ipcRenderer.invoke('systems:count'),
@@ -112,7 +116,8 @@ const api = {
     ipcRenderer.invoke('loads:update', id, patch),
   deleteLoad: (id: string): Promise<{ ok: true }> => ipcRenderer.invoke('loads:delete', id),
   getDashboard: (): Promise<DashboardSummary> => ipcRenderer.invoke('dashboard:get'),
-  getMilestones: (): Promise<MilestonesSummary> => ipcRenderer.invoke('milestones:get')
+  getMilestones: (): Promise<MilestonesSummary> => ipcRenderer.invoke('milestones:get'),
+  checkForUpdates: (): Promise<UpdateCheckResult> => ipcRenderer.invoke('updates:check')
 }
 
 if (process.contextIsolated) {

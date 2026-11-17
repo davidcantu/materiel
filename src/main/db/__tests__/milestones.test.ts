@@ -36,6 +36,8 @@ function emptySnapshot(overrides: Partial<MilestoneSnapshot> = {}): MilestoneSna
     hasHandloadAmmo: false,
     maxBarrelRounds: 0,
     ownedPartTypes: [],
+    bestMatchPlace: null,
+    bestPercentOfWinner: null,
     ...overrides
   }
 }
@@ -48,151 +50,108 @@ function byId(summary: ReturnType<typeof evaluateMilestones>, id: string): boole
 
 test('evaluateMilestones: all locked on empty snapshot', () => {
   const summary = evaluateMilestones(emptySnapshot())
-  assert.equal(summary.milestones.length, 6)
+  assert.equal(summary.milestones.length, 9)
   assert.equal(summary.unlockedCount, 0)
   for (const m of summary.milestones) {
     assert.equal(m.unlocked, false)
   }
 })
 
-test('evaluateMilestones: each §7.5 rule unlocks independently', () => {
-  assert.equal(byId(evaluateMilestones(emptySnapshot({ systemCount: 1 })), 'iron-sights'), true)
-  assert.equal(byId(evaluateMilestones(emptySnapshot({ totalRounds: 999 })), 'round-junkie'), false)
-  assert.equal(byId(evaluateMilestones(emptySnapshot({ totalRounds: 1000 })), 'round-junkie'), true)
+test('evaluateMilestones: new / mid / advanced unlock rules', () => {
+  assert.equal(byId(evaluateMilestones(emptySnapshot({ systemCount: 1 })), 'kit-up'), true)
+  assert.equal(byId(evaluateMilestones(emptySnapshot({ totalRounds: 99 })), 'brass-rain'), false)
+  assert.equal(byId(evaluateMilestones(emptySnapshot({ totalRounds: 100 })), 'brass-rain'), true)
   assert.equal(
-    byId(evaluateMilestones(emptySnapshot({ matchSessionCount: 5 })), 'match-ready'),
+    byId(evaluateMilestones(emptySnapshot({ matchSessionCount: 1 })), 'first-contact'),
     true
   )
   assert.equal(
-    byId(evaluateMilestones(emptySnapshot({ hasHandloadAmmo: true })), 'handloader'),
+    byId(evaluateMilestones(emptySnapshot({ totalRounds: 1000 })), 'ammo-budget-denial'),
     true
   )
   assert.equal(
-    byId(evaluateMilestones(emptySnapshot({ maxBarrelRounds: 2500 })), 'barrel-burner'),
+    byId(evaluateMilestones(emptySnapshot({ matchSessionCount: 5 })), 'stage-captain-adjacent'),
     true
   )
   assert.equal(
-    byId(evaluateMilestones(emptySnapshot({ ownedPartTypes: [...PART_TYPES] })), 'full-kit'),
+    byId(evaluateMilestones(emptySnapshot({ hasHandloadAmmo: true })), 'kitchen-table-armorer'),
     true
   )
   assert.equal(
-    byId(
-      evaluateMilestones(
-        emptySnapshot({
-          ownedPartTypes: ['Action', 'Barrel', 'Chassis', 'Optic', 'Suppressor', 'Misc']
-        })
-      ),
-      'full-kit'
-    ),
+    byId(evaluateMilestones(emptySnapshot({ maxBarrelRounds: 2500 })), 'barrel-retirement'),
+    true
+  )
+  assert.equal(
+    byId(evaluateMilestones(emptySnapshot({ ownedPartTypes: [...PART_TYPES] })), 'full-battle-rattle'),
+    true
+  )
+  assert.equal(
+    byId(evaluateMilestones(emptySnapshot({ bestMatchPlace: 3 })), 'podium-threat'),
+    true
+  )
+  assert.equal(
+    byId(evaluateMilestones(emptySnapshot({ bestPercentOfWinner: 95 })), 'podium-threat'),
+    true
+  )
+  assert.equal(
+    byId(evaluateMilestones(emptySnapshot({ bestMatchPlace: 4, bestPercentOfWinner: 94.999 })), 'podium-threat'),
     false
-  )
-  assert.equal(
-    byId(
-      evaluateMilestones(
-        emptySnapshot({
-          ownedPartTypes: [
-            'Action',
-            'Barrel',
-            'Chassis',
-            'Optic',
-            'LaserIR',
-            'Suppressor',
-            'Trigger',
-            'Misc'
-          ]
-        })
-      ),
-      'full-kit'
-    ),
-    true
   )
 })
 
-test('getMilestonesSummary: derives unlocks from DB rows', () => {
+test('getMilestonesSummary: unlocks from DB state including podium', () => {
   const db = setup()
-
-  let summary = getMilestonesSummary(db)
-  assert.equal(summary.unlockedCount, 0)
-
-  const action = createPart(db, {
-    manufacturer: 'Impact',
-    type: 'Action',
-    model: '737R',
-    serialNumber: 'A1'
-  })
-  const barrel = createPart(db, {
-    manufacturer: 'Proof',
-    type: 'Barrel',
-    name: 'Proof GT',
-    caliber: '6mm GT',
-    gunsmith: 'Altus',
-    twistRate: 7.5,
-    totalRoundCount: 2500
-  })
-  const chassis = createPart(db, {
-    manufacturer: 'Manners',
-    type: 'Chassis',
-    model: 'TCS'
-  })
-  const optic = createPart(db, {
-    manufacturer: 'Nightforce',
-    type: 'Optic',
-    model: 'ATACR',
-    serialNumber: 'O1'
-  })
-  createPart(db, {
-    manufacturer: 'Thunder Beast',
-    type: 'Suppressor',
-    model: 'Ultra 7',
-    muzzleType: 'Suppressor',
-    serialNumber: 'TB-1'
-  })
-  createPart(db, {
-    manufacturer: 'Wilcox',
-    type: 'LaserIR',
-    model: 'RAPTAR'
-  })
-  createPart(db, {
-    manufacturer: 'TriggerTech',
-    type: 'Trigger',
-    model: 'Diamond'
-  })
-  createPart(db, {
-    manufacturer: 'Area 419',
-    type: 'Misc',
-    model: 'Hellfire'
-  })
-
-  const system = createCustomSystem(db, {
-    name: 'GT Match',
-    platform: 'bolt_action',
-    actionId: action.id,
-    barrelId: barrel.id,
-    chassisId: chassis.id,
-    opticId: optic.id
-  })
-
-  createAmmoInventory(db, {
-    name: 'Handload Lot',
-    type: 'Handload',
-    caliber: '6mm GT',
-    quantity: 50,
-    acquiredDate: '2026-11-01'
-  })
-
-  for (let i = 0; i < 5; i++) {
-    addShootingLog(db, {
-      systemId: system.id,
-      date: `2026-11-${String(i + 1).padStart(2, '0')}`,
-      location: 'Range',
-      roundsFired: 200,
-      sessionType: 'Match'
+  try {
+    const action = createPart(db, {
+      manufacturer: 'Impact',
+      type: 'Action',
+      serialNumber: 'A1'
     })
-  }
+    const barrel = createPart(db, {
+      manufacturer: 'Proof',
+      type: 'Barrel',
+      name: 'Match',
+      caliber: '6.5 Creedmoor',
+      gunsmith: 'S&S',
+      totalRoundCount: 2500
+    })
+    const chassis = createPart(db, {
+      manufacturer: 'MDT',
+      type: 'Chassis',
+      model: 'ACC'
+    })
+    createCustomSystem(db, {
+      name: 'PRS Gun',
+      platform: 'bolt_action',
+      actionId: action.id,
+      barrelId: barrel.id,
+      chassisId: chassis.id
+    })
 
-  summary = getMilestonesSummary(db)
-  assert.equal(summary.unlockedCount, 6)
-  for (const m of summary.milestones) {
-    assert.equal(m.unlocked, true, `${m.id} should be unlocked`)
+    createAmmoInventory(db, {
+      type: 'Handload',
+      caliber: '6.5 Creedmoor',
+      quantity: 40,
+      acquiredDate: '2026-01-01'
+    })
+
+    addShootingLog(db, {
+      systemId: (db.prepare(`SELECT id FROM systems`).get() as { id: string }).id,
+      date: '2026-11-01',
+      location: 'Match',
+      roundsFired: 100,
+      sessionType: 'Match',
+      placement: 2,
+      percentOfWinner: 96.5
+    })
+
+    const summary = getMilestonesSummary(db)
+    assert.ok(byId(summary, 'kit-up'))
+    assert.ok(byId(summary, 'brass-rain'))
+    assert.ok(byId(summary, 'first-contact'))
+    assert.ok(byId(summary, 'kitchen-table-armorer'))
+    assert.ok(byId(summary, 'podium-threat'))
+  } finally {
+    db.close()
   }
 })

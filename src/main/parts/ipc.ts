@@ -13,6 +13,7 @@ import {
   updatePart,
   type ListPartsOptions,
   type NewPartInput,
+  type SetPartStatusOptions,
   type UpdatePartInput
 } from '../db/parts'
 import { ensureLocalProfile, updateProfile, type ProfilePatch } from '../db/profile'
@@ -42,9 +43,12 @@ export function registerPartsIpc(): void {
     return { ok: true as const }
   })
 
-  ipcMain.handle('parts:set-status', (_event, id: string, status: PartStatus) => {
-    return setPartStatus(requireDatabase().db, id, status)
-  })
+  ipcMain.handle(
+    'parts:set-status',
+    (_event, id: string, status: PartStatus, options?: SetPartStatusOptions) => {
+      return setPartStatus(requireDatabase().db, id, status, options)
+    }
+  )
 
   ipcMain.handle('parts:reset-maintenance', (_event, id: string) => {
     return resetPartMaintenance(requireDatabase().db, id)

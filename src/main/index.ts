@@ -6,6 +6,7 @@ import { closeDatabase, getHealth, initDatabase } from './db'
 import { initBackupSubsystem } from './backup'
 import { initLicenseSubsystem } from './license'
 import { initUpdateChecker } from './updates'
+import { registerUpdatesIpc } from './updates/ipc'
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
@@ -53,12 +54,15 @@ app.whenReady().then(() => {
 
   ipcMain.handle('app:get-info', () => ({
     name: 'Materiel',
+    version: app.getVersion(),
     env: process.env.MAIN_VITE_APP_ENV ?? import.meta.env.MODE,
     backupProvider: backupProvider.id,
     license
   }))
 
   ipcMain.handle('db:health', () => getHealth())
+
+  registerUpdatesIpc()
 
   createWindow()
 
