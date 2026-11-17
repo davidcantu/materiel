@@ -30,12 +30,13 @@ Forward-only migrations live in `src/main/db/migrations/`. Runner: `migrate(db)`
 
 | Version | Name                   | Notes                                                                                                                                                        |
 | ------: | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-|       1 | `001_initial`          | profile, parts, systems, system_misc_parts, load_developments, ammo_inventory, shooting_logs, backup_settings, backup_logs, license_state, schema_migrations |
-|       2 | `002_drop_part_name`   | Drops `parts.name` — parts are identified by `id`; UI labels use manufacturer/model/caliber                                                                  |
-|       3 | `003_profile_username` | Adds `profile.username` (legacy local identity column)                                                                                                       |
-|       4 | `004_email_identity`   | Email is identity: promote email-shaped username → email; mirror `username` ← email                                                                          |
+|       1 | `001_initial`            | profile, parts, systems, system_misc_parts, load_developments, ammo_inventory, shooting_logs, backup_settings, backup_logs, license_state (later dropped), schema_migrations |
+|       2 | `002_drop_part_name`     | Drops `parts.name` — parts are identified by `id`; UI labels use manufacturer/model/caliber                                                                                   |
+|       3 | `003_profile_username`   | Adds `profile.username` (legacy local identity column)                                                                                                                        |
+|       4 | `004_email_identity`     | Email is identity: promote email-shaped username → email; mirror `username` ← email                                                                                           |
+|       9 | `009_drop_license_state` | Drops `license_state` — Materiel is free and unlimited                                                                                                                        |
 
-Empty DB → apply all pending versions in a transaction. Profile identity is **email** (username column mirrors email for license pairing).
+Empty DB → apply all pending versions in a transaction. Profile identity is **email** (username column mirrors email).
 
 ## Schema map (spec §3 → local-first)
 
@@ -47,8 +48,7 @@ Empty DB → apply all pending versions in a transaction. Profile identity is **
 | Shooting logs             | `shooting_logs`                                                             |
 | Load development          | `load_developments`                                                         |
 | Ammo inventory            | `ammo_inventory`                                                            |
-| Backup settings / logs    | `backup_settings`, `backup_logs` (local metadata)                           |
-| License                   | `license_state` + `{userData}/license.dat` (see [license.md](./license.md)) |
+| Backup settings / logs    | `backup_settings`, `backup_logs` (local metadata) |
 
 ## Business-rule helpers
 
@@ -69,11 +69,10 @@ Dev-only: `openDatabase({ seedDemo: true })` or `MAIN_VITE_SEED_DEMO=true`. Seed
 
 - `db:health` → `{ ready, path, cipher, migrationVersion, encrypted }`
 - Parts: `parts:list`, `parts:get`, `parts:create`, `parts:update`, `parts:delete`, `parts:set-status`, `parts:reset-maintenance`
-- Systems: `systems:list`, `systems:get`, `systems:create-custom`, `systems:create-factory`, `systems:update`, `systems:delete`, `systems:count`, `systems:assert-restore-allowed` (create paths license-gated)
+- Systems: `systems:list`, `systems:get`, `systems:create-custom`, `systems:create-factory`, `systems:update`, `systems:delete`, `systems:count`
 - Profile: `profile:get`, `profile:update` (`trackValue` / `trackAmmo` / identity fields / `profileImageUrl` JPEG data URI)
 - Logs: `logs:list`, `logs:get`, `logs:add`, `logs:update`, `logs:delete`
 - Ammo: `ammo:list`, `ammo:get`, `ammo:create`, `ammo:update`, `ammo:delete`, `ammo:move-to-practice`
 - Loads: `loads:list`, `loads:get`, `loads:create`, `loads:update`, `loads:delete`
 - Dashboard: `dashboard:get` → aggregated KPIs, chart series, recent logs, maintenance alerts
 - Backup channels: see [backup.md](./backup.md)
-- License + gated system create: see [license.md](./license.md)

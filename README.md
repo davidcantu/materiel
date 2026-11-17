@@ -3,7 +3,7 @@
 Local-first Electron desktop **firearms tracker**: component inventory, complete builds, session logs, ammo/reloading, and maintenance — with optional encrypted cloud backup.
 
 **Display name:** Materiel  
-**Free tier:** up to 2 bolt guns, 2 pistols, and 2 ARs (license key unlocks more of any platform)  
+**Pricing:** Free and unlimited  
 **Stack:** Electron + React + TypeScript via [electron-vite](https://electron-vite.org/)
 
 ## Download
@@ -55,7 +55,7 @@ Open the `.dmg` under `dist/` and install. Prefer a [Release](https://github.com
 npm run dev
 ```
 
-Runs Electron with Vite HMR. Uses `.env.development` (mock cloud backup, **unlocked** license mode — creates are never blocked).
+Runs Electron with Vite HMR. Uses `.env.development` (mock cloud backup, demo seed).
 
 ## Build gates
 
@@ -94,18 +94,6 @@ Hourly (configurable) + on quit. Uploads the encrypted DB file.
 
 Set `MAIN_VITE_GOOGLE_CLIENT_ID` / `MAIN_VITE_ONEDRIVE_CLIENT_ID` in the matching env file or CI secrets (never commit secrets). IPC: `getBackupSettings`, `setBackupSettings`, `runBackupNow`, `listBackupLogs`, `getBackupStatus`, `authenticateBackup`.
 
-## Issuing a license
-
-Ed25519 offline keys: the app embeds only the **public** key; you sign with a private key that never ships in the binary.
-
-```bash
-npm run license:keypair   # once — embed public SPKI in src/main/license/public-key.ts
-export LICENSE_SIGNING_PRIVATE_KEY="$(cat materiel-license.pem)"
-npm run license:issue -- --email you@example.com
-```
-
-Paste the `MAT-1.…` key in the app (Settings / License). Same email as in the app. Free tier = up to 2 firearms per platform (bolt / pistol / AR) without a key. See [docs/license.md](./docs/license.md). Dev unlock: `MAIN_VITE_LICENSE_MODE=unlocked` (already set in `.env.development`).
-
 ## Project layout
 
 ```
@@ -113,24 +101,20 @@ src/
   main/           # Electron main process
     db/           # Encrypted SQLite + migrations + §7 helpers
     backup/       # Drive / OneDrive / mock + hourly/quit scheduler
-    license/      # Free-tier rifle gate + activate / verify
-    systems/      # Gated create IPC
+    systems/      # Complete-system create / list IPC
   preload/        # Typed contextBridge
   renderer/       # React UI shell
-scripts/
-  issue-license.ts
 docs/
   database.md     # Key supply, migrations, schema map
   backup.md       # OAuth setup + IPC
-  license.md      # Issue keys, activate, free tier, IPC
 ```
 
 Env templates: `.env.development`, `.env.test`, `.env.production`, and `.env.example` (no secrets).
 
 ## Follow-ups
 
-- Settings UI for backup provider / interval / license activate form
-- Restore-from-cloud UX (preflight IPC already gated)
+- Settings UI for backup provider / interval
+- Restore-from-cloud UX
 - Inventory, Builds, Logs, Ammo, Dashboard modules
 
 ## License

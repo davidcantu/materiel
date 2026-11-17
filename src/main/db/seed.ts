@@ -186,12 +186,6 @@ export function seedDemoIfEmpty(db: Database.Database): boolean {
         id, auto_backup_enabled, backup_interval_hours, provider, updated_at
       ) VALUES (1, 1, 1, 'mock', @createdAt)`
     ).run({ createdAt })
-
-    db.prepare(
-      `INSERT INTO license_state (
-        id, tier, key_present, updated_at
-      ) VALUES (1, 'free', 0, @createdAt)`
-    ).run({ createdAt })
   })
 
   run()

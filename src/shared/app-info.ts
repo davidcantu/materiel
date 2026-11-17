@@ -1,7 +1,3 @@
-import type { LicenseStatusInfo } from './license'
-
-export type { LicenseStatusInfo } from './license'
-
 export type DatabaseHealthInfo = {
   ready: boolean
   path: string
@@ -15,5 +11,4 @@ export type AppInfo = {
   version: string
   env: string
   backupProvider: string
-  license: LicenseStatusInfo
 }

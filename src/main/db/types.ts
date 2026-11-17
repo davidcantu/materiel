@@ -30,7 +30,6 @@ export type SessionType = 'Practice' | 'Match'
 export type AmmoType = 'Factory' | 'Handload'
 export type BackupLogType = 'Full' | 'User'
 export type BackupLogStatus = 'Success' | 'Failed'
-export type LicenseTier = 'free' | 'paid'
 export type CompetitionSeries = 'PRS' | 'NRL' | 'NRL22' | 'ELR' | 'Other'
 
 export type Profile = {
@@ -192,14 +191,6 @@ export type BackupLogRecord = {
   localPath: string | null
   errorMessage: string | null
   createdAt: string
-}
-
-export type LicenseState = {
-  tier: LicenseTier
-  keyPresent: boolean
-  keyFingerprint: string | null
-  activatedAt: string | null
-  updatedAt: string
 }
 
 export type DatabaseHealth = {
