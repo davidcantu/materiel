@@ -1,5 +1,6 @@
-import { BrowserWindow, dialog, shell } from 'electron'
+import { BrowserWindow, dialog } from 'electron'
 import type { UpdateAvailable } from '../../shared/updates'
+import { safeOpenExternal } from '../security/open-external'
 
 export type PromptUpdateOptions = {
   /** Prefer showing over this window when still alive. */
@@ -17,7 +18,7 @@ export async function promptUpdateAvailable(
   options?: PromptUpdateOptions
 ): Promise<boolean> {
   const showMessageBox = options?.showMessageBox ?? dialog.showMessageBox.bind(dialog)
-  const openExternal = options?.openExternal ?? ((url: string) => shell.openExternal(url))
+  const openExternal = options?.openExternal ?? ((url: string) => safeOpenExternal(url))
 
   const parent =
     options?.parent && !options.parent.isDestroyed()

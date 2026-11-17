@@ -69,6 +69,12 @@ MAT-1.<base64url(email)>.<base64url(HMAC-SHA256)>
 
 The HMAC covers the canonical string `v1|<normalized-email>` (email trimmed + lowercased). The same secret must be available to the desktop app as `MAIN_VITE_LICENSE_SIGNING_SECRET` or `LICENSE_SIGNING_SECRET` so activation can verify offline.
 
+### Trust model (important)
+
+Any secret **baked into the desktop binary** (including `MAIN_VITE_LICENSE_SIGNING_SECRET`) is extractable. Offline HMAC verify is therefore **best-effort / honor-system**, not DRM. Prefer keeping the issue secret only on the operator machine when issuing keys; do not treat an in-app HMAC secret as confidential once a release ships with it.
+
+**Follow-up (not in current release):** migrate to **Ed25519** — issue with a private key offline; embed only the public key in the app for verify — while still accepting existing `MAT-1.…` HMAC keys during a transition window.
+
 ### Activate (customer)
 
 On first launch (welcome) or in Settings:

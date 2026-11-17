@@ -14,6 +14,7 @@
 import { createHash, randomBytes } from 'crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { dirname } from 'path'
+import { isProductionAppEnv } from '../env'
 
 export const DB_CIPHER = 'sqlcipher' as const
 export const KEY_FILE_SUFFIX = '.key'
@@ -125,8 +126,15 @@ export function resolveDatabaseKey(options: ResolveKeyOptions): ResolvedKey {
 
     const key = randomBytes(32)
     const encrypted = safeStorage.encryptString(key.toString('hex'))
-    writeFileSync(keyFilePath, encrypted)
+    writeFileSync(keyFilePath, encrypted, { mode: 0o600 })
     return { key, source: 'safeStorage' }
+  }
+
+  // Never allow plaintext key files in production (even if ALLOW_DEV_DB_KEY is set).
+  if (isProductionAppEnv()) {
+    throw new Error(
+      'No database key available. Production requires Electron safeStorage (or an explicit key/passphrase).'
+    )
   }
 
   // Dev / headless fallback when OS keychain encryption is unavailable (common on Linux CI).

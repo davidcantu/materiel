@@ -1,5 +1,4 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import { electronAPI } from '@electron-toolkit/preload'
 import type { AppInfo, DatabaseHealthInfo } from '../shared/app-info'
 import type {
   BackupLogInfo,
@@ -57,8 +56,7 @@ const api = {
     ipcRenderer.invoke('license:activate', request),
   clearLicense: (): Promise<LicenseStatusInfo> => ipcRenderer.invoke('license:clear'),
   getProfile: (): Promise<ProfileInfo> => ipcRenderer.invoke('profile:get'),
-  updateProfile: (patch: ProfilePatch): Promise<ProfileInfo> =>
-    ipcRenderer.invoke('profile:update', patch),
+  updateProfile: (patch: ProfilePatch) => ipcRenderer.invoke('profile:update', patch),
   listParts: (filter?: PartsListFilter): Promise<PartInfo[]> =>
     ipcRenderer.invoke('parts:list', filter),
   getPart: (id: string): Promise<PartInfo | null> => ipcRenderer.invoke('parts:get', id),
@@ -122,14 +120,11 @@ const api = {
 
 if (process.contextIsolated) {
   try {
-    contextBridge.exposeInMainWorld('electron', electronAPI)
     contextBridge.exposeInMainWorld('api', api)
   } catch (error) {
     console.error(error)
   }
 } else {
-  // @ts-expect-error (define in dts)
-  window.electron = electronAPI
   // @ts-expect-error (define in dts)
   window.api = api
 }

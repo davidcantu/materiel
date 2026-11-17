@@ -17,7 +17,7 @@
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
-    "test": "tsx --test \"src/main/db/__tests__/*.test.ts\" \"src/main/__tests__/*.test.ts\" \"src/main/backup/__tests__/*.test.ts\" \"src/main/license/__tests__/*.test.ts\" \"src/main/updates/__tests__/*.test.ts\"",
+    "test": "tsx --test \"src/main/db/__tests__/*.test.ts\" \"src/main/__tests__/*.test.ts\" \"src/main/backup/__tests__/*.test.ts\" \"src/main/license/__tests__/*.test.ts\" \"src/main/updates/__tests__/*.test.ts\" \"src/main/security/__tests__/*.test.ts\"",
     "start": "electron-vite preview",
     "dev": "electron-vite dev --mode development",
     "build": "npm run typecheck && electron-vite build",

@@ -8,6 +8,13 @@
  * Signing secret comes from env (never commit production secrets):
  * - Issuer CLI: LICENSE_SIGNING_SECRET
  * - Electron app: MAIN_VITE_LICENSE_SIGNING_SECRET or LICENSE_SIGNING_SECRET
+ *
+ * Security note: any secret shipped inside the desktop binary is extractable.
+ * Treat in-app HMAC verify as **best-effort / honor-system**, not cryptographic
+ * DRM. Prefer issuing with a secret held only on the operator machine, and do
+ * not present MAIN_VITE_LICENSE_SIGNING_SECRET as confidential once baked into
+ * a release. Follow-up: migrate to Ed25519 (private key issue-only; public key
+ * embedded for verify) without breaking existing MAT-1 keys — see docs/license.md.
  */
 
 import { createHmac, timingSafeEqual } from 'crypto'

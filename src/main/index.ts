@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -16,6 +16,7 @@ import { initBackupSubsystem } from './backup'
 import { initLicenseSubsystem } from './license'
 import { initUpdateChecker } from './updates'
 import { registerUpdatesIpc } from './updates/ipc'
+import { safeOpenExternal } from './security/open-external'
 
 type CreateWindowOptions = {
   initFailure?: DatabaseInitFailure | null
@@ -33,8 +34,10 @@ function createWindow(options: CreateWindowOptions = {}): BrowserWindow {
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false,
-      contextIsolation: true
+      sandbox: true,
+      contextIsolation: true,
+      nodeIntegration: false,
+      webSecurity: true
     }
   })
 
@@ -51,7 +54,9 @@ function createWindow(options: CreateWindowOptions = {}): BrowserWindow {
   mainWindow.once('closed', () => clearTimeout(showFallback))
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url)
+    void safeOpenExternal(details.url).catch((error) => {
+      console.warn('[app] blocked or failed openExternal:', error)
+    })
     return { action: 'deny' }
   })
 
