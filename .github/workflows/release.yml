@@ -120,6 +120,11 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: release-assets/*
+          # Prepended ahead of auto-generated notes.
+          body: |
+            **Docs:** [User manual](https://github.com/davidcantu/materiel/blob/main/docs/user-manual.md) · [Install / unsigned help](https://github.com/davidcantu/materiel/blob/main/docs/install.md) ([macOS](https://github.com/davidcantu/materiel/blob/main/docs/install/mac.md) · [Windows](https://github.com/davidcantu/materiel/blob/main/docs/install/windows.md) · [Linux](https://github.com/davidcantu/materiel/blob/main/docs/install/linux.md))
+
+            Free and unlimited. Mac builds are ad-hoc signed; Windows is unsigned — see install docs for Gatekeeper / SmartScreen.
           generate_release_notes: true
           draft: false
           prerelease: false
