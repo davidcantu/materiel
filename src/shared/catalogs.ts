@@ -1,6 +1,6 @@
 /**
- * Domain reference catalogs — software-spec §8
- * (Inventory / Builds / Ammo & Reloading forms).
+ * Domain reference catalogs — manufacturer suggestions for Inventory / Builds /
+ * Ammo & Reloading forms. Cap Case spellings from the approved brand prepopulate list.
  */
 
 export const CARTRIDGE_OPTIONS = [
@@ -27,21 +27,25 @@ export const CARTRIDGE_OPTIONS = [
   '7 SWC'
 ] as const
 
-export const BARREL_MANUFACTURERS = [
-  'ACE',
-  'Bartlein',
-  'Benchmark',
-  'Brux',
-  'CRB',
-  'Criterion',
-  'Hawk Hill',
-  'Krieger',
-  'Lilja',
-  'Preferred',
-  'Proof Research',
-  'X-Caliber'
+/** Bolt / precision actions & rifles — Action + factory bolt builds. */
+export const ACTION_MANUFACTURERS = [
+  'Impact Precision',
+  'Defiance Machine',
+  'Bighorn Arms',
+  'BAT Machine',
+  'Lone Peak',
+  'Remington',
+  'Bergara',
+  'Barrett',
+  'Gunwerks',
+  'Ruger',
+  'Browning',
+  'Tikka',
+  'Savage',
+  'Howa'
 ] as const
 
+/** Known action models (cascading suggestions where available). */
 export const ACTION_PRODUCTS: Record<string, string[]> = {
   'Impact Precision': ['737R Short Action'],
   'Defiance Machine': ['Deviant', 'Deviant Elite', 'Ruckus', 'Rebel'],
@@ -50,76 +54,189 @@ export const ACTION_PRODUCTS: Record<string, string[]> = {
   'Lone Peak': ['Fuzion SA', 'Fuzion-Ti SA']
 }
 
+/** AR / modern sporting — Lower, Upper, BCG, GasBlock + factory AR builds. */
+export const AR_MANUFACTURERS = [
+  'Aero Precision',
+  'Bravo Company',
+  'Daniel Defense',
+  'Colt',
+  'Palmetto State Armory',
+  'CMMG',
+  'FN',
+  'Knights Armament',
+  'Geissele',
+  'Wilson Combat',
+  'SOLGW',
+  'Noveske',
+  'LMT',
+  'POF',
+  'Q'
+] as const
+
+/** Pistols / handguns — Pistol, Frame, Slide + factory pistol builds. */
+export const PISTOL_MANUFACTURERS = [
+  'Glock',
+  'SIG Sauer',
+  'Smith & Wesson',
+  'Springfield Armory',
+  'CZ',
+  'FN',
+  'Heckler & Koch',
+  'Wilson Combat',
+  'Colt',
+  'Ruger',
+  'Kimber',
+  'Staccato',
+  'Canik',
+  'Walther',
+  'Beretta',
+  'Zev Technologies'
+] as const
+
+export const OPTIC_MANUFACTURERS = [
+  'Vortex',
+  'Trijicon',
+  'Aimpoint',
+  'EOTech',
+  'Holosun',
+  'Leupold',
+  'Nightforce',
+  'Primary Arms',
+  'Burris',
+  'Steiner',
+  'Kahles',
+  'Zero Compromise Optic',
+  'Schmidt & Bender',
+  'March',
+  'SIG Sauer'
+] as const
+
+export const BARREL_MANUFACTURERS = [
+  'Proof Research',
+  'Bartlein',
+  'Krieger',
+  'Criterion',
+  'Lilja',
+  'Brux',
+  'Benchmark',
+  'Hawk Hill',
+  'Preferred',
+  'X-Caliber',
+  'ACE',
+  'Faxon',
+  'Ballistic Advantage',
+  'Rainier Arms',
+  'Palmetto State Armory',
+  'Aero Precision'
+] as const
+
+/** Chassis, Stock, Handguard. */
+export const CHASSIS_MANUFACTURERS = [
+  'MDT',
+  'Magpul',
+  'Masterpiece Arms',
+  'Cadex',
+  'Accuracy International',
+  'Manners',
+  'McMillan',
+  'KRG',
+  'Foundation Stocks',
+  'XLR Industries'
+] as const
+
 export const SUPPRESSOR_MANUFACTURERS = [
-  'Area 419',
-  'B.O.S.S. Silencers',
-  'Caliber Gunsmithing',
-  'Crux Suppressors',
-  'Dead Air Silencers',
-  'Delta P Design',
-  'Diligent Defense Co.',
-  'Elite Iron Suppressors',
-  'KGM Suppressors',
-  'Knights Armament Company',
-  'Lane Silencers and Guns',
-  'Leviathan Suppressors LLC',
-  'Liberty Precision Machine',
-  'Mack Brothers',
-  'Otter Creek Labs',
-  'Q LLC',
-  'Quicksilver Manufacturing LLC',
-  'Resilient Suppressors',
-  'SAS',
-  'Sig Sauer',
-  'Silencer Tech LLC',
   'SilencerCo',
+  'Dead Air',
   'SureFire',
-  'Thunder Beast Arms Corp'
+  'Otter Creek Labs',
+  'Thunder Beast',
+  'SIG Sauer',
+  'Q',
+  'Griffin Armament',
+  'Diligent Defense',
+  'Area 419',
+  'Knights Armament'
 ] as const
 
 export const MUZZLE_BRAKE_MANUFACTURERS = [
-  'ACE Precision LLC',
-  'American Precision Arms',
   'Area 419',
-  'Axis Precision Worx',
-  'Badger Ordnance',
-  'Bergara',
-  'Botnia Solutions',
-  'Center Shot Rifles (CSR) Blast Tamer',
-  'Custom',
-  'DemiGod Precision',
-  'EC Tuner Brake',
-  'H-S Precision',
-  'Hawkins Precision',
-  "Holland's Shooters Supply, INC.",
-  "Hunt's Long Range",
-  'Impact Precision Shooting',
-  'Insite Arms',
-  'JP Enterprises',
-  'Kahntrol Solutions',
-  'Lone Peak Arms',
-  'MBM Beast',
-  'MDT',
-  'MDT Comp Brake',
-  'Masterpiece Arms',
-  'Patriot Valley Arms',
-  'Phantom Firearms',
-  'Piercision Rifles',
+  'American Precision Arms',
   'Precision Armament',
-  'Preece Precision - Stinger',
-  'Salmon River Solutions',
-  'SilencerCo',
-  'Spartan Precision Rifles',
-  'Spearhead Machine',
-  'Strike Without Warning TMB',
-  'SureShot Precision Rifles',
-  'Terminator Products',
-  'Thunder Beast Arms Corp',
-  'Vision Vulcan',
-  'ZRO Delta'
+  'MDT',
+  'DemiGod Precision'
 ] as const
 
-/** §8.6 Reloading manufacturers & standard products */
+export const TRIGGER_MANUFACTURERS = [
+  'Geissele',
+  'Timney',
+  'TriggerTech',
+  'CMC Triggers',
+  'LaRue Tactical',
+  'Elftmann',
+  'Apex Tactical',
+  'Overwatch Precision',
+  'Flatline Impulse',
+  'Bix & Andy'
+] as const
+
+export const LIGHT_LASER_MANUFACTURERS = [
+  'SureFire',
+  'Streamlight',
+  'Modlite',
+  'Arisaka',
+  'Steiner',
+  'Wilcox',
+  'L3Harris',
+  'Holosun',
+  'B.E. Meyers'
+] as const
+
+export const MISC_MANUFACTURERS = [
+  'Magpul',
+  'Atlas',
+  'Area 419',
+  'Really Right Stuff',
+  'Accu-Tac',
+  'Harris',
+  'Badger Ordnance',
+  'Spuhr',
+  'American Defense Mfg',
+  'Arisaka'
+] as const
+
+/** Factory ammo lot manufacturer field. */
+export const FACTORY_AMMO_MANUFACTURERS = [
+  'Hornady',
+  'Federal',
+  'Winchester',
+  'Remington',
+  'SIG Sauer',
+  'PMC',
+  'Fiocchi',
+  'Black Hills',
+  'Nosler',
+  'Sellier & Bellot',
+  'Speer',
+  'Underwood',
+  'Magtech',
+  'Norma',
+  'Lapua',
+  'Barnes'
+] as const
+
+export const BRASS_MANUFACTURERS = [
+  'Lapua',
+  'Hornady',
+  'Peterson Cartridge',
+  'Alpha Munitions',
+  'Starline Brass',
+  'Norma',
+  'Federal',
+  'Nosler',
+  'ADG'
+] as const
+
+/** Product cascades (optional model suggestions). Manufacturers without products still appear in lists. */
 export const BULLET_PRODUCTS: Record<string, string[]> = {
   Berger: [
     '105gr Hybrid Target',
@@ -156,34 +273,74 @@ export const PRIMER_PRODUCTS: Record<string, string[]> = {
   Federal: ['GM205M', 'GM205', 'GM210M']
 }
 
-export const BRASS_MANUFACTURERS = [
-  'Alpha Munitions',
-  'Federal',
-  'Gunwerks',
+export const BULLET_MANUFACTURERS = [
+  'Berger',
   'Hornady',
-  'Lapua',
-  'Norma Ammunition',
+  'Sierra',
   'Nosler',
-  'Peterson Cartridge',
-  'Prime',
-  'Sig Sauer',
-  'Starline Brass'
+  'Barnes',
+  'Lapua'
 ] as const
 
-export const BULLET_MANUFACTURERS = Object.keys(BULLET_PRODUCTS)
-export const POWDER_MANUFACTURERS = Object.keys(POWDER_PRODUCTS)
-export const PRIMER_MANUFACTURERS = Object.keys(PRIMER_PRODUCTS)
+export const POWDER_MANUFACTURERS = [
+  'Hodgdon',
+  'Vihtavuori',
+  'Alliant',
+  'IMR',
+  'Accurate',
+  'Ramshot',
+  'Winchester',
+  'Vectan',
+  'Shooters World'
+] as const
+
+export const PRIMER_MANUFACTURERS = ['CCI', 'Federal', 'Remington', 'Winchester'] as const
 
 export function manufacturersForPartType(
   type: string,
   muzzleType?: 'Suppressor' | 'Brake'
 ): string[] {
-  if (type === 'Action') return Object.keys(ACTION_PRODUCTS)
-  if (type === 'Barrel') return [...BARREL_MANUFACTURERS]
-  if (type === 'Suppressor') {
-    return muzzleType === 'Brake' ? [...MUZZLE_BRAKE_MANUFACTURERS] : [...SUPPRESSOR_MANUFACTURERS]
+  switch (type) {
+    case 'Action':
+      return [...ACTION_MANUFACTURERS]
+    case 'Barrel':
+      return [...BARREL_MANUFACTURERS]
+    case 'Chassis':
+    case 'Stock':
+    case 'Handguard':
+      return [...CHASSIS_MANUFACTURERS]
+    case 'Optic':
+      return [...OPTIC_MANUFACTURERS]
+    case 'Suppressor':
+      return muzzleType === 'Brake'
+        ? [...MUZZLE_BRAKE_MANUFACTURERS]
+        : [...SUPPRESSOR_MANUFACTURERS]
+    case 'Lower':
+    case 'Upper':
+    case 'BCG':
+    case 'GasBlock':
+      return [...AR_MANUFACTURERS]
+    case 'Pistol':
+    case 'Frame':
+    case 'Slide':
+      return [...PISTOL_MANUFACTURERS]
+    case 'Trigger':
+      return [...TRIGGER_MANUFACTURERS]
+    case 'Light':
+    case 'LaserIR':
+      return [...LIGHT_LASER_MANUFACTURERS]
+    case 'Misc':
+      return [...MISC_MANUFACTURERS]
+    default:
+      return []
   }
-  return []
+}
+
+/** Factory complete-firearm manufacturer suggestions by platform. */
+export function factoryManufacturersForPlatform(platform: string): string[] {
+  if (platform === 'ar_pattern') return [...AR_MANUFACTURERS]
+  if (platform === 'pistol') return [...PISTOL_MANUFACTURERS]
+  return [...ACTION_MANUFACTURERS]
 }
 
 export function modelsForActionManufacturer(manufacturer: string): string[] {
