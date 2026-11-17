@@ -20,30 +20,34 @@ Local-first default is **safeStorage auto-unlock** (no extra password on every l
 
 Never log raw keys; `keyFingerprint` (12-char SHA-256 prefix) is safe for diagnostics.
 
+## Pre-migrate backup
+
+When an existing schema needs an upgrade (`applied > 0` and below latest), the opener copies the live database (and `materiel.db.key` / `.key.dev` when present) into a timestamped folder **beside** Electron `userData`, e.g. `…/Application Support/Materiel-db-backup-2026-11-17T01-02-03-456Z/`, then runs `migrate`. First-launch empty DBs and up-to-date databases skip the copy. The live files are never deleted on failure. If open/migrate throws, main shows a native error dialog (Quit / How to view logs) and loads an in-window error page instead of leaving a blank hung window.
+
 ## Migrations
 
 Forward-only migrations live in `src/main/db/migrations/`. Runner: `migrate(db)` in `src/main/db/migrate.ts`.
 
-| Version | Name                  | Notes                                                                                                                                                        |
-| ------: | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-|       1 | `001_initial`         | profile, parts, systems, system_misc_parts, load_developments, ammo_inventory, shooting_logs, backup_settings, backup_logs, license_state, schema_migrations |
-|       2 | `002_drop_part_name`  | Drops `parts.name` — parts are identified by `id`; UI labels use manufacturer/model/caliber                                                                  |
-|       3 | `003_profile_username`| Adds `profile.username` (legacy local identity column)                                                                                                       |
-|       4 | `004_email_identity`  | Email is identity: promote email-shaped username → email; mirror `username` ← email                                                                          |
+| Version | Name                   | Notes                                                                                                                                                        |
+| ------: | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+|       1 | `001_initial`          | profile, parts, systems, system_misc_parts, load_developments, ammo_inventory, shooting_logs, backup_settings, backup_logs, license_state, schema_migrations |
+|       2 | `002_drop_part_name`   | Drops `parts.name` — parts are identified by `id`; UI labels use manufacturer/model/caliber                                                                  |
+|       3 | `003_profile_username` | Adds `profile.username` (legacy local identity column)                                                                                                       |
+|       4 | `004_email_identity`   | Email is identity: promote email-shaped username → email; mirror `username` ← email                                                                          |
 
 Empty DB → apply all pending versions in a transaction. Profile identity is **email** (username column mirrors email for license pairing).
 
 ## Schema map (spec §3 → local-first)
 
-| Spec entity               | Table(s)                                          |
-| ------------------------- | ------------------------------------------------- |
-| User / profile / settings | `profile` (single local row)                      |
-| Parts (discriminated)     | `parts`                                           |
-| Complete systems          | `systems` + `system_misc_parts`                   |
-| Shooting logs             | `shooting_logs`                                   |
-| Load development          | `load_developments`                               |
-| Ammo inventory            | `ammo_inventory`                                  |
-| Backup settings / logs    | `backup_settings`, `backup_logs` (local metadata) |
+| Spec entity               | Table(s)                                                                    |
+| ------------------------- | --------------------------------------------------------------------------- |
+| User / profile / settings | `profile` (single local row)                                                |
+| Parts (discriminated)     | `parts`                                                                     |
+| Complete systems          | `systems` + `system_misc_parts`                                             |
+| Shooting logs             | `shooting_logs`                                                             |
+| Load development          | `load_developments`                                                         |
+| Ammo inventory            | `ammo_inventory`                                                            |
+| Backup settings / logs    | `backup_settings`, `backup_logs` (local metadata)                           |
 | License                   | `license_state` + `{userData}/license.dat` (see [license.md](./license.md)) |
 
 ## Business-rule helpers
