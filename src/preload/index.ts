@@ -30,6 +30,7 @@ import type {
 import type { DashboardSummary } from '../shared/dashboard'
 import type { MilestonesSummary } from '../shared/milestones'
 import type { UpdateCheckResult } from '../shared/updates'
+import type { MaterielExportResult } from '../shared/export'
 import type { MaterielImportDocument, MaterielImportResult } from '../shared/import'
 
 const api = {
@@ -104,7 +105,8 @@ const api = {
   importFromJson: (document: MaterielImportDocument): Promise<MaterielImportResult> =>
     ipcRenderer.invoke('import:from-json', document),
   importPickJsonFile: (): Promise<MaterielImportResult> =>
-    ipcRenderer.invoke('import:pick-json-file')
+    ipcRenderer.invoke('import:pick-json-file'),
+  exportExcel: (): Promise<MaterielExportResult> => ipcRenderer.invoke('export:excel')
 }
 
 if (process.contextIsolated) {

@@ -127,9 +127,10 @@ docs/
 
 Env templates: `.env.development`, `.env.test`, `.env.production`, and `.env.example` (no secrets).
 
-## Import (Excel → JSON)
+## Import / Export
 
-Materiel imports **JSON** from **Settings → Import data**. For spreadsheets, use the Claude prompt in [docs/import-from-excel.md](./docs/import-from-excel.md) (action+barrel sheets get a placeholder chassis so builds/logs can import).
+- **Export Excel** from **Settings → Import / Export** — multi-sheet workbook (Summary, Inventory, Builds, Logs, Round Counts, Ammo) with yearly + lifetime rounds.
+- **Import JSON** from the same Settings panel. For spreadsheets, use the Claude prompt in [docs/import-from-excel.md](./docs/import-from-excel.md) (action+barrel sheets get a placeholder chassis so builds/logs can import).
 
 ## Follow-ups
 

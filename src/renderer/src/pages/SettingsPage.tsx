@@ -105,6 +105,8 @@ export function SettingsPage({
   const [updateMessage, setUpdateMessage] = useState<string | null>(null)
   const [importBusy, setImportBusy] = useState(false)
   const [importMessage, setImportMessage] = useState<string | null>(null)
+  const [exportBusy, setExportBusy] = useState(false)
+  const [exportMessage, setExportMessage] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -170,6 +172,30 @@ export function SettingsPage({
       toast.error(text)
     } finally {
       setImportBusy(false)
+    }
+  }
+
+  async function exportExcelFile(): Promise<void> {
+    setExportBusy(true)
+    setExportMessage(null)
+    try {
+      const result = await window.api.exportExcel()
+      if (!result.ok) {
+        if (result.error !== 'Export cancelled') {
+          setExportMessage(result.error)
+          toast.error(result.error)
+        }
+        return
+      }
+      const message = `Exported Excel workbook to ${result.path}`
+      setExportMessage(message)
+      toast.success('Excel export saved')
+    } catch (err) {
+      const text = err instanceof Error ? err.message : 'Export failed'
+      setExportMessage(text)
+      toast.error(text)
+    } finally {
+      setExportBusy(false)
     }
   }
 
@@ -338,18 +364,33 @@ export function SettingsPage({
 
       <section className="settings-panel settings-panel-wide">
         <div className="section-header">
-          <h2>Import data</h2>
+          <h2>Import / Export</h2>
         </div>
         <p className="muted settings-note">
-          Import a Materiel JSON file (from Claude/Excel conversion or a hand-authored dump).
+          <strong>Export</strong> writes an Excel workbook (Summary dashboard, Inventory, Builds,
+          Logs, Round Counts, Ammo) — handy if you leave Materiel or want a spreadsheet backup.
+          Yearly and lifetime rounds are calculated from session logs; part lifetime counters are
+          included on Round Counts.
+        </p>
+        <p className="muted settings-note">
+          <strong>Import</strong> accepts Materiel JSON (Claude/Excel conversion or hand-authored).
           Action + barrel only sources can auto-create a placeholder chassis so builds — and
           therefore session logs — can be created. See{' '}
-          <code>docs/import-from-excel.md</code> in the repo for the Claude prompt and schema.
+          <code>docs/import-from-excel.md</code> for the Claude prompt and schema.
         </p>
         <div className="row-actions">
           <button
             type="button"
             className="btn-primary btn-with-icon"
+            disabled={exportBusy}
+            onClick={() => void exportExcelFile()}
+          >
+            <Icon name="share" size={16} />
+            {exportBusy ? 'Exporting…' : 'Export Excel…'}
+          </button>
+          <button
+            type="button"
+            className="btn-ghost btn-with-icon"
             disabled={importBusy}
             onClick={() => void importJsonFile()}
           >
@@ -357,6 +398,7 @@ export function SettingsPage({
             {importBusy ? 'Importing…' : 'Import JSON file…'}
           </button>
         </div>
+        {exportMessage ? <p className="settings-note">{exportMessage}</p> : null}
         {importMessage ? (
           <pre className="settings-note" style={{ whiteSpace: 'pre-wrap' }}>
             {importMessage}

@@ -1,8 +1,25 @@
-# Import from Excel (via Claude → JSON)
+# Import / Export (Excel + JSON)
 
-Materiel can import a **versioned JSON** file from **Settings → Import data → Import JSON file…**.
+## Export to Excel
 
-Excel is not read directly. Use Claude (or any AI) to turn a spreadsheet into Materiel JSON, then import that file in the app.
+**Settings → Import / Export → Export Excel…** writes a `.xlsx` workbook with tabs:
+
+| Sheet | Contents |
+| --- | --- |
+| **Summary** | Brand-styled dashboard: lifetime rounds, this year, builds, inventory; yearly bar graphic; top barrels |
+| **Inventory** | All parts (filterable header row) |
+| **Builds** | Complete systems |
+| **Logs** | Session history (includes Year column) |
+| **Round Counts** | Lifetime rounds by tracked part + yearly totals from logs |
+| **Ammo** | On-hand ammo lots |
+
+Lifetime / yearly round totals on Summary and Round Counts are calculated from **shooting logs**. Part `totalRoundCount` values are also listed for wear components.
+
+## Import from Excel (via Claude → JSON)
+
+Materiel imports a **versioned JSON** file from **Settings → Import / Export → Import JSON file…**.
+
+Excel is not read directly for import. Use Claude (or any AI) to turn a spreadsheet into Materiel JSON, then import that file in the app.
 
 ## Why JSON (and the chassis workaround)
 
