@@ -366,17 +366,20 @@ export function SettingsPage({
         <div className="section-header">
           <h2>Import / Export</h2>
         </div>
-        <p className="muted settings-note">
-          <strong>Export</strong> writes an Excel workbook (Summary dashboard, Inventory, Builds,
-          Logs, Round Counts, Ammo) — handy if you leave Materiel or want a spreadsheet backup.
-          Yearly and lifetime rounds are calculated from session logs; part lifetime counters are
-          included on Round Counts.
+        <p className="settings-note">
+          Hate this app? Here’s an easy way out. Pack your inventory, builds, logs, and round
+          counts into Excel and go write formulas about your feelings in Sheets. No hard feelings —
+          we even made the Summary tab look decent so your breakup spreadsheet isn’t ugly.
         </p>
         <p className="muted settings-note">
-          <strong>Import</strong> accepts Materiel JSON (Claude/Excel conversion or hand-authored).
-          Action + barrel only sources can auto-create a placeholder chassis so builds — and
-          therefore session logs — can be created. See{' '}
-          <code>docs/import-from-excel.md</code> for the Claude prompt and schema.
+          <strong>Export Excel</strong> builds a workbook with Summary (lifetime + yearly rounds),
+          Inventory, Builds, Logs, Round Counts, and Ammo. Also works as a normal backup if you’re
+          not actually dumping us.
+        </p>
+        <p className="muted settings-note">
+          <strong>Import JSON</strong> is how you crawl back (or migrate in). Convert a spreadsheet
+          with the Claude prompt in <code>docs/import-from-excel.md</code>. Action + barrel only?
+          We’ll invent a placeholder chassis so builds — and logs — still work.
         </p>
         <div className="row-actions">
           <button
@@ -386,7 +389,7 @@ export function SettingsPage({
             onClick={() => void exportExcelFile()}
           >
             <Icon name="share" size={16} />
-            {exportBusy ? 'Exporting…' : 'Export Excel…'}
+            {exportBusy ? 'Packing bags…' : 'Export Excel (escape hatch)…'}
           </button>
           <button
             type="button"
@@ -395,7 +398,7 @@ export function SettingsPage({
             onClick={() => void importJsonFile()}
           >
             <Icon name="upload" size={16} />
-            {importBusy ? 'Importing…' : 'Import JSON file…'}
+            {importBusy ? 'Welcoming you back…' : 'Import JSON file…'}
           </button>
         </div>
         {exportMessage ? <p className="settings-note">{exportMessage}</p> : null}
