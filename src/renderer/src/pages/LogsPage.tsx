@@ -224,7 +224,7 @@ export function LogsPage({ onNavigateBuilds }: LogsPageProps = {}): React.JSX.El
     <div className="page">
       <PageHeader
         title="Shooting Logs"
-        description="Record practice and match sessions; rounds update builds and ammo."
+        description="Record Practice And Match Sessions; Rounds Update Builds And Ammo."
         actions={
           <button type="button" className="btn-primary btn-with-icon" onClick={openCreate}>
             <Icon name="add" size={16} />

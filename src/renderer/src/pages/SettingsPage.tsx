@@ -1,10 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
-import {
-  MILESTONE_TIER_LABELS,
-  type MilestoneStatus,
-  type MilestoneTier,
-  type MilestonesSummary
-} from '../../../shared/milestones'
+import { useEffect, useState } from 'react'
 import { PLATFORMS, PLATFORM_LABELS, type Platform } from '../../../shared/platforms'
 import { type ProfileInfo, type ProfilePatch } from '../../../shared/profile'
 import type { UpdateCheckResult } from '../../../shared/updates'
@@ -75,24 +69,6 @@ type ProfileDraft = {
   image: ImageCropValue
 }
 
-function MilestoneCard({ milestone }: { milestone: MilestoneStatus }): React.JSX.Element {
-  return (
-    <article
-      className={`milestone-card${milestone.unlocked ? ' unlocked' : ' locked'}`}
-      aria-label={`${milestone.name}: ${milestone.unlocked ? 'Unlocked' : 'Locked'}`}
-    >
-      <div className="milestone-card-top">
-        <h3>{milestone.name}</h3>
-        <span className={`milestone-status${milestone.unlocked ? ' is-unlocked' : ''}`}>
-          <span className="milestone-dot" aria-hidden="true" />
-          {milestone.unlocked ? 'Unlocked' : 'Locked'}
-        </span>
-      </div>
-      <p>{milestone.description}</p>
-    </article>
-  )
-}
-
 function updateStatusMessage(result: UpdateCheckResult, currentVersion: string): string {
   switch (result.status) {
     case 'available':
@@ -136,8 +112,6 @@ export function SettingsPage({
   onThemePreferenceChange
 }: SettingsPageProps): React.JSX.Element {
   const toast = useToast()
-  const [milestones, setMilestones] = useState<MilestonesSummary | null>(null)
-  const [milestonesError, setMilestonesError] = useState<string | null>(null)
   const [editingProfile, setEditingProfile] = useState(false)
   const [profileDraft, setProfileDraft] = useState<ProfileDraft | null>(null)
   const [profileBusy, setProfileBusy] = useState(false)
@@ -145,8 +119,6 @@ export function SettingsPage({
   const [appVersion, setAppVersion] = useState<string>('…')
   const [updateBusy, setUpdateBusy] = useState(false)
   const [updateMessage, setUpdateMessage] = useState<string | null>(null)
-  const [importBusy, setImportBusy] = useState(false)
-  const [importMessage, setImportMessage] = useState<string | null>(null)
   const [exportBusy, setExportBusy] = useState(false)
   const [exportMessage, setExportMessage] = useState<string | null>(null)
   const [aiStatus, setAiStatus] = useState<AiStatusInfo | null>(null)
@@ -165,26 +137,6 @@ export function SettingsPage({
       })
       .catch(() => {
         if (!cancelled) setAppVersion('unknown')
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  useEffect(() => {
-    let cancelled = false
-    void window.api
-      .getMilestones()
-      .then((next) => {
-        if (!cancelled) {
-          setMilestones(next)
-          setMilestonesError(null)
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setMilestonesError(err instanceof Error ? err.message : 'Failed to load milestones')
-        }
       })
     return () => {
       cancelled = true
@@ -336,38 +288,6 @@ export function SettingsPage({
     }
   }
 
-  async function importJsonFile(): Promise<void> {
-    setImportBusy(true)
-    setImportMessage(null)
-    try {
-      const result = await window.api.importPickJsonFile()
-      if (!result.ok) {
-        if (result.error !== 'Import cancelled') {
-          setImportMessage(result.error)
-          toast.error(result.error)
-        }
-        return
-      }
-      const { summary } = result
-      const warningNote =
-        summary.warnings.length > 0 ? ` (${summary.warnings.length} warning(s))` : ''
-      const message = `Imported ${summary.partsCreated} part(s), ${summary.buildsCreated} build(s), ${summary.logsCreated} log(s)${warningNote}.`
-      setImportMessage(
-        summary.warnings.length > 0
-          ? `${message}\n${summary.warnings.slice(0, 8).join('\n')}${summary.warnings.length > 8 ? '\n…' : ''}`
-          : message
-      )
-      toast.success(message)
-      onRefresh()
-    } catch (err) {
-      const text = err instanceof Error ? err.message : 'Import failed'
-      setImportMessage(text)
-      toast.error(text)
-    } finally {
-      setImportBusy(false)
-    }
-  }
-
   async function exportExcelFile(): Promise<void> {
     setExportBusy(true)
     setExportMessage(null)
@@ -484,16 +404,6 @@ export function SettingsPage({
 
   const displayName = [profile?.firstName, profile?.lastName].filter(Boolean).join(' ').trim()
 
-  const milestonesByTier = useMemo(() => {
-    if (!milestones) return null
-    const tiers: MilestoneTier[] = ['new', 'mid', 'advanced']
-    return tiers.map((tier) => ({
-      tier,
-      label: MILESTONE_TIER_LABELS[tier],
-      items: milestones.milestones.filter((m) => m.tier === tier)
-    }))
-  }, [milestones])
-
   async function handleCheckUpdates(): Promise<void> {
     setUpdateBusy(true)
     setUpdateMessage(null)
@@ -519,7 +429,7 @@ export function SettingsPage({
 
   return (
     <div className="page">
-      <PageHeader title="Settings" description="Profile, milestones, and preferences." />
+      <PageHeader title="Settings" description="Profile, Features, And Preferences." />
 
       <div className="settings-bento">
       <section className="settings-panel settings-bento-about">
@@ -716,34 +626,7 @@ export function SettingsPage({
       </section>
 
       <section className="settings-panel settings-bento-wide">
-        <div className="section-header">
-          <h2>Milestones</h2>
-          {milestones ? (
-            <span className="muted">
-              {milestones.unlockedCount} / {milestones.milestones.length} unlocked
-            </span>
-          ) : null}
-        </div>
-        {milestonesError ? <p className="form-error">{milestonesError}</p> : null}
-        {!milestones && !milestonesError ? <p className="muted">Loading milestones…</p> : null}
-        {milestonesByTier ? (
-          <div className="milestone-tiers">
-            {milestonesByTier.map((group) => (
-              <div key={group.tier} className="milestone-tier">
-                <h3 className="milestone-tier-label">{group.label}</h3>
-                <div className="milestone-grid">
-                  {group.items.map((milestone) => (
-                    <MilestoneCard key={milestone.id} milestone={milestone} />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : null}
-      </section>
-
-      <section className="settings-panel settings-bento-wide">
-        <h2>Features / tracking</h2>
+        <h2>Features / Tracking</h2>
         <p className="muted">
           Same choices as first-run setup. Turning something off hides related fields and sections.
         </p>
@@ -949,7 +832,7 @@ export function SettingsPage({
             </div>
 
             <div className="ai-capability-panel">
-              <h3 className="ai-capability-heading">Capability status</h3>
+              <h3 className="ai-capability-heading">Capability Status</h3>
               <ul className="ai-capability-list">
                 <CapabilityRow label="API key" state={aiStatus.capabilities.apiKey} />
                 <CapabilityRow label="Billing" state={aiStatus.capabilities.billing} />
@@ -1005,7 +888,7 @@ export function SettingsPage({
 
       <section className="settings-panel settings-bento-wide">
         <div className="section-header">
-          <h2>Import / Export</h2>
+          <h2>Export</h2>
         </div>
         <p className="settings-note">
           Hate this app? Here’s an easy way out. Pack your inventory, builds, logs, and round
@@ -1017,11 +900,6 @@ export function SettingsPage({
           Inventory, Builds, Logs, Round Counts, and Ammo. Also works as a normal backup if you’re
           not actually dumping us.
         </p>
-        <p className="muted settings-note">
-          <strong>Import JSON</strong> is how you crawl back (or migrate in). Convert a spreadsheet
-          with the Claude prompt in <code>docs/import-from-excel.md</code>. Action + barrel only?
-          We’ll invent a placeholder chassis so builds — and logs — still work.
-        </p>
         <div className="row-actions">
           <button
             type="button"
@@ -1032,22 +910,8 @@ export function SettingsPage({
             <Icon name="share" size={16} />
             {exportBusy ? 'Packing bags…' : 'Export Excel (escape hatch)…'}
           </button>
-          <button
-            type="button"
-            className="btn-ghost btn-with-icon"
-            disabled={importBusy}
-            onClick={() => void importJsonFile()}
-          >
-            <Icon name="upload" size={16} />
-            {importBusy ? 'Welcoming you back…' : 'Import JSON file…'}
-          </button>
         </div>
         {exportMessage ? <p className="settings-note">{exportMessage}</p> : null}
-        {importMessage ? (
-          <pre className="settings-note" style={{ whiteSpace: 'pre-wrap' }}>
-            {importMessage}
-          </pre>
-        ) : null}
       </section>
       </div>
     </div>

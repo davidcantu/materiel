@@ -151,7 +151,7 @@ export function BuildsPage({ trackValue, trackedPlatforms }: BuildsPageProps): R
     <div className="page">
       <PageHeader
         title="Complete Builds"
-        description="Assemble bolt-action, AR-pattern, or pistol systems from compatible inventory."
+        description="Assemble Bolt-Action, AR-Pattern, Or Pistol Systems From Compatible Inventory."
         actions={
           <button type="button" className="btn-primary btn-with-icon" onClick={openCreate}>
             <Icon name="add" size={16} />

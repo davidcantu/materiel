@@ -54,8 +54,8 @@ export function OnboardingPage({ onComplete }: OnboardingPageProps): React.JSX.E
       <div className="welcome-panel onboarding-panel">
         <div className="welcome-brand welcome-brand-with-logo">
           <BrandLogo className="brand-logo-welcome" alt="" />
-          <h1 className="welcome-title">Set up Materiel</h1>
-          <p className="welcome-tagline">Tell us what you want to track</p>
+          <h1 className="welcome-title">Set Up Materiel</h1>
+          <p className="welcome-tagline">Tell Us What You Want To Track</p>
         </div>
 
         <form className="welcome-form onboarding-form" onSubmit={(e) => void handleSubmit(e)}>
