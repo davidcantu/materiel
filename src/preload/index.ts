@@ -30,6 +30,7 @@ import type {
 import type { DashboardSummary } from '../shared/dashboard'
 import type { MilestonesSummary } from '../shared/milestones'
 import type { UpdateCheckResult } from '../shared/updates'
+import type { MaterielImportDocument, MaterielImportResult } from '../shared/import'
 
 const api = {
   getAppInfo: (): Promise<AppInfo> => ipcRenderer.invoke('app:get-info'),
@@ -99,7 +100,11 @@ const api = {
   deleteLoad: (id: string): Promise<{ ok: true }> => ipcRenderer.invoke('loads:delete', id),
   getDashboard: (): Promise<DashboardSummary> => ipcRenderer.invoke('dashboard:get'),
   getMilestones: (): Promise<MilestonesSummary> => ipcRenderer.invoke('milestones:get'),
-  checkForUpdates: (): Promise<UpdateCheckResult> => ipcRenderer.invoke('updates:check')
+  checkForUpdates: (): Promise<UpdateCheckResult> => ipcRenderer.invoke('updates:check'),
+  importFromJson: (document: MaterielImportDocument): Promise<MaterielImportResult> =>
+    ipcRenderer.invoke('import:from-json', document),
+  importPickJsonFile: (): Promise<MaterielImportResult> =>
+    ipcRenderer.invoke('import:pick-json-file')
 }
 
 if (process.contextIsolated) {

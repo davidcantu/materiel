@@ -103,6 +103,8 @@ export function SettingsPage({
   const [appVersion, setAppVersion] = useState<string>('…')
   const [updateBusy, setUpdateBusy] = useState(false)
   const [updateMessage, setUpdateMessage] = useState<string | null>(null)
+  const [importBusy, setImportBusy] = useState(false)
+  const [importMessage, setImportMessage] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -138,6 +140,38 @@ export function SettingsPage({
       cancelled = true
     }
   }, [])
+
+  async function importJsonFile(): Promise<void> {
+    setImportBusy(true)
+    setImportMessage(null)
+    try {
+      const result = await window.api.importPickJsonFile()
+      if (!result.ok) {
+        if (result.error !== 'Import cancelled') {
+          setImportMessage(result.error)
+          toast.error(result.error)
+        }
+        return
+      }
+      const { summary } = result
+      const warningNote =
+        summary.warnings.length > 0 ? ` (${summary.warnings.length} warning(s))` : ''
+      const message = `Imported ${summary.partsCreated} part(s), ${summary.buildsCreated} build(s), ${summary.logsCreated} log(s)${warningNote}.`
+      setImportMessage(
+        summary.warnings.length > 0
+          ? `${message}\n${summary.warnings.slice(0, 8).join('\n')}${summary.warnings.length > 8 ? '\n…' : ''}`
+          : message
+      )
+      toast.success(message)
+      onRefresh()
+    } catch (err) {
+      const text = err instanceof Error ? err.message : 'Import failed'
+      setImportMessage(text)
+      toast.error(text)
+    } finally {
+      setImportBusy(false)
+    }
+  }
 
   async function toggleTrackValue(): Promise<void> {
     if (!profile) return
@@ -300,6 +334,34 @@ export function SettingsPage({
           </button>
         </div>
         {updateMessage ? <p className="settings-note">{updateMessage}</p> : null}
+      </section>
+
+      <section className="settings-panel settings-panel-wide">
+        <div className="section-header">
+          <h2>Import data</h2>
+        </div>
+        <p className="muted settings-note">
+          Import a Materiel JSON file (from Claude/Excel conversion or a hand-authored dump).
+          Action + barrel only sources can auto-create a placeholder chassis so builds — and
+          therefore session logs — can be created. See{' '}
+          <code>docs/import-from-excel.md</code> in the repo for the Claude prompt and schema.
+        </p>
+        <div className="row-actions">
+          <button
+            type="button"
+            className="btn-primary btn-with-icon"
+            disabled={importBusy}
+            onClick={() => void importJsonFile()}
+          >
+            <Icon name="upload" size={16} />
+            {importBusy ? 'Importing…' : 'Import JSON file…'}
+          </button>
+        </div>
+        {importMessage ? (
+          <pre className="settings-note" style={{ whiteSpace: 'pre-wrap' }}>
+            {importMessage}
+          </pre>
+        ) : null}
       </section>
 
       <section className="settings-panel settings-panel-wide">
