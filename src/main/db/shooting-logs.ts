@@ -25,7 +25,7 @@ type PartRow = {
 
 type LogRow = {
   id: string
-  system_id: string
+  system_id: string | null
   barrel_id: string
   ammo_id: string | null
   cartridge: string | null
@@ -176,6 +176,23 @@ function applyLogSideEffects(
   applyAmmoDelta(db, ammoId, direction * -1 * roundsFired)
 }
 
+/** When the build is gone, only the barrel (and ammo) can be adjusted. */
+function applyLogSideEffectsForLog(
+  db: Database.Database,
+  systemId: string | null,
+  barrelId: string,
+  roundsFired: number,
+  ammoId: string | null | undefined,
+  direction: 1 | -1
+): void {
+  if (systemId) {
+    applyLogSideEffects(db, systemId, roundsFired, ammoId, direction)
+    return
+  }
+  applyRoundDelta(db, [barrelId], direction * roundsFired)
+  applyAmmoDelta(db, ammoId, direction * -1 * roundsFired)
+}
+
 function resolveMatchFields(
   sessionType: SessionType,
   placement: number | null | undefined,
@@ -258,7 +275,14 @@ export function deleteShootingLog(db: Database.Database, id: string): void {
       throw new Error(`Shooting log not found: ${id}`)
     }
 
-    applyLogSideEffects(db, existing.systemId, existing.roundsFired, existing.ammoId, -1)
+    applyLogSideEffectsForLog(
+      db,
+      existing.systemId,
+      existing.barrelId,
+      existing.roundsFired,
+      existing.ammoId,
+      -1
+    )
     db.prepare(`DELETE FROM shooting_logs WHERE id = ?`).run(id)
   })
 
@@ -276,9 +300,19 @@ export function updateShootingLog(
     }
 
     // Reverse old side effects, then apply new (§7.2 update).
-    applyLogSideEffects(db, existing.systemId, existing.roundsFired, existing.ammoId, -1)
+    applyLogSideEffectsForLog(
+      db,
+      existing.systemId,
+      existing.barrelId,
+      existing.roundsFired,
+      existing.ammoId,
+      -1
+    )
 
-    const systemId = input.systemId ?? existing.systemId
+    const systemId = input.systemId !== undefined ? input.systemId : existing.systemId
+    if (!systemId) {
+      throw new Error('Assign this session to a build before editing rounds or details')
+    }
     const system = getSystem(db, systemId)
     const roundsFired = input.roundsFired ?? existing.roundsFired
     if (roundsFired < 0) {

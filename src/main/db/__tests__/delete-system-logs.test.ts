@@ -25,7 +25,7 @@ function setup(): Database.Database {
   return openTestDatabase(join(dir, 'test.db'))
 }
 
-test('deleteSystem removes linked logs and returns parts to In Stock', () => {
+test('deleteSystem keeps logs and round counts; parts return to In Stock', () => {
   const db = setup()
   ensureLocalProfile(db)
 
@@ -79,14 +79,17 @@ test('deleteSystem removes linked logs and returns parts to In Stock', () => {
   assert.equal(getPart(db, barrel.id)?.totalRoundCount, 60)
 
   const result = deleteSystem(db, system.id)
-  assert.equal(result.deletedLogCount, 2)
+  assert.equal(result.retainedLogCount, 2)
   assert.equal(getSystem(db, system.id), null)
-  assert.equal(listShootingLogs(db).length, 0)
+
+  const logs = listShootingLogs(db)
+  assert.equal(logs.length, 2)
+  assert.ok(logs.every((log) => log.systemId === null))
+  assert.ok(logs.every((log) => log.barrelId === barrel.id))
 
   assert.equal(getPart(db, action.id)?.status, 'In Stock')
   assert.equal(getPart(db, barrel.id)?.status, 'In Stock')
   assert.equal(getPart(db, chassis.id)?.status, 'In Stock')
-  // Log side effects reversed before delete — rounds unwind.
-  assert.equal(getPart(db, barrel.id)?.totalRoundCount, 0)
-  assert.equal(getPart(db, action.id)?.totalRoundCount, 0)
+  assert.equal(getPart(db, barrel.id)?.totalRoundCount, 60)
+  assert.equal(getPart(db, action.id)?.totalRoundCount, 60)
 })

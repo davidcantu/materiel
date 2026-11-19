@@ -129,7 +129,7 @@ function blankForm(
 
 function fromLog(log: ShootingLogInfo): FormState {
   return {
-    systemId: log.systemId,
+    systemId: log.systemId ?? '',
     ammoChoice: log.ammoId ?? MANUAL_AMMO,
     cartridge: log.cartridge ?? '',
     date: log.date.slice(0, 10),

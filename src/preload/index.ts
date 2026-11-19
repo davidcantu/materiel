@@ -75,7 +75,7 @@ const api = {
       buildType?: 'custom' | 'factory'
     }
   ): Promise<CompleteSystemInfo> => ipcRenderer.invoke('systems:update', id, patch),
-  deleteSystem: (id: string): Promise<{ ok: true; deletedLogCount: number }> =>
+  deleteSystem: (id: string): Promise<{ ok: true; retainedLogCount: number }> =>
     ipcRenderer.invoke('systems:delete', id),
   listLogs: (): Promise<ShootingLogInfo[]> => ipcRenderer.invoke('logs:list'),
   getLog: (id: string): Promise<ShootingLogInfo | null> => ipcRenderer.invoke('logs:get', id),

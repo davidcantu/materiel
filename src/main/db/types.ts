@@ -106,7 +106,8 @@ export type CompleteSystem = {
 
 export type ShootingLog = {
   id: string
-  systemId: string
+  /** Null when the build was deleted; barrel/history still retained. */
+  systemId: string | null
   barrelId: string
   ammoId: string | null
   cartridge: string | null

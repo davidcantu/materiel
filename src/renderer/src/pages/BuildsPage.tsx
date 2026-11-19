@@ -9,7 +9,6 @@ import {
 } from '../../../shared/platforms'
 import { EmptyState } from '../components/EmptyState'
 import { Icon } from '../components/icons/Icon'
-import { MaintenanceDueModal } from '../components/MaintenanceDueModal'
 import { PageFeedback } from '../components/PageFeedback'
 import { PageHeader } from '../components/PageHeader'
 import { SystemFormModal } from '../components/SystemFormModal'
@@ -29,7 +28,6 @@ export function BuildsPage({ trackValue, trackedPlatforms }: BuildsPageProps): R
   const [error, setError] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<CompleteSystemInfo | null>(null)
-  const [maintenanceSystem, setMaintenanceSystem] = useState<CompleteSystemInfo | null>(null)
 
   const availablePlatforms = useMemo(
     () =>
@@ -127,8 +125,8 @@ export function BuildsPage({ trackValue, trackedPlatforms }: BuildsPageProps): R
     }
     const logNote =
       logCount > 0
-        ? ` This also deletes ${logCount} session log${logCount === 1 ? '' : 's'} for this build.`
-        : ' Session logs for this build (if any) are deleted too.'
+        ? ` ${logCount} session log${logCount === 1 ? '' : 's'} stay on the barrel(s); round counts are unchanged.`
+        : ''
     if (
       !window.confirm(
         `Delete build “${system.name}”? Assigned parts return to In Stock.${logNote}`
@@ -139,23 +137,13 @@ export function BuildsPage({ trackValue, trackedPlatforms }: BuildsPageProps): R
     try {
       const result = await window.api.deleteSystem(system.id)
       toast.success(
-        result.deletedLogCount > 0
-          ? `Build deleted. ${result.deletedLogCount} session log${result.deletedLogCount === 1 ? '' : 's'} removed; parts returned to In Stock.`
+        result.retainedLogCount > 0
+          ? `Build deleted. Parts returned to In Stock; ${result.retainedLogCount} log${result.retainedLogCount === 1 ? '' : 's'} kept.`
           : 'Build deleted. Parts returned to In Stock.'
       )
       await load()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Delete failed')
-    }
-  }
-
-  async function handleMaintenanceReset(partId: string): Promise<void> {
-    try {
-      await window.api.resetPartMaintenance(partId)
-      toast.success('Maintenance reset.')
-      await load()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Maintenance reset failed')
     }
   }
 
@@ -309,13 +297,6 @@ export function BuildsPage({ trackValue, trackedPlatforms }: BuildsPageProps): R
                     <button
                       type="button"
                       className="btn-ghost btn-sm"
-                      onClick={() => setMaintenanceSystem(system)}
-                    >
-                      Maintenance
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-ghost btn-sm"
                       onClick={() => {
                         setEditing(system)
                         setModalOpen(true)
@@ -357,14 +338,6 @@ export function BuildsPage({ trackValue, trackedPlatforms }: BuildsPageProps): R
         />
       ) : null}
 
-      {maintenanceSystem ? (
-        <MaintenanceDueModal
-          system={maintenanceSystem}
-          parts={parts}
-          onClose={() => setMaintenanceSystem(null)}
-          onReset={handleMaintenanceReset}
-        />
-      ) : null}
     </div>
   )
 }

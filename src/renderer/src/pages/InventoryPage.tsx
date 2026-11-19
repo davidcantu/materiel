@@ -242,7 +242,7 @@ export function InventoryPage({
   async function handleReset(part: PartInfo): Promise<void> {
     try {
       await window.api.resetPartMaintenance(part.id)
-      toast.success('Maintenance reset.')
+      toast.success('Maintenance performed — counter reset.')
       await load()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Maintenance reset failed')
@@ -414,6 +414,15 @@ export function InventoryPage({
                         >
                           Edit
                         </button>
+                        {isMaintenanceTracked(part.type) ? (
+                          <button
+                            type="button"
+                            className="btn-ghost btn-sm"
+                            onClick={() => void handleReset(part)}
+                          >
+                            Maintenance performed
+                          </button>
+                        ) : null}
                         <button
                           type="button"
                           className="btn-ghost btn-sm"
@@ -570,13 +579,13 @@ export function InventoryPage({
                 Return to stock
               </button>
             ) : null}
-            {maintenancePercent(selected) != null ? (
+            {isMaintenanceTracked(selected.type) ? (
               <button
                 type="button"
                 className="btn-ghost btn-sm"
                 onClick={() => void handleReset(selected)}
               >
-                Reset maintenance
+                Maintenance performed
               </button>
             ) : null}
           </div>
