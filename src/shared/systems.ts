@@ -14,6 +14,8 @@ export type CompleteSystemInfo = {
   laserIrId: string | null
   lightId: string | null
   miscPartIds: string[]
+  /** Lifetime rounds logged against this build while it exists. */
+  totalRounds: number
   imageUrl: string | null
   imageScale: number | null
   notes: string | null

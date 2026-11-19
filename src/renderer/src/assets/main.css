@@ -991,6 +991,41 @@ html[data-theme='dark'] .brand-logo-dark {
   margin-bottom: 0.25rem;
 }
 
+.kpi-unit {
+  font-size: 0.55em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  color: var(--brand-neutral);
+}
+
+.dash-main-single {
+  grid-template-columns: 1fr;
+}
+
+.dash-main-single .dash-main-left {
+  max-width: none;
+}
+
+.type-chip-more {
+  position: relative;
+}
+
+.type-chip-menu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  min-width: 10rem;
+  padding: 0.35rem;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--brand-deep) 18%, transparent);
+  display: grid;
+  gap: 0.2rem;
+}
+
 .settings-bento {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

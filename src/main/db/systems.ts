@@ -46,6 +46,7 @@ type SystemRow = {
   factory_cartridge: string | null
   factory_action_maintenance: number | null
   factory_barrel_maintenance: number | null
+  total_rounds: number
   created_at: string
   updated_at: string
 }
@@ -92,6 +93,7 @@ function mapSystem(db: Database.Database, row: SystemRow): CompleteSystem {
     laserIrId: row.laser_ir_id,
     lightId: row.light_id,
     miscPartIds: getMiscPartIds(db, row.id),
+    totalRounds: row.total_rounds ?? 0,
     imageUrl: row.image_url,
     imageScale: row.image_scale,
     notes: row.notes,
@@ -103,6 +105,21 @@ function mapSystem(db: Database.Database, row: SystemRow): CompleteSystem {
     createdAt: row.created_at,
     updatedAt: row.updated_at
   }
+}
+
+/** Adjust lifetime rounds on a build (from shooting log side effects). */
+export function adjustSystemTotalRounds(
+  db: Database.Database,
+  systemId: string,
+  delta: number
+): void {
+  if (delta === 0) return
+  db.prepare(
+    `UPDATE systems
+     SET total_rounds = MAX(0, total_rounds + @delta),
+         updated_at = @updatedAt
+     WHERE id = @id`
+  ).run({ id: systemId, delta, updatedAt: nowIso() })
 }
 
 function allReferencedPartIds(system: {

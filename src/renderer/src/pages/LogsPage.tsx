@@ -18,6 +18,7 @@ import { MaintenanceDueModal } from '../components/MaintenanceDueModal'
 import { PageFeedback } from '../components/PageFeedback'
 import { PageHeader } from '../components/PageHeader'
 import { useToast } from '../components/toast-context'
+import { partPrimaryTitle } from '../lib/format'
 
 type LogsPageProps = {
   onNavigateBuilds?: () => void
@@ -81,6 +82,12 @@ export function LogsPage({ onNavigateBuilds }: LogsPageProps = {}): React.JSX.El
     for (const item of ammo) map.set(item.id, item)
     return map
   }, [ammo])
+
+  const partsById = useMemo(() => {
+    const map = new Map<string, PartInfo>()
+    for (const part of parts) map.set(part.id, part)
+    return map
+  }, [parts])
 
   const load = useCallback(async () => {
     setError(null)
@@ -337,26 +344,30 @@ export function LogsPage({ onNavigateBuilds }: LogsPageProps = {}): React.JSX.El
               <thead>
                 <tr>
                   <th>Date</th>
-                  <th>System</th>
+                  <th>Barrel</th>
                   <th>Location</th>
                   <th>Rounds</th>
                   <th>Cartridge</th>
                   <th>Place</th>
-                  <th>% of Winner</th>
+                  <th>% Of Winner</th>
                   <th>Velocity</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {visibleLogs.map((log) => {
-                  const system = log.systemId ? systemsById.get(log.systemId) : undefined
+                  const barrel = partsById.get(log.barrelId)
                   return (
                     <tr key={log.id}>
                       <td>
                         <div className="cell-title">{formatLogDate(log.date)}</div>
                         <div className="cell-sub">{log.sessionType}</div>
                       </td>
-                      <td>{system?.name ?? (log.systemId ? 'Unknown system' : 'Former build')}</td>
+                      <td>
+                        {barrel
+                          ? partPrimaryTitle(barrel)
+                          : 'Unknown Barrel'}
+                      </td>
                       <td>{log.location}</td>
                       <td>
                         <span className="rounds-badge">{log.roundsFired}</span>

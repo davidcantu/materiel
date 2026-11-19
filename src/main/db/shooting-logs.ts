@@ -7,6 +7,7 @@
 
 import { randomUUID } from 'crypto'
 import type Database from 'better-sqlite3-multiple-ciphers'
+import { adjustSystemTotalRounds } from './systems'
 import type { NewShootingLogInput, SessionType, ShootingLog, UpdateShootingLogInput } from './types'
 
 type SystemRow = {
@@ -174,6 +175,7 @@ function applyLogSideEffects(
   const parts = trackedPartIds(db, system)
   applyRoundDelta(db, parts, direction * roundsFired)
   applyAmmoDelta(db, ammoId, direction * -1 * roundsFired)
+  adjustSystemTotalRounds(db, systemId, direction * roundsFired)
 }
 
 /** When the build is gone, only the barrel (and ammo) can be adjusted. */

@@ -224,9 +224,12 @@ export function BuildsPage({ trackValue, trackedPlatforms }: BuildsPageProps): R
 
                 <div className="build-card-body">
                   <header className="build-card-header">
-                    <div>
+                      <div>
                       <h3 className="build-card-title">{system.name}</h3>
-                      <p className="build-card-sub muted">{caliber ?? 'No cartridge set'}</p>
+                      <p className="build-card-sub muted">
+                        Total Rounds: {(system.totalRounds ?? 0).toLocaleString()}
+                      </p>
+                      <p className="build-card-sub muted">{caliber ?? 'No Cartridge Set'}</p>
                     </div>
                     <div className="build-card-badges">
                       <span className="type-pill">{PLATFORM_LABELS[system.platform]}</span>
@@ -288,7 +291,8 @@ export function BuildsPage({ trackValue, trackedPlatforms }: BuildsPageProps): R
                   </dl>
 
                   <div className="build-card-meta">
-                    <span>Barrel rounds: {barrel?.totalRoundCount ?? 0}</span>
+                    <span>Total Rounds: {(system.totalRounds ?? 0).toLocaleString()}</span>
+                    <span>Barrel Rounds: {barrel?.totalRoundCount ?? 0}</span>
                     <span>Maintenance: {maint != null ? `${maint}%` : '—'}</span>
                     {trackValue ? <span>Value: {formatCurrency(totalValue)}</span> : null}
                   </div>
