@@ -2078,6 +2078,77 @@ html[data-theme='dark'] .brand-logo-dark {
   gap: 0.75rem;
 }
 
+.ai-settings {
+  display: grid;
+  gap: 1rem;
+}
+
+.ai-settings-grid {
+  max-width: 40rem;
+}
+
+.ai-capability-panel {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--brand-secondary) 8%, var(--surface));
+  max-width: 40rem;
+}
+
+.ai-capability-heading {
+  margin: 0;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--brand-neutral);
+}
+
+.ai-capability-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.ai-capability {
+  display: grid;
+  grid-template-columns: minmax(7rem, 9rem) auto 1fr;
+  gap: 0.5rem 0.75rem;
+  align-items: baseline;
+  font-size: 0.9rem;
+}
+
+.ai-capability-label {
+  font-weight: 600;
+  color: var(--brand-deep);
+}
+
+.ai-capability-state {
+  font-weight: 700;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+}
+
+.ai-capability-ok .ai-capability-state {
+  color: color-mix(in srgb, var(--brand-primary) 85%, #0a0);
+}
+
+.ai-capability-fail .ai-capability-state {
+  color: color-mix(in srgb, #b42318 80%, var(--text));
+}
+
+.ai-capability-unknown .ai-capability-state,
+.ai-capability-stub .ai-capability-state {
+  color: var(--brand-neutral);
+}
+
+.ai-capability-detail {
+  font-size: 0.8rem;
+}
+
 .pref-row-stack {
   flex-direction: column;
   align-items: stretch;

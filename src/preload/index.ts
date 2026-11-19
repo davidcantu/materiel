@@ -32,6 +32,14 @@ import type { MilestonesSummary } from '../shared/milestones'
 import type { UpdateCheckResult } from '../shared/updates'
 import type { MaterielExportResult } from '../shared/export'
 import type { MaterielImportDocument, MaterielImportResult } from '../shared/import'
+import type {
+  AiListModelsResult,
+  AiProviderId,
+  AiSaveKeyInput,
+  AiSetModelInput,
+  AiStatusInfo,
+  AiTestConnectionResult
+} from '../shared/ai'
 
 const api = {
   getAppInfo: (): Promise<AppInfo> => ipcRenderer.invoke('app:get-info'),
@@ -107,7 +115,21 @@ const api = {
     ipcRenderer.invoke('import:from-json', document),
   importPickJsonFile: (): Promise<MaterielImportResult> =>
     ipcRenderer.invoke('import:pick-json-file'),
-  exportExcel: (): Promise<MaterielExportResult> => ipcRenderer.invoke('export:excel')
+  exportExcel: (): Promise<MaterielExportResult> => ipcRenderer.invoke('export:excel'),
+  getAiStatus: (payload?: {
+    provider?: AiProviderId
+    rememberProvider?: boolean
+  }): Promise<AiStatusInfo> => ipcRenderer.invoke('ai:getStatus', payload),
+  saveAiKey: (input: AiSaveKeyInput): Promise<AiStatusInfo> =>
+    ipcRenderer.invoke('ai:saveKey', input),
+  removeAiKey: (payload?: { provider?: AiProviderId }): Promise<AiStatusInfo> =>
+    ipcRenderer.invoke('ai:removeKey', payload),
+  listAiModels: (payload?: { provider?: AiProviderId }): Promise<AiListModelsResult> =>
+    ipcRenderer.invoke('ai:listModels', payload),
+  testAiConnection: (payload?: { provider?: AiProviderId }): Promise<AiTestConnectionResult> =>
+    ipcRenderer.invoke('ai:testConnection', payload),
+  setAiModel: (input: AiSetModelInput): Promise<AiStatusInfo> =>
+    ipcRenderer.invoke('ai:setModel', input)
 }
 
 if (process.contextIsolated) {

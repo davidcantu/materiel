@@ -31,6 +31,14 @@ import type { MilestonesSummary } from '../shared/milestones'
 import type { UpdateCheckResult } from '../shared/updates'
 import type { MaterielExportResult } from '../shared/export'
 import type { MaterielImportDocument, MaterielImportResult } from '../shared/import'
+import type {
+  AiListModelsResult,
+  AiProviderId,
+  AiSaveKeyInput,
+  AiSetModelInput,
+  AiStatusInfo,
+  AiTestConnectionResult
+} from '../shared/ai'
 
 declare global {
   interface Window {
@@ -91,6 +99,15 @@ declare global {
       importFromJson: (document: MaterielImportDocument) => Promise<MaterielImportResult>
       importPickJsonFile: () => Promise<MaterielImportResult>
       exportExcel: () => Promise<MaterielExportResult>
+      getAiStatus: (payload?: {
+        provider?: AiProviderId
+        rememberProvider?: boolean
+      }) => Promise<AiStatusInfo>
+      saveAiKey: (input: AiSaveKeyInput) => Promise<AiStatusInfo>
+      removeAiKey: (payload?: { provider?: AiProviderId }) => Promise<AiStatusInfo>
+      listAiModels: (payload?: { provider?: AiProviderId }) => Promise<AiListModelsResult>
+      testAiConnection: (payload?: { provider?: AiProviderId }) => Promise<AiTestConnectionResult>
+      setAiModel: (input: AiSetModelInput) => Promise<AiStatusInfo>
     }
   }
 }
