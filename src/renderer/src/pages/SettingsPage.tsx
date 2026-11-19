@@ -103,6 +103,10 @@ export function SettingsPage({
   const [appVersion, setAppVersion] = useState<string>('…')
   const [updateBusy, setUpdateBusy] = useState(false)
   const [updateMessage, setUpdateMessage] = useState<string | null>(null)
+  const [importBusy, setImportBusy] = useState(false)
+  const [importMessage, setImportMessage] = useState<string | null>(null)
+  const [exportBusy, setExportBusy] = useState(false)
+  const [exportMessage, setExportMessage] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -138,6 +142,62 @@ export function SettingsPage({
       cancelled = true
     }
   }, [])
+
+  async function importJsonFile(): Promise<void> {
+    setImportBusy(true)
+    setImportMessage(null)
+    try {
+      const result = await window.api.importPickJsonFile()
+      if (!result.ok) {
+        if (result.error !== 'Import cancelled') {
+          setImportMessage(result.error)
+          toast.error(result.error)
+        }
+        return
+      }
+      const { summary } = result
+      const warningNote =
+        summary.warnings.length > 0 ? ` (${summary.warnings.length} warning(s))` : ''
+      const message = `Imported ${summary.partsCreated} part(s), ${summary.buildsCreated} build(s), ${summary.logsCreated} log(s)${warningNote}.`
+      setImportMessage(
+        summary.warnings.length > 0
+          ? `${message}\n${summary.warnings.slice(0, 8).join('\n')}${summary.warnings.length > 8 ? '\n…' : ''}`
+          : message
+      )
+      toast.success(message)
+      onRefresh()
+    } catch (err) {
+      const text = err instanceof Error ? err.message : 'Import failed'
+      setImportMessage(text)
+      toast.error(text)
+    } finally {
+      setImportBusy(false)
+    }
+  }
+
+  async function exportExcelFile(): Promise<void> {
+    setExportBusy(true)
+    setExportMessage(null)
+    try {
+      const result = await window.api.exportExcel()
+      if (!result.ok) {
+        if (result.error !== 'Export cancelled') {
+          setExportMessage(result.error)
+          toast.error(result.error)
+        }
+        return
+      }
+      const message = `Exported Excel workbook to ${result.path}`
+      setExportMessage(message)
+      toast.success('Excel export saved')
+    } catch (err) {
+      const text = err instanceof Error ? err.message : 'Export failed'
+      setExportMessage(text)
+      toast.error(text)
+    } finally {
+      setExportBusy(false)
+    }
+  }
 
   async function toggleTrackValue(): Promise<void> {
     if (!profile) return
@@ -300,6 +360,53 @@ export function SettingsPage({
           </button>
         </div>
         {updateMessage ? <p className="settings-note">{updateMessage}</p> : null}
+      </section>
+
+      <section className="settings-panel settings-panel-wide">
+        <div className="section-header">
+          <h2>Import / Export</h2>
+        </div>
+        <p className="settings-note">
+          Hate this app? Here’s an easy way out. Pack your inventory, builds, logs, and round
+          counts into Excel and go write formulas about your feelings in Sheets. No hard feelings —
+          we even made the Summary tab look decent so your breakup spreadsheet isn’t ugly.
+        </p>
+        <p className="muted settings-note">
+          <strong>Export Excel</strong> builds a workbook with Summary (lifetime + yearly rounds),
+          Inventory, Builds, Logs, Round Counts, and Ammo. Also works as a normal backup if you’re
+          not actually dumping us.
+        </p>
+        <p className="muted settings-note">
+          <strong>Import JSON</strong> is how you crawl back (or migrate in). Convert a spreadsheet
+          with the Claude prompt in <code>docs/import-from-excel.md</code>. Action + barrel only?
+          We’ll invent a placeholder chassis so builds — and logs — still work.
+        </p>
+        <div className="row-actions">
+          <button
+            type="button"
+            className="btn-primary btn-with-icon"
+            disabled={exportBusy}
+            onClick={() => void exportExcelFile()}
+          >
+            <Icon name="share" size={16} />
+            {exportBusy ? 'Packing bags…' : 'Export Excel (escape hatch)…'}
+          </button>
+          <button
+            type="button"
+            className="btn-ghost btn-with-icon"
+            disabled={importBusy}
+            onClick={() => void importJsonFile()}
+          >
+            <Icon name="upload" size={16} />
+            {importBusy ? 'Welcoming you back…' : 'Import JSON file…'}
+          </button>
+        </div>
+        {exportMessage ? <p className="settings-note">{exportMessage}</p> : null}
+        {importMessage ? (
+          <pre className="settings-note" style={{ whiteSpace: 'pre-wrap' }}>
+            {importMessage}
+          </pre>
+        ) : null}
       </section>
 
       <section className="settings-panel settings-panel-wide">

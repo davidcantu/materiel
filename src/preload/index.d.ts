@@ -29,6 +29,8 @@ import type {
 import type { DashboardSummary } from '../shared/dashboard'
 import type { MilestonesSummary } from '../shared/milestones'
 import type { UpdateCheckResult } from '../shared/updates'
+import type { MaterielExportResult } from '../shared/export'
+import type { MaterielImportDocument, MaterielImportResult } from '../shared/import'
 
 declare global {
   interface Window {
@@ -86,6 +88,9 @@ declare global {
       getDashboard: () => Promise<DashboardSummary>
       getMilestones: () => Promise<MilestonesSummary>
       checkForUpdates: () => Promise<UpdateCheckResult>
+      importFromJson: (document: MaterielImportDocument) => Promise<MaterielImportResult>
+      importPickJsonFile: () => Promise<MaterielImportResult>
+      exportExcel: () => Promise<MaterielExportResult>
     }
   }
 }

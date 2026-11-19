@@ -127,6 +127,11 @@ docs/
 
 Env templates: `.env.development`, `.env.test`, `.env.production`, and `.env.example` (no secrets).
 
+## Import / Export
+
+- **Export Excel** from **Settings → Import / Export** — multi-sheet workbook (Summary, Inventory, Builds, Logs, Round Counts, Ammo) with yearly + lifetime rounds.
+- **Import JSON** from the same Settings panel. For spreadsheets, use the Claude prompt in [docs/import-from-excel.md](./docs/import-from-excel.md) (action+barrel sheets get a placeholder chassis so builds/logs can import).
+
 ## Follow-ups
 
 - Settings UI for backup provider / interval
