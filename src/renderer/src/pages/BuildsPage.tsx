@@ -118,12 +118,31 @@ export function BuildsPage({ trackValue, trackedPlatforms }: BuildsPageProps): R
   }
 
   async function handleDelete(system: CompleteSystemInfo): Promise<void> {
-    if (!window.confirm(`Delete build “${system.name}”? Assigned parts return to In Stock.`)) {
+    let logCount = 0
+    try {
+      const logs = await window.api.listLogs()
+      logCount = logs.filter((log) => log.systemId === system.id).length
+    } catch {
+      // Confirm without count if logs can't be loaded.
+    }
+    const logNote =
+      logCount > 0
+        ? ` This also deletes ${logCount} session log${logCount === 1 ? '' : 's'} for this build.`
+        : ' Session logs for this build (if any) are deleted too.'
+    if (
+      !window.confirm(
+        `Delete build “${system.name}”? Assigned parts return to In Stock.${logNote}`
+      )
+    ) {
       return
     }
     try {
-      await window.api.deleteSystem(system.id)
-      toast.success('Build deleted.')
+      const result = await window.api.deleteSystem(system.id)
+      toast.success(
+        result.deletedLogCount > 0
+          ? `Build deleted. ${result.deletedLogCount} session log${result.deletedLogCount === 1 ? '' : 's'} removed; parts returned to In Stock.`
+          : 'Build deleted. Parts returned to In Stock.'
+      )
       await load()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Delete failed')

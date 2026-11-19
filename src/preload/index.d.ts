@@ -68,7 +68,7 @@ declare global {
           buildType?: 'custom' | 'factory'
         }
       ) => Promise<CompleteSystemInfo>
-      deleteSystem: (id: string) => Promise<{ ok: true }>
+      deleteSystem: (id: string) => Promise<{ ok: true; deletedLogCount: number }>
       listLogs: () => Promise<ShootingLogInfo[]>
       getLog: (id: string) => Promise<ShootingLogInfo | null>
       addLog: (input: NewShootingLogInputInfo) => Promise<ShootingLogInfo>

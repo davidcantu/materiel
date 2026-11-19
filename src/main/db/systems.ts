@@ -18,6 +18,7 @@ import {
   type Platform
 } from '../../shared/platforms'
 import { getPart } from './parts'
+import { deleteShootingLog } from './shooting-logs'
 import type {
   CompleteSystem,
   CustomSystemInput,
@@ -573,20 +574,27 @@ export function createFactorySystem(
   return run()
 }
 
-export function deleteSystem(db: Database.Database, id: string): void {
+export type DeleteSystemResult = {
+  deletedLogCount: number
+}
+
+/**
+ * Delete a build. Session logs for the build are removed first (round-count /
+ * ammo side effects reversed). Assigned inventory parts return to In Stock.
+ * Factory-synthesized core parts are removed with the build.
+ */
+export function deleteSystem(db: Database.Database, id: string): DeleteSystemResult {
   const run = db.transaction(() => {
     const existing = getSystem(db, id)
     if (!existing) {
       throw new Error(`System not found: ${id}`)
     }
 
-    const logCount = db
-      .prepare(`SELECT COUNT(*) AS count FROM shooting_logs WHERE system_id = ?`)
-      .get(id) as { count: number }
-    if (logCount.count > 0) {
-      throw new Error(
-        `Cannot delete system ${id}: ${logCount.count} shooting log(s) still reference it`
-      )
+    const logIds = (
+      db.prepare(`SELECT id FROM shooting_logs WHERE system_id = ?`).all(id) as Array<{ id: string }>
+    ).map((row) => row.id)
+    for (const logId of logIds) {
+      deleteShootingLog(db, logId)
     }
 
     setPartsStatus(db, allReferencedPartIds(existing), 'In Stock')
@@ -596,9 +604,11 @@ export function deleteSystem(db: Database.Database, id: string): void {
     if (existing.buildType === 'factory') {
       deleteSynthesizedFactoryParts(db, id)
     }
+
+    return { deletedLogCount: logIds.length }
   })
 
-  run()
+  return run()
 }
 
 /**
