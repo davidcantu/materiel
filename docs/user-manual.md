@@ -31,7 +31,7 @@ Unused sections stay hidden until you turn them back on. The **Ammo** nav item a
 | **Builds** | Complete firearms (custom or factory) |
 | **Logs** | Practice and match sessions |
 | **Ammo** | Ammo lots + **Load data** sub-tab (when enabled) |
-| **Settings** | Profile, updates, theme, tracking prefs, milestones |
+| **Settings** | Profile, updates, theme, tracking prefs, milestones, import / export |
 
 There is no separate Loads or Maintenance page — loads live under Ammo; maintenance is on build cards, dashboard alerts, and after logging when due.
 
@@ -134,6 +134,7 @@ Maintenance is interval-based on parts that support it (e.g. barrels, actions, s
 | **Milestones** | Unlockable badges as you use the app |
 | **Appearance** | Theme: System / Light / Dark |
 | **Tracking preferences** | Same firearm types + ammo / loads / value toggles as first-run setup |
+| **Import / Export** | **Export Excel** (multi-sheet backup) or **Import JSON** (see [import-from-excel.md](./import-from-excel.md)) |
 
 Email remains your local identity. There is no license or activation screen.
 
