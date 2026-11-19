@@ -1,6 +1,6 @@
 {
   "name": "materiel",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "description": "Local-first desktop firearms tracker for inventory, builds, and session logs",
   "main": "./out/main/index.js",
   "author": "David Cantu",
