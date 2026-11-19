@@ -17,7 +17,7 @@ import {
   isValidPlatform,
   type Platform
 } from '../../shared/platforms'
-import { getPart } from './parts'
+import { getPart, setPartStatus } from './parts'
 import type {
   CompleteSystem,
   CustomSystemInput,
@@ -573,32 +573,56 @@ export function createFactorySystem(
   return run()
 }
 
-export function deleteSystem(db: Database.Database, id: string): void {
+export type DeleteSystemResult = {
+  /** Logs kept; unlinked from this build (round counts unchanged). */
+  retainedLogCount: number
+}
+
+/**
+ * Delete a build. Session logs stay attached to their barrels (system_id null);
+ * part total round counts are not modified. Assigned inventory parts return to
+ * In Stock. Factory-synthesized parts are removed only when no logs reference them.
+ */
+export function deleteSystem(db: Database.Database, id: string): DeleteSystemResult {
   const run = db.transaction(() => {
     const existing = getSystem(db, id)
     if (!existing) {
       throw new Error(`System not found: ${id}`)
     }
 
-    const logCount = db
-      .prepare(`SELECT COUNT(*) AS count FROM shooting_logs WHERE system_id = ?`)
-      .get(id) as { count: number }
-    if (logCount.count > 0) {
-      throw new Error(
-        `Cannot delete system ${id}: ${logCount.count} shooting log(s) still reference it`
-      )
-    }
+    const retainedLogCount = (
+      db.prepare(`SELECT COUNT(*) AS count FROM shooting_logs WHERE system_id = ?`).get(id) as {
+        count: number
+      }
+    ).count
 
     setPartsStatus(db, allReferencedPartIds(existing), 'In Stock')
     db.prepare(`DELETE FROM system_misc_parts WHERE system_id = ?`).run(id)
     db.prepare(`DELETE FROM systems WHERE id = ?`).run(id)
 
     if (existing.buildType === 'factory') {
-      deleteSynthesizedFactoryParts(db, id)
+      deleteOrphanedFactoryParts(db, id)
     }
+
+    return { retainedLogCount }
   })
 
-  run()
+  return run()
+}
+
+/** Drop factory-synthesized parts, or leave In Stock when logs still reference them. */
+function deleteOrphanedFactoryParts(db: Database.Database, systemId: string): void {
+  const ids = factoryPartIds(systemId)
+  for (const partId of [ids.actionId, ids.barrelId, ids.chassisId]) {
+    const logRef = db
+      .prepare(`SELECT id FROM shooting_logs WHERE barrel_id = ? LIMIT 1`)
+      .get(partId) as { id: string } | undefined
+    if (logRef) {
+      setPartStatus(db, partId, 'In Stock')
+      continue
+    }
+    db.prepare(`DELETE FROM parts WHERE id = ?`).run(partId)
+  }
 }
 
 /**

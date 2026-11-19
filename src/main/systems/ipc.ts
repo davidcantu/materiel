@@ -42,7 +42,7 @@ export function registerSystemsIpc(): void {
   )
 
   ipcMain.handle('systems:delete', (_event, id: string) => {
-    deleteSystem(requireDatabase().db, id)
-    return { ok: true as const }
+    const result = deleteSystem(requireDatabase().db, id)
+    return { ok: true as const, retainedLogCount: result.retainedLogCount }
   })
 }

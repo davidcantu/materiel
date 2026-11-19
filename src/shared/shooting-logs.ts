@@ -4,7 +4,8 @@ export type SessionType = 'Practice' | 'Match'
 
 export type ShootingLogInfo = {
   id: string
-  systemId: string
+  /** Null when the build was deleted; barrel/history still retained. */
+  systemId: string | null
   barrelId: string
   ammoId: string | null
   cartridge: string | null

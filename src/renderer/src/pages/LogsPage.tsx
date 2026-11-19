@@ -145,7 +145,9 @@ export function LogsPage({ onNavigateBuilds }: LogsPageProps = {}): React.JSX.El
       if (minDate && log.date.slice(0, 10) < minDate) return false
 
       if (!q) return true
-      const systemName = systemsById.get(log.systemId)?.name ?? ''
+      const systemName = log.systemId
+        ? (systemsById.get(log.systemId)?.name ?? '')
+        : 'Former build'
       const cartridge = cartridgeLabel(log, ammoById)
       const hay = [systemName, log.location, cartridge, log.notes, log.sessionType]
         .filter(Boolean)
@@ -203,7 +205,9 @@ export function LogsPage({ onNavigateBuilds }: LogsPageProps = {}): React.JSX.El
   }
 
   async function handleDelete(log: ShootingLogInfo): Promise<void> {
-    const systemName = systemsById.get(log.systemId)?.name ?? 'session'
+    const systemName = log.systemId
+      ? (systemsById.get(log.systemId)?.name ?? 'session')
+      : 'Former build'
     if (!window.confirm(`Delete log for “${systemName}” on ${formatLogDate(log.date)}?`)) {
       return
     }
@@ -345,14 +349,14 @@ export function LogsPage({ onNavigateBuilds }: LogsPageProps = {}): React.JSX.El
               </thead>
               <tbody>
                 {visibleLogs.map((log) => {
-                  const system = systemsById.get(log.systemId)
+                  const system = log.systemId ? systemsById.get(log.systemId) : undefined
                   return (
                     <tr key={log.id}>
                       <td>
                         <div className="cell-title">{formatLogDate(log.date)}</div>
                         <div className="cell-sub">{log.sessionType}</div>
                       </td>
-                      <td>{system?.name ?? 'Unknown system'}</td>
+                      <td>{system?.name ?? (log.systemId ? 'Unknown system' : 'Former build')}</td>
                       <td>{log.location}</td>
                       <td>
                         <span className="rounds-badge">{log.roundsFired}</span>
@@ -371,16 +375,18 @@ export function LogsPage({ onNavigateBuilds }: LogsPageProps = {}): React.JSX.El
                       <td>{log.velocity != null ? `${log.velocity} fps` : '—'}</td>
                       <td>
                         <div className="row-actions">
-                          <button
-                            type="button"
-                            className="btn-ghost btn-sm"
-                            onClick={() => {
-                              setEditing(log)
-                              setModalOpen(true)
-                            }}
-                          >
-                            Edit
-                          </button>
+                          {log.systemId ? (
+                            <button
+                              type="button"
+                              className="btn-ghost btn-sm"
+                              onClick={() => {
+                                setEditing(log)
+                                setModalOpen(true)
+                              }}
+                            >
+                              Edit
+                            </button>
+                          ) : null}
                           <button
                             type="button"
                             className="btn-ghost btn-sm"

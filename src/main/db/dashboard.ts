@@ -93,7 +93,9 @@ function buildRecentActivity(
 
     return {
       id: log.id,
-      systemName: systemsById.get(log.systemId) ?? 'Unknown System',
+      systemName: log.systemId
+        ? (systemsById.get(log.systemId) ?? 'Unknown System')
+        : 'Former build',
       location: log.location,
       date: log.date,
       roundsFired: log.roundsFired,
@@ -114,7 +116,9 @@ function buildMatchTrends(
     .map((log) => ({
       id: log.id,
       date: log.date,
-      systemName: systemsById.get(log.systemId) ?? 'Unknown System',
+      systemName: log.systemId
+        ? (systemsById.get(log.systemId) ?? 'Unknown System')
+        : 'Former build',
       placement: log.placement,
       percentOfWinner: log.percentOfWinner
     }))

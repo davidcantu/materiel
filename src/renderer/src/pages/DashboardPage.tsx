@@ -4,6 +4,7 @@ import { sliceMatchTrends } from '../../../shared/dashboard'
 import { formatPercentOfWinner, formatPlacement } from '../../../shared/shooting-logs'
 import { PageFeedback } from '../components/PageFeedback'
 import { PageHeader } from '../components/PageHeader'
+import { useToast } from '../components/toast-context'
 import { formatCurrency } from '../lib/format'
 
 type DashboardPageProps = {
@@ -28,11 +29,13 @@ function formatLogDate(iso: string): string {
 }
 
 export function DashboardPage({ onNavigateLogs }: DashboardPageProps): React.JSX.Element {
+  const toast = useToast()
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [placementWindow, setPlacementWindow] = useState<DashboardTrendWindow>(10)
   const [percentWindow, setPercentWindow] = useState<DashboardTrendWindow>(10)
+  const [resettingPartId, setResettingPartId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -333,6 +336,35 @@ export function DashboardPage({ onNavigateLogs }: DashboardPageProps): React.JSX
                         style={{ width: `${Math.min(alert.percent, 100)}%` }}
                       />
                     </div>
+                    {alert.kind === 'Maintenance' ? (
+                      <div className="row-actions" style={{ marginTop: '0.5rem' }}>
+                        <button
+                          type="button"
+                          className="btn-ghost btn-sm"
+                          disabled={resettingPartId === alert.partId}
+                          onClick={() => {
+                            void (async () => {
+                              setResettingPartId(alert.partId)
+                              try {
+                                await window.api.resetPartMaintenance(alert.partId)
+                                toast.success('Maintenance performed — counter reset.')
+                                await load()
+                              } catch (err) {
+                                toast.error(
+                                  err instanceof Error ? err.message : 'Maintenance reset failed'
+                                )
+                              } finally {
+                                setResettingPartId(null)
+                              }
+                            })()
+                          }}
+                        >
+                          {resettingPartId === alert.partId
+                            ? 'Saving…'
+                            : 'Maintenance performed'}
+                        </button>
+                      </div>
+                    ) : null}
                   </li>
                 ))}
               </ul>

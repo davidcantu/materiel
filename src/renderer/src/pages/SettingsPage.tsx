@@ -328,7 +328,8 @@ export function SettingsPage({
     <div className="page">
       <PageHeader title="Settings" description="Profile, milestones, and preferences." />
 
-      <section className="settings-panel">
+      <div className="settings-bento">
+      <section className="settings-panel settings-bento-about">
         <h2>About</h2>
         <div className="about-brand">
           <BrandLogo className="brand-logo-about" alt="Materiel" />
@@ -342,74 +343,36 @@ export function SettingsPage({
         </div>
       </section>
 
-      <section className="settings-panel">
-        <h2>Updates</h2>
-        <p className="muted">
-          Materiel soft-checks GitHub Releases. Nothing installs automatically — when an update is
-          available, download the installer for your OS, quit Materiel, run it, then relaunch. Your
-          encrypted local database stays on this computer.
-        </p>
-        <div className="row-actions">
-          <button
-            type="button"
-            className="btn-primary"
-            disabled={updateBusy}
-            onClick={() => void handleCheckUpdates()}
-          >
-            {updateBusy ? 'Checking…' : 'Check for updates'}
-          </button>
-        </div>
-        {updateMessage ? <p className="settings-note">{updateMessage}</p> : null}
-      </section>
-
-      <section className="settings-panel settings-panel-wide">
+      <section className="settings-panel settings-bento-theme">
         <div className="section-header">
-          <h2>Import / Export</h2>
+          <h2>Light / Dark</h2>
+          <span className="status-inline" aria-hidden="true">
+            <Icon name="theme" size={18} />
+          </span>
         </div>
-        <p className="settings-note">
-          Hate this app? Here’s an easy way out. Pack your inventory, builds, logs, and round
-          counts into Excel and go write formulas about your feelings in Sheets. No hard feelings —
-          we even made the Summary tab look decent so your breakup spreadsheet isn’t ugly.
-        </p>
-        <p className="muted settings-note">
-          <strong>Export Excel</strong> builds a workbook with Summary (lifetime + yearly rounds),
-          Inventory, Builds, Logs, Round Counts, and Ammo. Also works as a normal backup if you’re
-          not actually dumping us.
-        </p>
-        <p className="muted settings-note">
-          <strong>Import JSON</strong> is how you crawl back (or migrate in). Convert a spreadsheet
-          with the Claude prompt in <code>docs/import-from-excel.md</code>. Action + barrel only?
-          We’ll invent a placeholder chassis so builds — and logs — still work.
-        </p>
-        <div className="row-actions">
-          <button
-            type="button"
-            className="btn-primary btn-with-icon"
-            disabled={exportBusy}
-            onClick={() => void exportExcelFile()}
-          >
-            <Icon name="share" size={16} />
-            {exportBusy ? 'Packing bags…' : 'Export Excel (escape hatch)…'}
-          </button>
-          <button
-            type="button"
-            className="btn-ghost btn-with-icon"
-            disabled={importBusy}
-            onClick={() => void importJsonFile()}
-          >
-            <Icon name="upload" size={16} />
-            {importBusy ? 'Welcoming you back…' : 'Import JSON file…'}
-          </button>
+        <p className="muted">Follow your system theme by default, or lock Light / Dark.</p>
+        <div className="theme-toggle" role="group" aria-label="Color theme">
+          {THEME_OPTIONS.map((option) => {
+            const active = themePreference === option.value
+            return (
+              <button
+                key={option.value}
+                type="button"
+                className={`theme-option${active ? ' active' : ''}`}
+                aria-pressed={active}
+                onClick={() => {
+                  setStoredThemePreference(option.value)
+                  onThemePreferenceChange(option.value)
+                }}
+              >
+                {option.label}
+              </button>
+            )
+          })}
         </div>
-        {exportMessage ? <p className="settings-note">{exportMessage}</p> : null}
-        {importMessage ? (
-          <pre className="settings-note" style={{ whiteSpace: 'pre-wrap' }}>
-            {importMessage}
-          </pre>
-        ) : null}
       </section>
 
-      <section className="settings-panel settings-panel-wide">
+      <section className="settings-panel settings-bento-wide">
         <div className="section-header">
           <h2>Profile</h2>
           {profile && !editingProfile ? (
@@ -559,7 +522,7 @@ export function SettingsPage({
         ) : null}
       </section>
 
-      <section className="settings-panel settings-panel-wide">
+      <section className="settings-panel settings-bento-wide">
         <div className="section-header">
           <h2>Milestones</h2>
           {milestones ? (
@@ -586,37 +549,8 @@ export function SettingsPage({
         ) : null}
       </section>
 
-      <section className="settings-panel">
-        <div className="section-header">
-          <h2>Appearance</h2>
-          <span className="status-inline" aria-hidden="true">
-            <Icon name="theme" size={18} />
-          </span>
-        </div>
-        <p className="muted">Follow your system theme by default, or lock Light / Dark.</p>
-        <div className="theme-toggle" role="group" aria-label="Color theme">
-          {THEME_OPTIONS.map((option) => {
-            const active = themePreference === option.value
-            return (
-              <button
-                key={option.value}
-                type="button"
-                className={`theme-option${active ? ' active' : ''}`}
-                aria-pressed={active}
-                onClick={() => {
-                  setStoredThemePreference(option.value)
-                  onThemePreferenceChange(option.value)
-                }}
-              >
-                {option.label}
-              </button>
-            )
-          })}
-        </div>
-      </section>
-
-      <section className="settings-panel">
-        <h2>Tracking preferences</h2>
+      <section className="settings-panel settings-bento-wide">
+        <h2>Features / tracking</h2>
         <p className="muted">
           Same choices as first-run setup. Turning something off hides related fields and sections.
         </p>
@@ -706,6 +640,89 @@ export function SettingsPage({
           </PreferenceInfoButton>
         </div>
       </section>
+
+      <section className="settings-panel settings-bento-wide">
+        <div className="section-header">
+          <h2>AI API</h2>
+        </div>
+        <p className="muted">
+          Bring your own key for Anthropic, OpenAI, xAI, or Groq. Usage is billed to your provider
+          account — Materiel never hosts your data. Full AI Coach setup ships in an upcoming
+          release.
+        </p>
+        <p className="settings-note muted">
+          API keys are separate from chat subscriptions (ChatGPT Plus, Claude Pro, etc.). Coming
+          soon: encrypted key storage, model picker, and capability checks.
+        </p>
+      </section>
+
+      <section className="settings-panel">
+        <h2>Updates</h2>
+        <p className="muted">
+          Materiel soft-checks GitHub Releases. Nothing installs automatically — when an update is
+          available, download the installer for your OS, quit Materiel, run it, then relaunch. Your
+          encrypted local database stays on this computer.
+        </p>
+        <div className="row-actions">
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={updateBusy}
+            onClick={() => void handleCheckUpdates()}
+          >
+            {updateBusy ? 'Checking…' : 'Check for updates'}
+          </button>
+        </div>
+        {updateMessage ? <p className="settings-note">{updateMessage}</p> : null}
+      </section>
+
+      <section className="settings-panel settings-bento-wide">
+        <div className="section-header">
+          <h2>Import / Export</h2>
+        </div>
+        <p className="settings-note">
+          Hate this app? Here’s an easy way out. Pack your inventory, builds, logs, and round
+          counts into Excel and go write formulas about your feelings in Sheets. No hard feelings —
+          we even made the Summary tab look decent so your breakup spreadsheet isn’t ugly.
+        </p>
+        <p className="muted settings-note">
+          <strong>Export Excel</strong> builds a workbook with Summary (lifetime + yearly rounds),
+          Inventory, Builds, Logs, Round Counts, and Ammo. Also works as a normal backup if you’re
+          not actually dumping us.
+        </p>
+        <p className="muted settings-note">
+          <strong>Import JSON</strong> is how you crawl back (or migrate in). Convert a spreadsheet
+          with the Claude prompt in <code>docs/import-from-excel.md</code>. Action + barrel only?
+          We’ll invent a placeholder chassis so builds — and logs — still work.
+        </p>
+        <div className="row-actions">
+          <button
+            type="button"
+            className="btn-primary btn-with-icon"
+            disabled={exportBusy}
+            onClick={() => void exportExcelFile()}
+          >
+            <Icon name="share" size={16} />
+            {exportBusy ? 'Packing bags…' : 'Export Excel (escape hatch)…'}
+          </button>
+          <button
+            type="button"
+            className="btn-ghost btn-with-icon"
+            disabled={importBusy}
+            onClick={() => void importJsonFile()}
+          >
+            <Icon name="upload" size={16} />
+            {importBusy ? 'Welcoming you back…' : 'Import JSON file…'}
+          </button>
+        </div>
+        {exportMessage ? <p className="settings-note">{exportMessage}</p> : null}
+        {importMessage ? (
+          <pre className="settings-note" style={{ whiteSpace: 'pre-wrap' }}>
+            {importMessage}
+          </pre>
+        ) : null}
+      </section>
+      </div>
     </div>
   )
 }
