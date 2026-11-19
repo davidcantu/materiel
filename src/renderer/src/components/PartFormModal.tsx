@@ -50,6 +50,7 @@ type FormState = {
   twistRate: string
   barrelLife: string
   maintenanceInterval: string
+  totalRoundCount: string
   muzzleType: MuzzleType
   value: string
   status: PartStatus
@@ -74,6 +75,7 @@ function blankForm(type: PartType = 'Action', platforms?: Platform[]): FormState
     twistRate: '8',
     barrelLife: '2500',
     maintenanceInterval: '1000',
+    totalRoundCount: '0',
     muzzleType: 'Suppressor',
     value: '',
     status: 'In Stock',
@@ -95,6 +97,7 @@ function fromPart(part: PartInfo): FormState {
     barrelLife: part.barrelLife != null ? String(part.barrelLife) : '2500',
     maintenanceInterval:
       part.maintenanceInterval != null ? String(part.maintenanceInterval) : '1000',
+    totalRoundCount: String(part.totalRoundCount ?? 0),
     muzzleType: part.muzzleType ?? 'Suppressor',
     value: part.value ? String(part.value) : '',
     status: part.status,
@@ -149,7 +152,7 @@ export function PartFormModal({
   }
 
   function togglePlatform(platform: Platform): void {
-    if (editing || lockPlatforms?.length === 1) return
+    if (lockPlatforms?.length === 1) return
     setForm((prev) => {
       const has = prev.platforms.includes(platform)
       let nextPlatforms: Platform[]
@@ -217,6 +220,9 @@ export function PartFormModal({
       if (isMaintenanceTracked(form.type) && form.type !== 'Barrel') {
         input.maintenanceInterval = Number(form.maintenanceInterval) || 1000
       }
+      if (isMaintenanceTracked(form.type)) {
+        input.totalRoundCount = Math.max(0, Number(form.totalRoundCount) || 0)
+      }
       if (form.type === 'Suppressor') {
         input.muzzleType = form.muzzleType
       }
@@ -248,7 +254,7 @@ export function PartFormModal({
       }
     >
       <form id="part-form" className="form-grid" onSubmit={(e) => void handleSubmit(e)}>
-        <fieldset className="type-picker" disabled={Boolean(editing || lockPlatforms?.length === 1)}>
+        <fieldset className="type-picker" disabled={Boolean(lockPlatforms?.length === 1)}>
           <legend className="field-label">Platform</legend>
           <div className="chip-row">
             {platformChoices.map((platform) => (
@@ -410,15 +416,26 @@ export function PartFormModal({
         ) : null}
 
         {isMaintenanceTracked(form.type) ? (
-          <label className="field">
-            <span className="field-label">Maintenance Interval (rounds)</span>
-            <input
-              type="number"
-              min="1"
-              value={form.maintenanceInterval}
-              onChange={(e) => setField('maintenanceInterval', e.target.value)}
-            />
-          </label>
+          <>
+            <label className="field">
+              <span className="field-label">Maintenance Interval (Rounds)</span>
+              <input
+                type="number"
+                min="1"
+                value={form.maintenanceInterval}
+                onChange={(e) => setField('maintenanceInterval', e.target.value)}
+              />
+            </label>
+            <label className="field">
+              <span className="field-label">Total Round Count</span>
+              <input
+                type="number"
+                min="0"
+                value={form.totalRoundCount}
+                onChange={(e) => setField('totalRoundCount', e.target.value)}
+              />
+            </label>
+          </>
         ) : null}
 
         {trackValue ? (

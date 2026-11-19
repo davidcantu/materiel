@@ -47,9 +47,8 @@ export type DashboardSummary = {
   activeSystems: number
   inventoryItems: number
   totalValue: number
+  /** All months from first log through now (client filters by ActivityWindow). */
   monthlyRounds: MonthlyRounds[]
-  recentActivity: RecentActivityItem[]
-  maintenanceAlerts: MaintenanceAlertItem[]
   /** Match sessions newest-first for placement / % winner charts. */
   matchTrends: MatchTrendPoint[]
 }
@@ -84,9 +83,12 @@ const MONTH_LONG = [
   'December'
 ] as const
 
-/** Trailing 12 calendar months, oldest → current. */
-export function trailing12MonthRounds(
+export type ActivityWindow = '3m' | '1y' | '2y' | 'lifetime'
+
+/** Calendar months for an activity window, oldest → current. */
+export function monthlyRoundsForWindow(
   logs: Array<{ date: string; roundsFired: number }>,
+  window: ActivityWindow,
   now: Date = new Date()
 ): MonthlyRounds[] {
   const totals = new Map<string, number>()
@@ -96,9 +98,30 @@ export function trailing12MonthRounds(
     totals.set(key, (totals.get(key) ?? 0) + log.roundsFired)
   }
 
-  const months: MonthlyRounds[] = []
   const cursor = new Date(now.getFullYear(), now.getMonth(), 1)
-  for (let i = 11; i >= 0; i--) {
+  let monthCount: number
+  if (window === '3m') monthCount = 3
+  else if (window === '1y') monthCount = 12
+  else if (window === '2y') monthCount = 24
+  else {
+    let earliest = cursor
+    for (const key of totals.keys()) {
+      const [ys, ms] = key.split('-')
+      const y = Number(ys)
+      const m = Number(ms) - 1
+      if (!Number.isFinite(y) || !Number.isFinite(m)) continue
+      const d = new Date(y, m, 1)
+      if (d < earliest) earliest = d
+    }
+    monthCount =
+      (cursor.getFullYear() - earliest.getFullYear()) * 12 +
+      (cursor.getMonth() - earliest.getMonth()) +
+      1
+    monthCount = Math.max(1, Math.min(monthCount, 120))
+  }
+
+  const months: MonthlyRounds[] = []
+  for (let i = monthCount - 1; i >= 0; i--) {
     const d = new Date(cursor.getFullYear(), cursor.getMonth() - i, 1)
     const y = d.getFullYear()
     const m = d.getMonth()
@@ -111,6 +134,14 @@ export function trailing12MonthRounds(
     })
   }
   return months
+}
+
+/** Trailing 12 calendar months, oldest → current. */
+export function trailing12MonthRounds(
+  logs: Array<{ date: string; roundsFired: number }>,
+  now: Date = new Date()
+): MonthlyRounds[] {
+  return monthlyRoundsForWindow(logs, '1y', now)
 }
 
 export function maintenanceTone(percent: number): 'ok' | 'warn' | 'high' {

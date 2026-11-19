@@ -407,10 +407,10 @@ export function AmmoPage({
         }
         description={
           showInventory && !showLoads
-            ? 'Track ammunition lots on hand.'
+            ? 'Track Ammunition Lots On Hand.'
             : !showInventory && showLoads
-              ? 'Reloading load development recipes.'
-              : 'Track ammunition lots and reloading load development.'
+              ? 'Reloading Load Development Recipes.'
+              : 'Track Ammunition Lots And Reloading Load Development.'
         }
         actions={
           <>

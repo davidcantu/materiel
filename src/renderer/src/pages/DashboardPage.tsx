@@ -1,10 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { DashboardSummary, DashboardTrendWindow } from '../../../shared/dashboard'
+import type {
+  ActivityWindow,
+  DashboardSummary,
+  DashboardTrendWindow,
+  MonthlyRounds
+} from '../../../shared/dashboard'
 import { sliceMatchTrends } from '../../../shared/dashboard'
+import type { MilestonesSummary, MilestoneStatus, MilestoneTier } from '../../../shared/milestones'
+import { MILESTONE_TIER_LABELS } from '../../../shared/milestones'
 import { formatPercentOfWinner, formatPlacement } from '../../../shared/shooting-logs'
 import { PageFeedback } from '../components/PageFeedback'
 import { PageHeader } from '../components/PageHeader'
-import { useToast } from '../components/toast-context'
 import { formatCurrency } from '../lib/format'
 
 type DashboardPageProps = {
@@ -18,6 +24,19 @@ const TREND_WINDOWS: Array<{ id: DashboardTrendWindow; label: string }> = [
   { id: 'all', label: 'All' }
 ]
 
+const ACTIVITY_WINDOWS: Array<{ id: ActivityWindow; label: string }> = [
+  { id: '3m', label: '3 Months' },
+  { id: '1y', label: '1 Year' },
+  { id: '2y', label: '2 Years' },
+  { id: 'lifetime', label: 'Lifetime' }
+]
+
+function sliceActivityMonths(months: MonthlyRounds[], window: ActivityWindow): MonthlyRounds[] {
+  if (window === 'lifetime') return months
+  const n = window === '3m' ? 3 : window === '1y' ? 12 : 24
+  return months.slice(-n)
+}
+
 function formatLogDate(iso: string): string {
   const date = new Date(`${iso.slice(0, 10)}T12:00:00`)
   if (Number.isNaN(date.getTime())) return iso.slice(0, 10)
@@ -28,48 +47,58 @@ function formatLogDate(iso: string): string {
   })
 }
 
-export function DashboardPage({ onNavigateLogs }: DashboardPageProps): React.JSX.Element {
-  const toast = useToast()
+function MilestoneCard({ milestone }: { milestone: MilestoneStatus }): React.JSX.Element {
+  return (
+    <article
+      className={`milestone-card${milestone.unlocked ? ' unlocked' : ' locked'}`}
+      aria-label={`${milestone.name}: ${milestone.unlocked ? 'Unlocked' : 'Locked'}`}
+    >
+      <div className="milestone-card-top">
+        <h3>{milestone.name}</h3>
+        <span className={`milestone-status${milestone.unlocked ? ' is-unlocked' : ''}`}>
+          <span className="milestone-dot" aria-hidden="true" />
+          {milestone.unlocked ? 'Unlocked' : 'Locked'}
+        </span>
+      </div>
+      <p>{milestone.description}</p>
+    </article>
+  )
+}
+
+export function DashboardPage({ onNavigateLogs: _onNavigateLogs }: DashboardPageProps): React.JSX.Element {
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
+  const [milestones, setMilestones] = useState<MilestonesSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [placementWindow, setPlacementWindow] = useState<DashboardTrendWindow>(10)
   const [percentWindow, setPercentWindow] = useState<DashboardTrendWindow>(10)
-  const [resettingPartId, setResettingPartId] = useState<string | null>(null)
+  const [activityWindow, setActivityWindow] = useState<ActivityWindow>('1y')
 
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const next = await window.api.getDashboard()
+      const [next, nextMilestones] = await Promise.all([
+        window.api.getDashboard(),
+        window.api.getMilestones()
+      ])
       setSummary(next)
+      setMilestones(nextMilestones)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load dashboard')
+      setError(err instanceof Error ? err.message : 'Failed To Load Dashboard')
     } finally {
       setLoading(false)
     }
   }, [])
 
   useEffect(() => {
-    let cancelled = false
-    void window.api
-      .getDashboard()
-      .then((next) => {
-        if (!cancelled) {
-          setSummary(next)
-          setLoading(false)
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Failed to load dashboard')
-          setLoading(false)
-        }
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [])
+    void load()
+  }, [load])
+
+  const activityMonths = useMemo(
+    () => (summary ? sliceActivityMonths(summary.monthlyRounds, activityWindow) : []),
+    [summary, activityWindow]
+  )
 
   const placementTrend = useMemo(
     () => (summary ? sliceMatchTrends(summary.matchTrends, placementWindow) : []),
@@ -80,14 +109,24 @@ export function DashboardPage({ onNavigateLogs }: DashboardPageProps): React.JSX
     [summary, percentWindow]
   )
 
+  const milestonesByTier = useMemo(() => {
+    if (!milestones) return null
+    const tiers = Object.keys(MILESTONE_TIER_LABELS) as MilestoneTier[]
+    return tiers.map((tier) => ({
+      tier,
+      label: MILESTONE_TIER_LABELS[tier],
+      items: milestones.milestones.filter((m) => m.tier === tier)
+    }))
+  }, [milestones])
+
   if (loading && !summary) {
     return (
       <div className="page">
         <PageHeader
           title="Dashboard"
-          description="Your firearms, rounds, and maintenance at a glance."
+          description="Your Firearms, Rounds, And Builds At A Glance."
         />
-        <PageFeedback loading loadingLabel="Loading dashboard…" />
+        <PageFeedback loading loadingLabel="Loading Dashboard…" />
       </div>
     )
   }
@@ -97,7 +136,7 @@ export function DashboardPage({ onNavigateLogs }: DashboardPageProps): React.JSX
       <div className="page">
         <PageHeader
           title="Dashboard"
-          description="Your firearms, rounds, and maintenance at a glance."
+          description="Your Firearms, Rounds, And Builds At A Glance."
           actions={
             <button type="button" className="btn-ghost" onClick={() => void load()}>
               Retry
@@ -113,13 +152,13 @@ export function DashboardPage({ onNavigateLogs }: DashboardPageProps): React.JSX
     return (
       <div className="page">
         <PageHeader title="Dashboard" />
-        <PageFeedback error="Unable to load dashboard." onRetry={() => void load()} />
+        <PageFeedback error="Unable To Load Dashboard." onRetry={() => void load()} />
       </div>
     )
   }
 
-  const title = summary.firstName ? `Welcome back, ${summary.firstName}` : 'Welcome'
-  const maxMonthRounds = Math.max(1, ...summary.monthlyRounds.map((m) => m.rounds))
+  const title = summary.firstName ? `Welcome Back, ${summary.firstName}` : 'Welcome'
+  const maxMonthRounds = Math.max(1, ...activityMonths.map((m) => m.rounds))
   const placementPoints = placementTrend.filter((p) => p.placement != null)
   const percentPoints = percentTrend.filter((p) => p.percentOfWinner != null)
   const maxPlace = Math.max(1, ...placementPoints.map((p) => p.placement ?? 1))
@@ -134,9 +173,9 @@ export function DashboardPage({ onNavigateLogs }: DashboardPageProps): React.JSX
 
   return (
     <div className="page dashboard-page">
-      <PageHeader title={title} description="Your firearms, rounds, and maintenance at a glance." />
+      <PageHeader title={title} description="Your Firearms, Rounds, And Builds At A Glance." />
 
-      <section className="dash-top" aria-label="Key metrics">
+      <section className="dash-top" aria-label="Key Metrics">
         <div className={kpiClass}>
           <article className="kpi-card">
             <div className="kpi-label">Total Rounds</div>
@@ -152,8 +191,11 @@ export function DashboardPage({ onNavigateLogs }: DashboardPageProps): React.JSX
           </article>
           {summary.trackAmmo && summary.ammoRoundsTotal != null ? (
             <article className="kpi-card">
-              <div className="kpi-label">Ammo Rounds</div>
-              <div className="kpi-value">{summary.ammoRoundsTotal.toLocaleString()}</div>
+              <div className="kpi-label">Ammo Inventory</div>
+              <div className="kpi-value">
+                {summary.ammoRoundsTotal.toLocaleString()}{' '}
+                <span className="kpi-unit">Rounds</span>
+              </div>
             </article>
           ) : null}
           {summary.trackValue ? (
@@ -165,17 +207,29 @@ export function DashboardPage({ onNavigateLogs }: DashboardPageProps): React.JSX
         </div>
       </section>
 
-      <section className="dash-main">
+      <section className="dash-main dash-main-single">
         <div className="dash-main-left">
           <article className="dash-panel">
-            <header className="dash-panel-header">
+            <header className="dash-panel-header dash-panel-header-stack">
               <div>
                 <h2>Shooting Activity</h2>
-                <p className="dash-panel-sub">Rounds fired per month (trailing 12 months)</p>
+                <p className="dash-panel-sub">Rounds Fired Per Month</p>
+              </div>
+              <div className="chip-row" role="group" aria-label="Activity Window">
+                {ACTIVITY_WINDOWS.map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    className={`chip${activityWindow === opt.id ? ' active' : ''}`}
+                    onClick={() => setActivityWindow(opt.id)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
               </div>
             </header>
-            <div className="activity-chart" role="img" aria-label="Trailing 12 month rounds chart">
-              {summary.monthlyRounds.map((month) => {
+            <div className="activity-chart" role="img" aria-label="Shooting Activity Chart">
+              {activityMonths.map((month) => {
                 const height =
                   month.rounds > 0
                     ? Math.max(8, Math.round((month.rounds / maxMonthRounds) * 100))
@@ -197,10 +251,10 @@ export function DashboardPage({ onNavigateLogs }: DashboardPageProps): React.JSX
           <article className="dash-panel">
             <header className="dash-panel-header dash-panel-header-stack">
               <div>
-                <h2>Placement trend</h2>
-                <p className="dash-panel-sub">Match place over last N matches (lower is better)</p>
+                <h2>Placement Trend</h2>
+                <p className="dash-panel-sub">Match Place Over Last N Matches (Lower Is Better)</p>
               </div>
-              <div className="chip-row" role="group" aria-label="Placement window">
+              <div className="chip-row" role="group" aria-label="Placement Window">
                 {TREND_WINDOWS.map((opt) => (
                   <button
                     key={`place-${opt.id}`}
@@ -214,13 +268,9 @@ export function DashboardPage({ onNavigateLogs }: DashboardPageProps): React.JSX
               </div>
             </header>
             {placementPoints.length === 0 ? (
-              <p className="muted dash-empty">Log match sessions with a place to see this trend.</p>
+              <p className="muted dash-empty">Log Match Sessions With A Place To See This Trend.</p>
             ) : (
-              <div
-                className="trend-chart"
-                role="img"
-                aria-label="Match placement trend"
-              >
+              <div className="trend-chart" role="img" aria-label="Match Placement Trend">
                 {placementPoints.map((point) => {
                   const place = point.placement ?? 0
                   const height = Math.max(8, Math.round(((maxPlace + 1 - place) / maxPlace) * 100))
@@ -242,10 +292,10 @@ export function DashboardPage({ onNavigateLogs }: DashboardPageProps): React.JSX
           <article className="dash-panel">
             <header className="dash-panel-header dash-panel-header-stack">
               <div>
-                <h2>% of Winner trend</h2>
-                <p className="dash-panel-sub">Match score vs winner over last N matches</p>
+                <h2>% Of Winner Trend</h2>
+                <p className="dash-panel-sub">Match Score Vs Winner Over Last N Matches</p>
               </div>
-              <div className="chip-row" role="group" aria-label="% of Winner window">
+              <div className="chip-row" role="group" aria-label="% Of Winner Window">
                 {TREND_WINDOWS.map((opt) => (
                   <button
                     key={`pct-${opt.id}`}
@@ -260,10 +310,10 @@ export function DashboardPage({ onNavigateLogs }: DashboardPageProps): React.JSX
             </header>
             {percentPoints.length === 0 ? (
               <p className="muted dash-empty">
-                Log match sessions with % of Winner to see this trend.
+                Log Match Sessions With % Of Winner To See This Trend.
               </p>
             ) : (
-              <div className="trend-chart" role="img" aria-label="% of Winner trend">
+              <div className="trend-chart" role="img" aria-label="% Of Winner Trend">
                 {percentPoints.map((point) => {
                   const pct = point.percentOfWinner ?? 0
                   const height = Math.max(8, Math.round(pct))
@@ -284,93 +334,31 @@ export function DashboardPage({ onNavigateLogs }: DashboardPageProps): React.JSX
 
           <article className="dash-panel">
             <header className="dash-panel-header">
-              <h2>Recent Activity</h2>
-              <button type="button" className="btn-link" onClick={onNavigateLogs}>
-                View all
-              </button>
+              <h2>Milestones</h2>
+              {milestones ? (
+                <span className="muted">
+                  {milestones.unlockedCount} / {milestones.milestones.length} Unlocked
+                </span>
+              ) : null}
             </header>
-            {summary.recentActivity.length === 0 ? (
-              <p className="muted dash-empty">No recent activity logged.</p>
-            ) : (
-              <ul className="activity-list">
-                {summary.recentActivity.map((item) => (
-                  <li key={item.id} className="activity-row">
-                    <div>
-                      <div className="cell-title">{item.systemName}</div>
-                      <div className="cell-meta">
-                        {item.location} · {formatLogDate(item.date)}
-                      </div>
-                      <div className="muted">{item.cartridgeLabel}</div>
+            {!milestones ? (
+              <p className="muted dash-empty">Loading Milestones…</p>
+            ) : milestonesByTier ? (
+              <div className="milestone-tiers">
+                {milestonesByTier.map((group) => (
+                  <div key={group.tier} className="milestone-tier">
+                    <h3 className="milestone-tier-label">{group.label}</h3>
+                    <div className="milestone-grid">
+                      {group.items.map((milestone) => (
+                        <MilestoneCard key={milestone.id} milestone={milestone} />
+                      ))}
                     </div>
-                    <span className="rounds-badge">+{item.roundsFired}</span>
-                  </li>
+                  </div>
                 ))}
-              </ul>
-            )}
+              </div>
+            ) : null}
           </article>
         </div>
-
-        <aside className="dash-main-right">
-          <article className="dash-panel">
-            <header className="dash-panel-header">
-              <h2>Maintenance Alerts</h2>
-            </header>
-            {summary.maintenanceAlerts.length === 0 ? (
-              <p className="muted dash-empty">No parts currently tracked for maintenance.</p>
-            ) : (
-              <ul className="alert-list">
-                {summary.maintenanceAlerts.map((alert) => (
-                  <li key={alert.partId} className="alert-row">
-                    <div className="alert-row-top">
-                      <div>
-                        <div className="cell-title">{alert.title}</div>
-                        <div className="muted">{alert.kind}</div>
-                      </div>
-                      <span className={`alert-pct${alert.percent > 90 ? ' alert-pct-high' : ''}`}>
-                        {alert.percent}%
-                      </span>
-                    </div>
-                    <div className={`progress-track tone-${alert.tone}`}>
-                      <div
-                        className="progress-fill"
-                        style={{ width: `${Math.min(alert.percent, 100)}%` }}
-                      />
-                    </div>
-                    {alert.kind === 'Maintenance' ? (
-                      <div className="row-actions" style={{ marginTop: '0.5rem' }}>
-                        <button
-                          type="button"
-                          className="btn-ghost btn-sm"
-                          disabled={resettingPartId === alert.partId}
-                          onClick={() => {
-                            void (async () => {
-                              setResettingPartId(alert.partId)
-                              try {
-                                await window.api.resetPartMaintenance(alert.partId)
-                                toast.success('Maintenance performed — counter reset.')
-                                await load()
-                              } catch (err) {
-                                toast.error(
-                                  err instanceof Error ? err.message : 'Maintenance reset failed'
-                                )
-                              } finally {
-                                setResettingPartId(null)
-                              }
-                            })()
-                          }}
-                        >
-                          {resettingPartId === alert.partId
-                            ? 'Saving…'
-                            : 'Maintenance performed'}
-                        </button>
-                      </div>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </article>
-        </aside>
       </section>
     </div>
   )

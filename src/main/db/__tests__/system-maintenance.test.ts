@@ -56,6 +56,7 @@ function systemStub(
     factoryCartridge: null,
     factoryActionMaintenance: null,
     factoryBarrelMaintenance: null,
+    totalRounds: 0,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
     ...partial

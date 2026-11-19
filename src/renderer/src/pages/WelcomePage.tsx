@@ -44,12 +44,12 @@ export function WelcomePage({ onComplete }: WelcomePageProps): React.JSX.Element
         <div className="welcome-brand welcome-brand-with-logo">
           <BrandLogo className="brand-logo-welcome" alt="" />
           <h1 className="welcome-title">Materiel</h1>
-          <p className="welcome-tagline">Firearms tracker — gear, tracked locally</p>
+          <p className="welcome-tagline">Firearms Tracker — Gear, Tracked Locally</p>
         </div>
 
         <p className="welcome-pitch">
-          Inventory every part, lock in complete builds, log range days, track ammo and maintenance
-          — all encrypted on your machine. Free and unlimited. No cloud lock-in.
+          Inventory Every Part, Lock In Complete Builds, Log Range Days, Track Ammo And Maintenance
+          — All Encrypted On Your Machine. Free And Unlimited. No Cloud Lock-In.
         </p>
 
         <form className="welcome-form" onSubmit={(e) => void handleContinue(e)}>

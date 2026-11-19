@@ -1,13 +1,15 @@
-import { useEffect, useMemo, useState } from 'react'
-import {
-  MILESTONE_TIER_LABELS,
-  type MilestoneStatus,
-  type MilestoneTier,
-  type MilestonesSummary
-} from '../../../shared/milestones'
+import { useEffect, useState } from 'react'
 import { PLATFORMS, PLATFORM_LABELS, type Platform } from '../../../shared/platforms'
 import { type ProfileInfo, type ProfilePatch } from '../../../shared/profile'
 import type { UpdateCheckResult } from '../../../shared/updates'
+import {
+  AI_PROVIDER_IDS,
+  AI_PROVIDER_LABELS,
+  type AiCapabilityState,
+  type AiModelInfo,
+  type AiProviderId,
+  type AiStatusInfo
+} from '../../../shared/ai'
 import { BrandLogo } from '../components/BrandLogo'
 import { Icon } from '../components/icons/Icon'
 import { ImageCropField, type ImageCropValue } from '../components/ImageCropField'
@@ -15,6 +17,40 @@ import { PageHeader } from '../components/PageHeader'
 import { PreferenceInfoButton } from '../components/PreferenceInfoButton'
 import { useToast } from '../components/toast-context'
 import { setStoredThemePreference, THEME_OPTIONS, type ThemePreference } from '../lib/theme'
+
+const AI_SUBSCRIPTION_NOTE =
+  'API keys are separate from chat subscriptions (ChatGPT Plus, Claude Pro, Grok, etc.). Materiel talks to the provider API with your key; subscription chat apps do not include API access.'
+
+function capabilityLabel(state: AiCapabilityState): string {
+  switch (state) {
+    case 'ok':
+      return 'OK'
+    case 'fail':
+      return 'Fail'
+    case 'stub':
+      return 'Optional'
+    default:
+      return 'Unknown'
+  }
+}
+
+function CapabilityRow({
+  label,
+  state,
+  detail
+}: {
+  label: string
+  state: AiCapabilityState
+  detail?: string
+}): React.JSX.Element {
+  return (
+    <li className={`ai-capability ai-capability-${state}`}>
+      <span className="ai-capability-label">{label}</span>
+      <span className="ai-capability-state">{capabilityLabel(state)}</span>
+      {detail ? <span className="ai-capability-detail muted">{detail}</span> : null}
+    </li>
+  )
+}
 
 type SettingsPageProps = {
   profile: ProfileInfo | null
@@ -31,24 +67,6 @@ type ProfileDraft = {
   state: string
   country: string
   image: ImageCropValue
-}
-
-function MilestoneCard({ milestone }: { milestone: MilestoneStatus }): React.JSX.Element {
-  return (
-    <article
-      className={`milestone-card${milestone.unlocked ? ' unlocked' : ' locked'}`}
-      aria-label={`${milestone.name}: ${milestone.unlocked ? 'Unlocked' : 'Locked'}`}
-    >
-      <div className="milestone-card-top">
-        <h3>{milestone.name}</h3>
-        <span className={`milestone-status${milestone.unlocked ? ' is-unlocked' : ''}`}>
-          <span className="milestone-dot" aria-hidden="true" />
-          {milestone.unlocked ? 'Unlocked' : 'Locked'}
-        </span>
-      </div>
-      <p>{milestone.description}</p>
-    </article>
-  )
 }
 
 function updateStatusMessage(result: UpdateCheckResult, currentVersion: string): string {
@@ -94,8 +112,6 @@ export function SettingsPage({
   onThemePreferenceChange
 }: SettingsPageProps): React.JSX.Element {
   const toast = useToast()
-  const [milestones, setMilestones] = useState<MilestonesSummary | null>(null)
-  const [milestonesError, setMilestonesError] = useState<string | null>(null)
   const [editingProfile, setEditingProfile] = useState(false)
   const [profileDraft, setProfileDraft] = useState<ProfileDraft | null>(null)
   const [profileBusy, setProfileBusy] = useState(false)
@@ -103,10 +119,14 @@ export function SettingsPage({
   const [appVersion, setAppVersion] = useState<string>('…')
   const [updateBusy, setUpdateBusy] = useState(false)
   const [updateMessage, setUpdateMessage] = useState<string | null>(null)
-  const [importBusy, setImportBusy] = useState(false)
-  const [importMessage, setImportMessage] = useState<string | null>(null)
   const [exportBusy, setExportBusy] = useState(false)
   const [exportMessage, setExportMessage] = useState<string | null>(null)
+  const [aiStatus, setAiStatus] = useState<AiStatusInfo | null>(null)
+  const [aiModels, setAiModels] = useState<AiModelInfo[]>([])
+  const [aiKeyDraft, setAiKeyDraft] = useState('')
+  const [aiBusy, setAiBusy] = useState(false)
+  const [aiMessage, setAiMessage] = useState<string | null>(null)
+  const [aiError, setAiError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -123,19 +143,38 @@ export function SettingsPage({
     }
   }, [])
 
+  async function refreshAiModels(provider: AiProviderId): Promise<void> {
+    const result = await window.api.listAiModels({ provider })
+    if (result.ok) {
+      setAiModels(result.models)
+      return
+    }
+    setAiModels([])
+    // Soft-fail on load — key may be invalid until Test connection.
+    setAiError(result.error)
+  }
+
   useEffect(() => {
     let cancelled = false
     void window.api
-      .getMilestones()
-      .then((next) => {
-        if (!cancelled) {
-          setMilestones(next)
-          setMilestonesError(null)
+      .getAiStatus()
+      .then(async (status) => {
+        if (cancelled) return
+        setAiStatus(status)
+        setAiError(null)
+        if (status.hasKey) {
+          const result = await window.api.listAiModels({ provider: status.provider })
+          if (cancelled) return
+          if (result.ok) {
+            setAiModels(result.models)
+          } else {
+            setAiModels([])
+          }
         }
       })
       .catch((err) => {
         if (!cancelled) {
-          setMilestonesError(err instanceof Error ? err.message : 'Failed to load milestones')
+          setAiError(err instanceof Error ? err.message : 'Failed to load AI settings')
         }
       })
     return () => {
@@ -143,35 +182,109 @@ export function SettingsPage({
     }
   }, [])
 
-  async function importJsonFile(): Promise<void> {
-    setImportBusy(true)
-    setImportMessage(null)
+  async function handleAiProviderChange(provider: AiProviderId): Promise<void> {
+    setAiError(null)
+    setAiMessage(null)
+    setAiKeyDraft('')
     try {
-      const result = await window.api.importPickJsonFile()
-      if (!result.ok) {
-        if (result.error !== 'Import cancelled') {
-          setImportMessage(result.error)
-          toast.error(result.error)
-        }
-        return
+      const status = await window.api.getAiStatus({ provider, rememberProvider: true })
+      setAiStatus(status)
+      setAiModels([])
+      if (status.hasKey) {
+        await refreshAiModels(provider)
       }
-      const { summary } = result
-      const warningNote =
-        summary.warnings.length > 0 ? ` (${summary.warnings.length} warning(s))` : ''
-      const message = `Imported ${summary.partsCreated} part(s), ${summary.buildsCreated} build(s), ${summary.logsCreated} log(s)${warningNote}.`
-      setImportMessage(
-        summary.warnings.length > 0
-          ? `${message}\n${summary.warnings.slice(0, 8).join('\n')}${summary.warnings.length > 8 ? '\n…' : ''}`
-          : message
-      )
-      toast.success(message)
-      onRefresh()
     } catch (err) {
-      const text = err instanceof Error ? err.message : 'Import failed'
-      setImportMessage(text)
+      setAiError(err instanceof Error ? err.message : 'Failed to switch provider')
+    }
+  }
+
+  async function handleSaveAiKey(): Promise<void> {
+    if (!aiStatus) return
+    const key = aiKeyDraft.trim()
+    if (!key) {
+      setAiError('Enter an API key to save.')
+      return
+    }
+    setAiBusy(true)
+    setAiError(null)
+    setAiMessage(null)
+    try {
+      const status = await window.api.saveAiKey({
+        provider: aiStatus.provider,
+        apiKey: key,
+        model: aiStatus.model
+      })
+      setAiStatus(status)
+      setAiKeyDraft('')
+      setAiMessage(`Key saved (ending …${status.maskedSuffix ?? '????'}).`)
+      toast.success('API key saved')
+      await refreshAiModels(status.provider)
+    } catch (err) {
+      const text = err instanceof Error ? err.message : 'Failed to save API key'
+      setAiError(text)
       toast.error(text)
     } finally {
-      setImportBusy(false)
+      setAiBusy(false)
+    }
+  }
+
+  async function handleRemoveAiKey(): Promise<void> {
+    if (!aiStatus) return
+    setAiBusy(true)
+    setAiError(null)
+    setAiMessage(null)
+    try {
+      const status = await window.api.removeAiKey({ provider: aiStatus.provider })
+      setAiStatus(status)
+      setAiModels([])
+      setAiKeyDraft('')
+      setAiMessage('API key removed for this provider.')
+      toast.success('API key removed')
+    } catch (err) {
+      const text = err instanceof Error ? err.message : 'Failed to remove API key'
+      setAiError(text)
+      toast.error(text)
+    } finally {
+      setAiBusy(false)
+    }
+  }
+
+  async function handleAiModelChange(model: string): Promise<void> {
+    if (!aiStatus) return
+    setAiBusy(true)
+    setAiError(null)
+    try {
+      const status = await window.api.setAiModel({ provider: aiStatus.provider, model })
+      setAiStatus(status)
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : 'Failed to set model')
+    } finally {
+      setAiBusy(false)
+    }
+  }
+
+  async function handleTestAiConnection(): Promise<void> {
+    if (!aiStatus) return
+    setAiBusy(true)
+    setAiError(null)
+    setAiMessage(null)
+    try {
+      const result = await window.api.testAiConnection({ provider: aiStatus.provider })
+      setAiStatus(result.status)
+      if (result.ok) {
+        setAiMessage(result.status.capabilities.message ?? 'Connection ok.')
+        toast.success('AI connection ok')
+        await refreshAiModels(result.status.provider)
+      } else {
+        setAiError(result.error)
+        toast.error(result.error)
+      }
+    } catch (err) {
+      const text = err instanceof Error ? err.message : 'Connection test failed'
+      setAiError(text)
+      toast.error(text)
+    } finally {
+      setAiBusy(false)
     }
   }
 
@@ -291,16 +404,6 @@ export function SettingsPage({
 
   const displayName = [profile?.firstName, profile?.lastName].filter(Boolean).join(' ').trim()
 
-  const milestonesByTier = useMemo(() => {
-    if (!milestones) return null
-    const tiers: MilestoneTier[] = ['new', 'mid', 'advanced']
-    return tiers.map((tier) => ({
-      tier,
-      label: MILESTONE_TIER_LABELS[tier],
-      items: milestones.milestones.filter((m) => m.tier === tier)
-    }))
-  }, [milestones])
-
   async function handleCheckUpdates(): Promise<void> {
     setUpdateBusy(true)
     setUpdateMessage(null)
@@ -326,7 +429,7 @@ export function SettingsPage({
 
   return (
     <div className="page">
-      <PageHeader title="Settings" description="Profile, milestones, and preferences." />
+      <PageHeader title="Settings" description="Profile, Features, And Preferences." />
 
       <div className="settings-bento">
       <section className="settings-panel settings-bento-about">
@@ -523,34 +626,7 @@ export function SettingsPage({
       </section>
 
       <section className="settings-panel settings-bento-wide">
-        <div className="section-header">
-          <h2>Milestones</h2>
-          {milestones ? (
-            <span className="muted">
-              {milestones.unlockedCount} / {milestones.milestones.length} unlocked
-            </span>
-          ) : null}
-        </div>
-        {milestonesError ? <p className="form-error">{milestonesError}</p> : null}
-        {!milestones && !milestonesError ? <p className="muted">Loading milestones…</p> : null}
-        {milestonesByTier ? (
-          <div className="milestone-tiers">
-            {milestonesByTier.map((group) => (
-              <div key={group.tier} className="milestone-tier">
-                <h3 className="milestone-tier-label">{group.label}</h3>
-                <div className="milestone-grid">
-                  {group.items.map((milestone) => (
-                    <MilestoneCard key={milestone.id} milestone={milestone} />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : null}
-      </section>
-
-      <section className="settings-panel settings-bento-wide">
-        <h2>Features / tracking</h2>
+        <h2>Features / Tracking</h2>
         <p className="muted">
           Same choices as first-run setup. Turning something off hides related fields and sections.
         </p>
@@ -647,13 +723,147 @@ export function SettingsPage({
         </div>
         <p className="muted">
           Bring your own key for Anthropic, OpenAI, xAI, or Groq. Usage is billed to your provider
-          account — Materiel never hosts your data. Full AI Coach setup ships in an upcoming
-          release.
+          account — Materiel never hosts your data. Keys stay encrypted on this computer and are
+          never sent back to the UI after save.
         </p>
-        <p className="settings-note muted">
-          API keys are separate from chat subscriptions (ChatGPT Plus, Claude Pro, etc.). Coming
-          soon: encrypted key storage, model picker, and capability checks.
-        </p>
+        <p className="settings-note muted">{AI_SUBSCRIPTION_NOTE}</p>
+
+        {!aiStatus && !aiError ? <p className="muted">Loading AI settings…</p> : null}
+
+        {aiStatus ? (
+          <div className="ai-settings">
+            <div className="form-grid ai-settings-grid">
+              <label className="field">
+                <span className="field-label">Provider</span>
+                <select
+                  value={aiStatus.provider}
+                  disabled={aiBusy}
+                  onChange={(e) => void handleAiProviderChange(e.target.value as AiProviderId)}
+                >
+                  {AI_PROVIDER_IDS.map((id) => (
+                    <option key={id} value={id}>
+                      {AI_PROVIDER_LABELS[id]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="field field-span">
+                <span className="field-label">API key</span>
+                <input
+                  type="password"
+                  autoComplete="off"
+                  spellCheck={false}
+                  disabled={aiBusy}
+                  value={aiKeyDraft}
+                  placeholder={
+                    aiStatus.hasKey
+                      ? `Saved · …${aiStatus.maskedSuffix ?? '????'}`
+                      : 'Paste provider API key'
+                  }
+                  onChange={(e) => setAiKeyDraft(e.target.value)}
+                />
+              </label>
+
+              <label className="field">
+                <span className="field-label">Model</span>
+                <select
+                  value={aiStatus.model ?? ''}
+                  disabled={aiBusy || !aiStatus.hasKey || aiModels.length === 0}
+                  onChange={(e) => void handleAiModelChange(e.target.value)}
+                >
+                  {aiModels.length === 0 ? (
+                    <option value="">
+                      {aiStatus.hasKey ? 'Load models via Test / Re-check' : 'Save a key first'}
+                    </option>
+                  ) : null}
+                  {aiStatus.model && !aiModels.some((m) => m.id === aiStatus.model) ? (
+                    <option value={aiStatus.model}>{aiStatus.model}</option>
+                  ) : null}
+                  {aiModels.map((model) => (
+                    <option key={model.id} value={model.id}>
+                      {model.displayName}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            {!aiStatus.encryptionAvailable ? (
+              <p className="form-error settings-note">
+                OS secure storage (safeStorage) is unavailable. In production Materiel will refuse
+                to save API keys until encryption is available.
+              </p>
+            ) : null}
+
+            <div className="row-actions">
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={aiBusy || !aiKeyDraft.trim()}
+                onClick={() => void handleSaveAiKey()}
+              >
+                {aiBusy ? 'Working…' : 'Save key'}
+              </button>
+              <button
+                type="button"
+                className="btn-ghost"
+                disabled={aiBusy || !aiStatus.hasKey}
+                onClick={() => void handleRemoveAiKey()}
+              >
+                Remove key
+              </button>
+              <button
+                type="button"
+                className="btn-ghost"
+                disabled={aiBusy || !aiStatus.hasKey}
+                onClick={() => void handleTestAiConnection()}
+              >
+                Test connection
+              </button>
+              <button
+                type="button"
+                className="btn-ghost"
+                disabled={aiBusy || !aiStatus.hasKey}
+                onClick={() => void handleTestAiConnection()}
+              >
+                Re-check
+              </button>
+            </div>
+
+            <div className="ai-capability-panel">
+              <h3 className="ai-capability-heading">Capability Status</h3>
+              <ul className="ai-capability-list">
+                <CapabilityRow label="API key" state={aiStatus.capabilities.apiKey} />
+                <CapabilityRow label="Billing" state={aiStatus.capabilities.billing} />
+                <CapabilityRow
+                  label="Analysis ready"
+                  state={aiStatus.capabilities.analysisReady}
+                  detail="Basic"
+                />
+                <CapabilityRow
+                  label="Vision"
+                  state={aiStatus.capabilities.vision}
+                  detail="Optional — coming with AI Coach"
+                />
+              </ul>
+              {aiStatus.capabilities.checkedAt ? (
+                <p className="muted settings-note">
+                  Last checked {new Date(aiStatus.capabilities.checkedAt).toLocaleString()}
+                </p>
+              ) : (
+                <p className="muted settings-note">
+                  Run Test connection after saving a key to validate auth and billing.
+                </p>
+              )}
+            </div>
+
+            {aiMessage ? <p className="settings-note">{aiMessage}</p> : null}
+            {aiError ? <p className="form-error">{aiError}</p> : null}
+          </div>
+        ) : aiError ? (
+          <p className="form-error">{aiError}</p>
+        ) : null}
       </section>
 
       <section className="settings-panel">
@@ -678,7 +888,7 @@ export function SettingsPage({
 
       <section className="settings-panel settings-bento-wide">
         <div className="section-header">
-          <h2>Import / Export</h2>
+          <h2>Export</h2>
         </div>
         <p className="settings-note">
           Hate this app? Here’s an easy way out. Pack your inventory, builds, logs, and round
@@ -690,11 +900,6 @@ export function SettingsPage({
           Inventory, Builds, Logs, Round Counts, and Ammo. Also works as a normal backup if you’re
           not actually dumping us.
         </p>
-        <p className="muted settings-note">
-          <strong>Import JSON</strong> is how you crawl back (or migrate in). Convert a spreadsheet
-          with the Claude prompt in <code>docs/import-from-excel.md</code>. Action + barrel only?
-          We’ll invent a placeholder chassis so builds — and logs — still work.
-        </p>
         <div className="row-actions">
           <button
             type="button"
@@ -705,22 +910,8 @@ export function SettingsPage({
             <Icon name="share" size={16} />
             {exportBusy ? 'Packing bags…' : 'Export Excel (escape hatch)…'}
           </button>
-          <button
-            type="button"
-            className="btn-ghost btn-with-icon"
-            disabled={importBusy}
-            onClick={() => void importJsonFile()}
-          >
-            <Icon name="upload" size={16} />
-            {importBusy ? 'Welcoming you back…' : 'Import JSON file…'}
-          </button>
         </div>
         {exportMessage ? <p className="settings-note">{exportMessage}</p> : null}
-        {importMessage ? (
-          <pre className="settings-note" style={{ whiteSpace: 'pre-wrap' }}>
-            {importMessage}
-          </pre>
-        ) : null}
       </section>
       </div>
     </div>

@@ -474,6 +474,11 @@ export function SystemFormModal({
             <span className="field-label">Build Name</span>
             <input value={form.name} onChange={(e) => setField('name', e.target.value)} required />
           </label>
+          {editing && initial ? (
+            <p className="muted field-span settings-note">
+              Total Rounds: {(initial.totalRounds ?? 0).toLocaleString()}
+            </p>
+          ) : null}
 
           <div className="field field-span">
             <ImageCropField

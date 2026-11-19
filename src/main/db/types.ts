@@ -92,6 +92,7 @@ export type CompleteSystem = {
   laserIrId: string | null
   lightId: string | null
   miscPartIds: string[]
+  totalRounds: number
   imageUrl: string | null
   imageScale: number | null
   notes: string | null
