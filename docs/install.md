@@ -6,7 +6,7 @@ Materiel is **free and unlimited**. Mac and Windows builds are **not** Developer
 
 ## Assets
 
-Artifact names use the release version (example: `0.2.7`):
+Artifact names use the release version (example: `0.2.8`):
 
 | OS | File pattern | Notes |
 | --- | --- | --- |
@@ -21,7 +21,7 @@ Direct link pattern:
 https://github.com/davidcantu/materiel/releases/download/v<version>/<artifact>
 ```
 
-Example: `…/releases/download/v0.2.7/Materiel-0.2.7-arm64.dmg`
+Example: `…/releases/download/v0.2.8/Materiel-0.2.8-arm64.dmg`
 
 ## Per OS
 
