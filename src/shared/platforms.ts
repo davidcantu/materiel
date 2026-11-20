@@ -18,7 +18,7 @@ export const PLATFORM_LABELS: Record<Platform, string> = {
 /**
  * Categories offered per platform (inventory create / filter).
  * AR: Lower, Upper, Barrel (Upper/Barrel), Laser/IR, Light, Muzzle, Misc (+ Trigger wear).
- * Pistol: Pistol, Optic, Laser/IR, Light, Muzzle, Misc (+ Trigger wear).
+ * Pistol: Frame (stored type Pistol), Optic, Laser/IR, Light, Muzzle, Misc (+ Trigger wear).
  * Bolt: classic bolt set + Laser/IR + Trigger.
  */
 export const PLATFORM_PART_TYPES: Record<Platform, readonly PartType[]> = {
@@ -83,9 +83,9 @@ export const PLATFORM_CORE_LABELS: Record<
     furniture: 'Upper Receiver'
   },
   pistol: {
-    primary: 'Pistol',
-    barrel: 'Pistol',
-    furniture: 'Pistol'
+    primary: 'Frame',
+    barrel: 'Frame',
+    furniture: 'Frame'
   }
 }
 

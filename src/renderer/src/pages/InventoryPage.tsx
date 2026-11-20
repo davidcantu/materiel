@@ -25,7 +25,7 @@ import {
 const DEFAULT_STATUSES: PartStatus[] = ['In Stock', 'In Use']
 
 /** Always-visible category chips (plus All). Remaining types live under +. */
-const PRIMARY_TYPE_CHIPS: PartType[] = ['Action', 'Barrel', 'Chassis', 'Optic', 'Misc']
+const PRIMARY_TYPE_CHIPS: PartType[] = ['Action', 'Barrel', 'Chassis', 'Pistol', 'Optic', 'Misc']
 
 type InventoryPageProps = {
   trackValue: boolean

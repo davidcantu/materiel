@@ -151,9 +151,38 @@ export function PartFormModal({
     setForm((prev) => ({ ...prev, [key]: value }))
   }
 
+  function preferredTypeForPlatforms(
+    platforms: Platform[],
+    current: PartType
+  ): PartType {
+    const types = partTypesForPlatforms(platforms)
+    if (types.includes(current)) return current
+    // Prefer the serialized core part when switching platforms on create.
+    if (platforms.length === 1) {
+      const only = platforms[0]
+      if (only === 'pistol' && types.includes('Pistol')) return 'Pistol'
+      if (only === 'ar_pattern' && types.includes('Lower')) return 'Lower'
+      if (only === 'bolt_action' && types.includes('Action')) return 'Action'
+    }
+    return types[0] ?? current
+  }
+
   function togglePlatform(platform: Platform): void {
     if (lockPlatforms?.length === 1) return
     setForm((prev) => {
+      // Create: exclusive platform pick so Pistol/AR/Bolt core types stay available.
+      // Multi-platform accessories can add platforms later via Edit.
+      if (!editing) {
+        const nextPlatforms: Platform[] = [platform]
+        const nextType = preferredTypeForPlatforms(nextPlatforms, prev.type)
+        return {
+          ...prev,
+          platforms: normalizePartPlatforms(nextType, nextPlatforms),
+          type: nextType,
+          status: isWearStatusTracked(nextType) ? prev.status : 'In Stock'
+        }
+      }
+
       const has = prev.platforms.includes(platform)
       let nextPlatforms: Platform[]
       if (has) {
@@ -162,8 +191,7 @@ export function PartFormModal({
       } else {
         nextPlatforms = [...prev.platforms, platform]
       }
-      const types = partTypesForPlatforms(nextPlatforms)
-      const nextType = types.includes(prev.type) ? prev.type : (types[0] ?? prev.type)
+      const nextType = preferredTypeForPlatforms(nextPlatforms, prev.type)
       return {
         ...prev,
         platforms: normalizePartPlatforms(nextType, nextPlatforms),
@@ -269,8 +297,9 @@ export function PartFormModal({
             ))}
           </div>
           <p className="muted field-hint">
-            Categories update to match the selected platform
-            {form.platforms.length > 1 ? 's' : ''}.
+            {editing
+              ? 'Toggle Platforms For Multi-Platform Parts.'
+              : 'Pick One Platform. Use Frame For A Serialized Pistol.'}
           </p>
         </fieldset>
 

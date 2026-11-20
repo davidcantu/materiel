@@ -173,7 +173,9 @@ export function partTypeLabel(type: PartType): string {
     case 'Upper':
       return 'Upper'
     case 'Pistol':
-      return 'Pistol'
+      return 'Frame'
+    case 'Frame':
+      return 'Frame'
     case 'Trigger':
       return 'Trigger'
     default:
