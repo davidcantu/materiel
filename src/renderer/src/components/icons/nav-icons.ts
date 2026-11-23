@@ -8,5 +8,6 @@ export const NAV_ICONS: Record<string, IconName> = {
   logs: 'logs',
   aars: 'info',
   ammo: 'ammo',
+  ai: 'ai',
   settings: 'settings'
 }

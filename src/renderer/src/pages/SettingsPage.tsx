@@ -234,6 +234,7 @@ export function SettingsPage({
       setAiMessage(`Key saved (ending …${status.maskedSuffix ?? '????'}).`)
       toast.success('API key saved')
       await refreshAiModels(status.provider)
+      onRefresh()
     } catch (err) {
       const text = err instanceof Error ? err.message : 'Failed to save API key'
       setAiError(text)
@@ -255,6 +256,7 @@ export function SettingsPage({
       setAiKeyDraft('')
       setAiMessage('API key removed for this provider.')
       toast.success('API key removed')
+      onRefresh()
     } catch (err) {
       const text = err instanceof Error ? err.message : 'Failed to remove API key'
       setAiError(text)
@@ -917,7 +919,8 @@ export function SettingsPage({
         <p className="muted">
           Bring your own key for Anthropic, OpenAI, xAI, or Groq. Usage is billed to your provider
           account — Materiel never hosts your data. Keys stay encrypted on this computer and are
-          never sent back to the UI after save.
+          never sent back to the UI after save. Saving a key unlocks the AI View in the sidebar for
+          armory Q&amp;A, training ideas, and assisted inventory fill-ins.
         </p>
         <p className="settings-note muted">{AI_SUBSCRIPTION_NOTE}</p>
 

@@ -25,6 +25,13 @@ import {
   maintenancePercent,
   partPrimaryTitle
 } from '../lib/format'
+import {
+  buildsFiltersEqual,
+  DEFAULT_BUILDS_FILTERS,
+  loadBuildsFilterDefaults,
+  saveBuildsFilterDefaults,
+  type BuildsFilterDefaults
+} from '../lib/view-filter-defaults'
 
 type BuildsPageProps = {
   trackValue: boolean
@@ -47,8 +54,16 @@ export function BuildsPage({
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<CompleteSystemInfo | null>(null)
   const [search, setSearch] = useState('')
+  const [savedDefaults, setSavedDefaults] = useState<BuildsFilterDefaults>(() =>
+    loadBuildsFilterDefaults()
+  )
+  const [platformFilter, setPlatformFilter] = useState<Platform | 'All'>(
+    () => loadBuildsFilterDefaults().platform
+  )
   const [logModalOpen, setLogModalOpen] = useState(false)
   const [logSystemId, setLogSystemId] = useState<string | null>(null)
+
+  const filtersAreDefault = buildsFiltersEqual({ platform: platformFilter }, savedDefaults)
 
   const availablePlatforms = useMemo(
     () =>
@@ -57,6 +72,12 @@ export function BuildsPage({
         : [...PLATFORMS],
     [trackedPlatforms]
   )
+
+  useEffect(() => {
+    if (platformFilter !== 'All' && !availablePlatforms.includes(platformFilter)) {
+      setPlatformFilter('All')
+    }
+  }, [availablePlatforms, platformFilter])
 
   const partsById = useMemo(() => {
     const map = new Map<string, PartInfo>()
@@ -69,6 +90,7 @@ export function BuildsPage({
     const q = search.trim().toLowerCase()
     return systems.filter((system) => {
       if (!allowed.has(system.platform)) return false
+      if (platformFilter !== 'All' && system.platform !== platformFilter) return false
       if (!q) return true
       const barrel = partsById.get(system.barrelId)
       const caliber =
@@ -87,7 +109,7 @@ export function BuildsPage({
         .toLowerCase()
       return hay.includes(q)
     })
-  }, [systems, availablePlatforms, search, partsById])
+  }, [systems, availablePlatforms, platformFilter, search, partsById])
 
   const load = useCallback(async () => {
     setError(null)
@@ -235,6 +257,37 @@ export function BuildsPage({
             onChange={(e) => setSearch(e.target.value)}
             aria-label="Search builds"
           />
+          <div className="chip-row" role="group" aria-label="Platform filter">
+            {(['All', ...availablePlatforms] as const).map((platform) => (
+              <button
+                key={platform}
+                type="button"
+                className={`chip${platformFilter === platform ? ' active' : ''}`}
+                onClick={() => setPlatformFilter(platform)}
+              >
+                {platform === 'All' ? 'All Platforms' : PLATFORM_LABELS[platform]}
+              </button>
+            ))}
+          </div>
+          <label className="toggle-row filter-default-toggle">
+            <input
+              type="checkbox"
+              checked={filtersAreDefault}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  const next = { platform: platformFilter }
+                  saveBuildsFilterDefaults(next)
+                  setSavedDefaults(next)
+                  toast.success('Build filters saved as default.')
+                } else {
+                  saveBuildsFilterDefaults(DEFAULT_BUILDS_FILTERS)
+                  setSavedDefaults(DEFAULT_BUILDS_FILTERS)
+                  toast.success('Build default filters cleared.')
+                }
+              }}
+            />
+            <span>Remember these filters as default</span>
+          </label>
         </div>
       ) : null}
 

@@ -12,6 +12,7 @@ import {
   type ThemePreference
 } from './lib/theme'
 import { AarsPage } from './pages/AarsPage'
+import { AiPage } from './pages/AiPage'
 import { AmmoPage } from './pages/AmmoPage'
 import { BuildsPage } from './pages/BuildsPage'
 import { DashboardPage } from './pages/DashboardPage'
@@ -22,7 +23,7 @@ import { SettingsPage } from './pages/SettingsPage'
 import { WelcomePage } from './pages/WelcomePage'
 import { AAR_NAV_LABEL } from '../../shared/aar-template'
 
-type NavId = 'dashboard' | 'inventory' | 'builds' | 'logs' | 'aars' | 'ammo' | 'settings'
+type NavId = 'dashboard' | 'inventory' | 'builds' | 'logs' | 'aars' | 'ammo' | 'ai' | 'settings'
 
 type NavItem = { id: NavId; label: string; enabled: boolean; visible?: boolean }
 
@@ -32,6 +33,7 @@ function AppShell(): React.JSX.Element {
   const [active, setActive] = useState<NavId>('dashboard')
   const [bootstrapped, setBootstrapped] = useState(false)
   const [openAarId, setOpenAarId] = useState<string | null>(null)
+  const [aiUnlocked, setAiUnlocked] = useState(false)
   const [themePreference, setThemePreference] = useState<ThemePreference>(() =>
     getStoredThemePreference()
   )
@@ -39,7 +41,10 @@ function AppShell(): React.JSX.Element {
   const trackAmmo = profile?.trackAmmo ?? true
   const trackLoads = profile?.trackLoads ?? true
   const showAmmoNav = trackAmmo || trackLoads
-  const view: NavId = !showAmmoNav && active === 'ammo' ? 'dashboard' : active
+  const view: NavId =
+    (!showAmmoNav && active === 'ammo') || (!aiUnlocked && active === 'ai')
+      ? 'dashboard'
+      : active
   const needsSetup = bootstrapped && !hasLocalIdentity(profile)
   const needsPrefs = bootstrapped && needsOnboarding(profile)
 
@@ -59,10 +64,20 @@ function AppShell(): React.JSX.Element {
       { id: 'logs', label: 'Logs', enabled: true },
       { id: 'aars', label: AAR_NAV_LABEL, enabled: true },
       { id: 'ammo', label: 'Ammo', enabled: true, visible: showAmmoNav },
+      { id: 'ai', label: 'AI', enabled: true, visible: aiUnlocked },
       { id: 'settings', label: 'Settings', enabled: true }
     ],
-    [showAmmoNav]
+    [showAmmoNav, aiUnlocked]
   )
+
+  const refreshAiUnlock = useCallback(async () => {
+    try {
+      const status = await window.api.getAiStatus()
+      setAiUnlocked(Boolean(status.hasKey))
+    } catch {
+      setAiUnlocked(false)
+    }
+  }, [])
 
   const refresh = useCallback(async () => {
     const [nextInfo, nextProfile] = await Promise.all([
@@ -71,17 +86,22 @@ function AppShell(): React.JSX.Element {
     ])
     setInfo(nextInfo)
     setProfile(nextProfile)
-  }, [])
+    await refreshAiUnlock()
+  }, [refreshAiUnlock])
 
   useEffect(() => {
     let cancelled = false
     void window.api
       .getAppInfo()
       .then(async (nextInfo) => {
-        const nextProfile = await window.api.getProfile()
+        const [nextProfile, aiStatus] = await Promise.all([
+          window.api.getProfile(),
+          window.api.getAiStatus().catch(() => null)
+        ])
         if (cancelled) return
         setInfo(nextInfo)
         setProfile(nextProfile)
+        setAiUnlocked(Boolean(aiStatus?.hasKey))
         setBootstrapped(true)
       })
       .catch((err) => {
@@ -192,6 +212,9 @@ function AppShell(): React.JSX.Element {
         ) : null}
         {view === 'ammo' && showAmmoNav ? (
           <AmmoPage trackAmmo={trackAmmo} trackLoads={trackLoads} />
+        ) : null}
+        {view === 'ai' && aiUnlocked ? (
+          <AiPage onNavigateSettings={() => setActive('settings')} />
         ) : null}
         {view === 'settings' ? (
           <SettingsPage

@@ -2741,3 +2741,152 @@ html[data-theme='dark'] .brand-logo-dark {
 .aar-review-dl dt {
   font-weight: 600;
 }
+
+.filter-default-toggle {
+  margin-top: 0.15rem;
+  font-size: 0.9rem;
+}
+
+.ai-prompt-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.ai-prompt-lead {
+  margin: 0;
+}
+
+.ai-prompt-chips {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 0.65rem;
+}
+
+.ai-prompt-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  text-align: left;
+  border: 1px solid var(--border-subtle);
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--brand-primary) 10%, var(--surface)),
+    var(--surface)
+  );
+  border-radius: 14px;
+  padding: 0.85rem 0.95rem;
+  cursor: pointer;
+  color: var(--brand-deep);
+  transition:
+    border-color 140ms ease,
+    transform 140ms ease,
+    background-color 140ms ease;
+}
+
+.ai-prompt-chip:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--brand-primary) 50%, var(--border-subtle));
+  transform: translateY(-1px);
+}
+
+.ai-prompt-chip:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.ai-prompt-chip-title {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.ai-prompt-chip-label {
+  font-size: 0.85rem;
+  color: var(--brand-neutral);
+  line-height: 1.35;
+}
+
+.ai-ask-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.ai-ask-field {
+  width: 100%;
+}
+
+.ai-turn-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.ai-turn {
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  padding: 1rem 1.1rem;
+  background: var(--surface);
+}
+
+.ai-turn-prompt {
+  margin: 0 0 0.65rem;
+  font-size: 1rem;
+  color: var(--brand-deep);
+}
+
+.ai-turn-answer {
+  display: grid;
+  gap: 0.55rem;
+  color: var(--brand-dark);
+  line-height: 1.5;
+}
+
+.ai-turn-answer p {
+  margin: 0;
+}
+
+.ai-answer-list {
+  margin: 0;
+  padding-left: 1.15rem;
+}
+
+.ai-turn-meta {
+  margin: 0.75rem 0 0;
+  font-size: 0.8rem;
+}
+
+.ai-suggestion-list {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.ai-suggestion-list h4 {
+  margin: 0;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--brand-neutral);
+}
+
+.ai-suggestion {
+  display: flex;
+  gap: 0.85rem;
+  justify-content: space-between;
+  align-items: flex-start;
+  border: 1px dashed var(--border-subtle);
+  border-radius: 12px;
+  padding: 0.75rem 0.85rem;
+}
+
+.ai-suggestion-values {
+  margin: 0.25rem 0;
+}
+
+.error-text {
+  color: var(--danger, #b33);
+  margin: 0;
+}

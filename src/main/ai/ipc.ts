@@ -10,10 +10,15 @@ import type {
   AiStatusInfo
 } from '../../shared/ai'
 import { AI_PROVIDER_IDS } from '../../shared/ai'
+import type {
+  AiApplyInventorySuggestionInput,
+  AiAssistantAskInput
+} from '../../shared/ai-assistant'
 import type { AiCoachAnalyzeInput, AiExtractCofInput } from '../../shared/ai-coach'
 import { listAiAnalyses } from '../db/ai-analysis'
 import { requireDatabase } from '../db/connection'
 import { analyzeWithCoach } from './analyze'
+import { applyInventorySuggestion, askAssistant } from './ask'
 import { extractCofFromAttachment } from './extract-cof'
 import {
   getAiStatus,
@@ -90,5 +95,13 @@ export function registerAiIpc(): void {
 
   ipcMain.handle('ai:listAnalyses', (_event, limit?: number) =>
     listAiAnalyses(requireDatabase().db, limit)
+  )
+
+  ipcMain.handle('ai:ask', async (_event, input: AiAssistantAskInput) =>
+    askAssistant(requireDatabase().db, input ?? { prompt: '' })
+  )
+
+  ipcMain.handle('ai:applyInventorySuggestion', (_event, input: AiApplyInventorySuggestionInput) =>
+    applyInventorySuggestion(requireDatabase().db, input)
   )
 }
