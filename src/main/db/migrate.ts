@@ -11,6 +11,7 @@ import * as migration009 from './migrations/009_drop_license_state'
 import * as migration010 from './migrations/010_logs_nullable_system'
 import * as migration011 from './migrations/011_system_total_rounds'
 import * as migration012 from './migrations/012_load_fields_nullable_barrel'
+import * as migration013 from './migrations/013_aar_ppews_ai'
 
 export type Migration = {
   id: number
@@ -30,7 +31,8 @@ export const MIGRATIONS: Migration[] = [
   { id: migration009.id, name: migration009.name, sql: migration009.sql },
   { id: migration010.id, name: migration010.name, sql: migration010.sql },
   { id: migration011.id, name: migration011.name, sql: migration011.sql },
-  { id: migration012.id, name: migration012.name, sql: migration012.sql }
+  { id: migration012.id, name: migration012.name, sql: migration012.sql },
+  { id: migration013.id, name: migration013.name, sql: migration013.sql }
 ]
 
 export function getAppliedMigrationVersion(db: Database.Database): number {

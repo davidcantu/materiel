@@ -30,6 +30,7 @@ type ProfileRow = {
   track_loads: number
   tracked_platforms: string
   onboarding_complete: number
+  aar_prompt_on_practice: number
   unlock_pin_set: number
   created_at: string
   updated_at: string
@@ -49,6 +50,7 @@ export type ProfilePatch = {
   trackLoads?: boolean
   trackedPlatforms?: Platform[]
   onboardingComplete?: boolean
+  aarPromptOnPractice?: boolean
 }
 
 const LOCAL_PROFILE_ID = 'local-profile'
@@ -103,6 +105,7 @@ function mapProfile(row: ProfileRow): Profile {
     trackLoads: (row.track_loads ?? 1) === 1,
     trackedPlatforms: parseTrackedPlatforms(row.tracked_platforms),
     onboardingComplete: (row.onboarding_complete ?? 1) === 1,
+    aarPromptOnPractice: (row.aar_prompt_on_practice ?? 0) === 1,
     unlockPinSet: row.unlock_pin_set === 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at
@@ -200,6 +203,7 @@ export function updateProfile(db: Database.Database, patch: ProfilePatch): Profi
       track_loads = @trackLoads,
       tracked_platforms = @trackedPlatforms,
       onboarding_complete = @onboardingComplete,
+      aar_prompt_on_practice = @aarPromptOnPractice,
       updated_at = @updatedAt
     WHERE id = @id`
   ).run({
@@ -218,6 +222,7 @@ export function updateProfile(db: Database.Database, patch: ProfilePatch): Profi
     trackLoads: (patch.trackLoads ?? existing.trackLoads) ? 1 : 0,
     trackedPlatforms: serializeTrackedPlatforms(nextPlatforms),
     onboardingComplete: (patch.onboardingComplete ?? existing.onboardingComplete) ? 1 : 0,
+    aarPromptOnPractice: (patch.aarPromptOnPractice ?? existing.aarPromptOnPractice) ? 1 : 0,
     updatedAt
   })
 

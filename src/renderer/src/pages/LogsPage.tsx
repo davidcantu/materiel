@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { AmmoInventoryInfo } from '../../../shared/ammo'
 import type { LoadDevelopmentInfo } from '../../../shared/loads'
 import type { PartInfo } from '../../../shared/parts'
+import type { ProfileInfo } from '../../../shared/profile'
 import type {
   LogsTimeRange,
   NewShootingLogInputInfo,
@@ -11,6 +12,7 @@ import type {
 import { formatPercentOfWinner, formatPlacement } from '../../../shared/shooting-logs'
 import type { CompleteSystemInfo } from '../../../shared/systems'
 import { systemHasDueMaintenance } from '../../../shared/system-maintenance'
+import { AarPromptModal } from '../components/AarPromptModal'
 import { EmptyState } from '../components/EmptyState'
 import { Icon } from '../components/icons/Icon'
 import { LogSessionModal } from '../components/LogSessionModal'
@@ -22,6 +24,8 @@ import { partPrimaryTitle } from '../lib/format'
 
 type LogsPageProps = {
   onNavigateBuilds?: () => void
+  profile?: ProfileInfo | null
+  onOpenAar?: (aarId: string) => void
 }
 
 function daysAgoIso(days: number): string {
@@ -53,7 +57,11 @@ function cartridgeLabel(log: ShootingLogInfo, ammoById: Map<string, AmmoInventor
   return 'Manual entry'
 }
 
-export function LogsPage({ onNavigateBuilds }: LogsPageProps = {}): React.JSX.Element {
+export function LogsPage({
+  onNavigateBuilds,
+  profile = null,
+  onOpenAar
+}: LogsPageProps = {}): React.JSX.Element {
   const toast = useToast()
   const [logs, setLogs] = useState<ShootingLogInfo[]>([])
   const [systems, setSystems] = useState<CompleteSystemInfo[]>([])
@@ -71,6 +79,11 @@ export function LogsPage({ onNavigateBuilds }: LogsPageProps = {}): React.JSX.El
   const [maintenanceSystemId, setMaintenanceSystemId] = useState<string | null>(null)
   const [visibleCount, setVisibleCount] = useState(10)
   const [matchNudge, setMatchNudge] = useState<string | null>(null)
+  const [aarPrompt, setAarPrompt] = useState<{
+    logId: string
+    sessionType: SessionType
+  } | null>(null)
+  const [aarByLog, setAarByLog] = useState<Record<string, string>>({})
 
   const systemsById = useMemo(() => {
     const map = new Map<string, CompleteSystemInfo>()
@@ -93,18 +106,24 @@ export function LogsPage({ onNavigateBuilds }: LogsPageProps = {}): React.JSX.El
   const load = useCallback(async () => {
     setError(null)
     try {
-      const [nextLogs, nextSystems, nextParts, nextAmmo, nextLoads] = await Promise.all([
+      const [nextLogs, nextSystems, nextParts, nextAmmo, nextLoads, nextAars] = await Promise.all([
         window.api.listLogs(),
         window.api.listSystems(),
         window.api.listParts(),
         window.api.listAmmo(),
-        window.api.listLoads()
+        window.api.listLoads(),
+        window.api.listAars()
       ])
       setLogs(nextLogs)
       setSystems(nextSystems)
       setParts(nextParts)
       setAmmo(nextAmmo)
       setLoads(nextLoads)
+      const map: Record<string, string> = {}
+      for (const aar of nextAars) {
+        if (aar.logEntryId) map[aar.logEntryId] = aar.id
+      }
+      setAarByLog(map)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load shooting logs')
     } finally {
@@ -114,33 +133,13 @@ export function LogsPage({ onNavigateBuilds }: LogsPageProps = {}): React.JSX.El
 
   useEffect(() => {
     let cancelled = false
-    void Promise.all([
-      window.api.listLogs(),
-      window.api.listSystems(),
-      window.api.listParts(),
-      window.api.listAmmo(),
-      window.api.listLoads()
-    ])
-      .then(([nextLogs, nextSystems, nextParts, nextAmmo, nextLoads]) => {
-        if (!cancelled) {
-          setLogs(nextLogs)
-          setSystems(nextSystems)
-          setParts(nextParts)
-          setAmmo(nextAmmo)
-          setLoads(nextLoads)
-          setLoading(false)
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Failed to load shooting logs')
-          setLoading(false)
-        }
-      })
+    void load().finally(() => {
+      if (cancelled) return
+    })
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [load])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -178,11 +177,13 @@ export function LogsPage({ onNavigateBuilds }: LogsPageProps = {}): React.JSX.El
   }
 
   async function handleSave(input: NewShootingLogInputInfo, editingId?: string): Promise<void> {
+    let savedId = editingId ?? null
     if (editingId) {
       await window.api.updateLog({ id: editingId, ...input })
       toast.success('Session updated.')
     } else {
-      await window.api.addLog(input)
+      const created = await window.api.addLog(input)
+      savedId = created.id
       toast.success('Session logged.')
     }
     await load()
@@ -210,6 +211,29 @@ export function LogsPage({ onNavigateBuilds }: LogsPageProps = {}): React.JSX.El
           setMaintenanceSystemId(system.id)
         }
       }
+      const sessionType: SessionType = input.sessionType ?? 'Practice'
+      const shouldPromptAar =
+        sessionType === 'Match' ||
+        (sessionType === 'Practice' && Boolean(profile?.aarPromptOnPractice))
+      if (shouldPromptAar && savedId && !aarByLog[savedId]) {
+        setAarPrompt({ logId: savedId, sessionType })
+      }
+    }
+  }
+
+  async function openOrCreateAar(log: ShootingLogInfo): Promise<void> {
+    try {
+      const existing = aarByLog[log.id]
+        ? await window.api.getAar(aarByLog[log.id])
+        : await window.api.getAarByLog(log.id)
+      if (existing) {
+        onOpenAar?.(existing.id)
+        return
+      }
+      const created = await window.api.createAar({ logEntryId: log.id })
+      onOpenAar?.(created.id)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not open AAR')
     }
   }
 
@@ -428,6 +452,13 @@ export function LogsPage({ onNavigateBuilds }: LogsPageProps = {}): React.JSX.El
                           <button
                             type="button"
                             className="btn-ghost btn-sm"
+                            onClick={() => void openOrCreateAar(log)}
+                          >
+                            {aarByLog[log.id] ? 'View AAR' : 'Create AAR'}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-ghost btn-sm"
                             onClick={() => void handleDelete(log)}
                           >
                             Delete
@@ -484,6 +515,23 @@ export function LogsPage({ onNavigateBuilds }: LogsPageProps = {}): React.JSX.El
           afterLog
           onClose={() => setMaintenanceSystemId(null)}
           onReset={handleMaintenanceReset}
+        />
+      ) : null}
+
+      {aarPrompt ? (
+        <AarPromptModal
+          sessionType={aarPrompt.sessionType}
+          onLater={() => setAarPrompt(null)}
+          onYes={() => {
+            const logId = aarPrompt.logId
+            setAarPrompt(null)
+            void window.api
+              .createAar({ logEntryId: logId })
+              .then((aar) => onOpenAar?.(aar.id))
+              .catch((err) =>
+                toast.error(err instanceof Error ? err.message : 'Could not create AAR')
+              )
+          }}
         />
       ) : null}
     </div>

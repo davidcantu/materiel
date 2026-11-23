@@ -30,6 +30,8 @@ export type ProfileInfo = {
   trackedPlatforms: Platform[]
   /** First-run Q&A completed (after email identity). */
   onboardingComplete: boolean
+  /** Offer AAR prompt after Practice logs (Match always prompts). */
+  aarPromptOnPractice: boolean
   unlockPinSet: boolean
   createdAt: string
   updatedAt: string
@@ -50,6 +52,7 @@ export type ProfilePatch = {
   trackLoads?: boolean
   trackedPlatforms?: Platform[]
   onboardingComplete?: boolean
+  aarPromptOnPractice?: boolean
 }
 
 export function normalizeEmailIdentity(email: string): string {

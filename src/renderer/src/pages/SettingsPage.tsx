@@ -508,6 +508,16 @@ export function SettingsPage({
     }
   }
 
+  async function toggleAarPromptOnPractice(): Promise<void> {
+    if (!profile) return
+    try {
+      await window.api.updateProfile({ aarPromptOnPractice: !profile.aarPromptOnPractice })
+      onRefresh()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not update preference')
+    }
+  }
+
   async function toggleTrackedPlatform(platform: Platform): Promise<void> {
     if (!profile) return
     const current = profile.trackedPlatforms
@@ -881,6 +891,23 @@ export function SettingsPage({
             </p>
           </PreferenceInfoButton>
         </div>
+
+        <div className="pref-row">
+          <label className="toggle-row">
+            <input
+              type="checkbox"
+              checked={profile?.aarPromptOnPractice ?? false}
+              onChange={() => void toggleAarPromptOnPractice()}
+            />
+            <span>Prompt for an AAR after Practice sessions</span>
+          </label>
+          <PreferenceInfoButton title="AAR after Practice">
+            <p>
+              Match sessions always offer an After-Action Review after save. Turn this on to also
+              prompt after Practice logs.
+            </p>
+          </PreferenceInfoButton>
+        </div>
       </section>
 
       <section className="settings-panel settings-bento-wide">
@@ -1010,7 +1037,7 @@ export function SettingsPage({
                 <CapabilityRow
                   label="Vision"
                   state={aiStatus.capabilities.vision}
-                  detail="Optional — coming with AI Coach"
+                  detail="Optional — used for COF image extraction (JPEG/PNG)"
                 />
               </ul>
               {aiStatus.capabilities.checkedAt ? (

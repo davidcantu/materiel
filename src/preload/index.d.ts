@@ -40,6 +40,27 @@ import type {
   AiStatusInfo,
   AiTestConnectionResult
 } from '../shared/ai'
+import type {
+  AarAttachment,
+  AarCompleteValidation,
+  AarListItem,
+  AarPatch,
+  AarRecord,
+  AarStage,
+  AarStageInput,
+  CreateAarInput,
+  PpewsMismatchWarning,
+  PpewsPatch,
+  TrendsFilters,
+  TrendsSummary
+} from '../shared/aar'
+import type {
+  AiAnalysisListItem,
+  AiCoachAnalyzeInput,
+  AiCoachAnalyzeResult,
+  AiExtractCofInput,
+  AiExtractCofResult
+} from '../shared/ai-coach'
 
 declare global {
   interface Window {
@@ -113,6 +134,33 @@ declare global {
       listAiModels: (payload?: { provider?: AiProviderId }) => Promise<AiListModelsResult>
       testAiConnection: (payload?: { provider?: AiProviderId }) => Promise<AiTestConnectionResult>
       setAiModel: (input: AiSetModelInput) => Promise<AiStatusInfo>
+      recheckAiConnection: (payload?: {
+        provider?: AiProviderId
+      }) => Promise<AiTestConnectionResult>
+      analyzeWithAiCoach: (input?: AiCoachAnalyzeInput) => Promise<AiCoachAnalyzeResult>
+      extractCof: (input: AiExtractCofInput) => Promise<AiExtractCofResult>
+      listAiAnalyses: (limit?: number) => Promise<AiAnalysisListItem[]>
+      listAars: () => Promise<AarListItem[]>
+      getAar: (id: string) => Promise<AarRecord | null>
+      getAarByLog: (logEntryId: string) => Promise<AarRecord | null>
+      createAar: (input?: CreateAarInput) => Promise<AarRecord>
+      updateAar: (id: string, patch: AarPatch) => Promise<AarRecord>
+      upsertAarPpews: (aarId: string, patches: PpewsPatch[]) => Promise<AarRecord>
+      completeAar: (id: string) => Promise<AarRecord>
+      reopenAar: (id: string) => Promise<AarRecord>
+      deleteAar: (id: string) => Promise<{ ok: true }>
+      validateAar: (
+        id: string
+      ) => Promise<{ validation: AarCompleteValidation; mismatch: PpewsMismatchWarning }>
+      exportAarMarkdown: (id: string) => Promise<{ markdown: string }>
+      getAarTrends: (filters?: TrendsFilters) => Promise<TrendsSummary>
+      listAarStages: (aarId: string) => Promise<AarStage[]>
+      replaceAarStages: (aarId: string, stages: AarStageInput[]) => Promise<AarStage[]>
+      confirmAarStages: (aarId: string, stages: AarStageInput[]) => Promise<AarStage[]>
+      pickAarAttachments: (
+        aarId: string
+      ) => Promise<{ attachments: AarAttachment[]; skipped: string[] }>
+      deleteAarAttachment: (id: string) => Promise<{ ok: true }>
     }
   }
 }

@@ -1,14 +1,22 @@
 import type { AiModelInfo, AiProviderId } from '../../../shared/ai'
 
+export type CompleteImagePart = {
+  mimeType: string
+  base64: string
+}
+
 export type CompleteOptions = {
   model: string
   prompt: string
+  system?: string
   maxTokens?: number
+  images?: CompleteImagePart[]
 }
 
 export type CompleteResult = {
   text: string
   model: string
+  usage?: { inputTokens?: number; outputTokens?: number }
 }
 
 export type ListModelsResult = {

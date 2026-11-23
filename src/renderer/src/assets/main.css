@@ -2558,3 +2558,186 @@ html[data-theme='dark'] .brand-logo-dark {
     opacity: 1;
   }
 }
+
+/* —— AAR / PPEWS / AI Coach —— */
+:root {
+  --ppews-preparation: #6b7c3a;
+  --ppews-process: #8a6d3b;
+  --ppews-elevation: #4a6fa5;
+  --ppews-wind: #5a8f9c;
+  --ppews-stability: #7a5a8a;
+  --ppews-other: #8a6a5a;
+}
+
+.aar-stepper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 0 1.25rem;
+}
+
+.aar-step {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  padding: 0.4rem 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.aar-step.active {
+  background: var(--brand-od, #2a2f22);
+  color: var(--brand-sand, #e8e2d6);
+  border-color: transparent;
+}
+
+.aar-section {
+  display: grid;
+  gap: 1rem;
+}
+
+.aar-example {
+  font-style: italic;
+  font-size: 0.9rem;
+}
+
+.aar-soft-warning {
+  background: color-mix(in srgb, var(--brand-danger, #a33) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--brand-danger, #a33) 35%, transparent);
+  padding: 0.75rem 1rem;
+  border-radius: 4px;
+}
+
+.aar-ppews-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+.aar-ppews-card {
+  border: 1px solid var(--border);
+  padding: 0.85rem;
+  border-radius: 4px;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.aar-narrative-block {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.aar-attachment-list,
+.aar-confirmed-stages ul,
+.aar-extraction-preview ul {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.aar-attachment-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--border);
+  padding: 0.5rem 0;
+}
+
+.aar-trends-callout {
+  font-weight: 600;
+  margin: 0.75rem 0 1rem;
+}
+
+.aar-trends-section {
+  margin-bottom: 1.5rem;
+}
+
+.aar-ppews-bars {
+  align-items: flex-end;
+  min-height: 160px;
+}
+
+.aar-series-svg {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  background: color-mix(in srgb, var(--surface, #fff) 90%, var(--border));
+  border-radius: 4px;
+}
+
+.aar-series-label {
+  font-size: 10px;
+  fill: var(--text-muted, #666);
+}
+
+.aar-ppews-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.aar-ppews-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+}
+
+.aar-ppews-swatch {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.aar-coach-panel {
+  display: grid;
+  gap: 1rem;
+}
+
+.aar-prompt-preview {
+  white-space: pre-wrap;
+  font-size: 0.8rem;
+  max-height: 220px;
+  overflow: auto;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--surface, #fff) 92%, var(--border));
+}
+
+.status-pill {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  text-transform: capitalize;
+  border: 1px solid var(--border);
+}
+
+.status-pill.status-complete {
+  background: color-mix(in srgb, var(--success, #3a7) 18%, transparent);
+}
+
+.status-pill.status-draft {
+  background: color-mix(in srgb, var(--border) 40%, transparent);
+}
+
+.aar-review-dl {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.aar-review-dl > div {
+  display: grid;
+  grid-template-columns: 10rem 1fr;
+  gap: 0.5rem;
+}
+
+.aar-review-dl dt {
+  font-weight: 600;
+}

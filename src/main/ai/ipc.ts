@@ -10,6 +10,11 @@ import type {
   AiStatusInfo
 } from '../../shared/ai'
 import { AI_PROVIDER_IDS } from '../../shared/ai'
+import type { AiCoachAnalyzeInput, AiExtractCofInput } from '../../shared/ai-coach'
+import { listAiAnalyses } from '../db/ai-analysis'
+import { requireDatabase } from '../db/connection'
+import { analyzeWithCoach } from './analyze'
+import { extractCofFromAttachment } from './extract-cof'
 import {
   getAiStatus,
   listAiModels,
@@ -70,4 +75,20 @@ export function registerAiIpc(): void {
   ipcMain.handle('ai:setModel', (_event, input: AiSetModelInput): AiStatusInfo => {
     return setAiModel(input)
   })
+
+  ipcMain.handle('ai:recheck', async (_event, payload?: { provider?: AiProviderId }) => {
+    return testAiConnection(asProvider(payload?.provider))
+  })
+
+  ipcMain.handle('ai:analyze', async (_event, input?: AiCoachAnalyzeInput) => {
+    return analyzeWithCoach(requireDatabase().db, input ?? {})
+  })
+
+  ipcMain.handle('ai:extractCof', async (_event, input: AiExtractCofInput) => {
+    return extractCofFromAttachment(requireDatabase().db, input)
+  })
+
+  ipcMain.handle('ai:listAnalyses', (_event, limit?: number) =>
+    listAiAnalyses(requireDatabase().db, limit)
+  )
 }

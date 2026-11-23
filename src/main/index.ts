@@ -20,6 +20,7 @@ import { registerAmmoIpc } from './ammo/ipc'
 import { registerDashboardIpc } from './dashboard/ipc'
 import { registerImportIpc } from './import/ipc'
 import { registerAiIpc } from './ai'
+import { registerAarIpc } from './aar/ipc'
 import { initUpdateChecker } from './updates'
 import { registerUpdatesIpc } from './updates/ipc'
 import { safeOpenExternal } from './security/open-external'
@@ -86,6 +87,7 @@ function registerDomainIpc(): void {
   registerDashboardIpc()
   registerImportIpc()
   registerAiIpc()
+  registerAarIpc()
 }
 
 function registerMinimalFailureIpc(failure: DatabaseInitFailure): void {
