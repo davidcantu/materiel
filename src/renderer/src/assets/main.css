@@ -897,6 +897,26 @@ html[data-theme='dark'] .brand-logo-dark {
   gap: 0.9rem 1rem;
 }
 
+.form-section {
+  margin: 0;
+  padding: 0.85rem 0 0;
+  border: 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.form-section:first-of-type {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.form-section > legend {
+  margin-bottom: 0.65rem;
+}
+
+.form-section > .form-grid {
+  margin: 0;
+}
+
 .field {
   display: flex;
   flex-direction: column;

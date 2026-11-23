@@ -27,7 +27,7 @@ type PartRow = {
 type LogRow = {
   id: string
   system_id: string | null
-  barrel_id: string
+  barrel_id: string | null
   ammo_id: string | null
   cartridge: string | null
   date: string
@@ -182,7 +182,7 @@ function applyLogSideEffects(
 function applyLogSideEffectsForLog(
   db: Database.Database,
   systemId: string | null,
-  barrelId: string,
+  barrelId: string | null,
   roundsFired: number,
   ammoId: string | null | undefined,
   direction: 1 | -1
@@ -191,7 +191,9 @@ function applyLogSideEffectsForLog(
     applyLogSideEffects(db, systemId, roundsFired, ammoId, direction)
     return
   }
-  applyRoundDelta(db, [barrelId], direction * roundsFired)
+  if (barrelId) {
+    applyRoundDelta(db, [barrelId], direction * roundsFired)
+  }
   applyAmmoDelta(db, ammoId, direction * -1 * roundsFired)
 }
 

@@ -36,6 +36,7 @@ function sampleLoad(
   return createLoad(db, {
     name: 'Comp Load',
     caliber,
+    dateUpdated: '2026-11-22',
     bulletManufacturer: 'Hornady',
     bulletModel: '147gr ELD-M',
     brassManufacturer: 'Lapua',
@@ -44,7 +45,10 @@ function sampleLoad(
     primerManufacturer: 'Federal',
     primerModel: 'GM205M',
     powderCharge: 41.5,
-    coal: 2.8
+    lands: 2.2,
+    cbto: 2.18,
+    shoulderBump: 0.002,
+    neckTension: 0.002
   })
 }
 
@@ -52,14 +56,34 @@ test('loads CRUD: create, list, update, delete', () => {
   const db = setup()
   const load = sampleLoad(db)
   assert.equal(load.powderCharge, 41.5)
+  assert.equal(load.lands, 2.2)
+  assert.equal(load.cbto, 2.18)
+  assert.equal(load.shoulderBump, 0.002)
   assert.equal(listLoads(db).length, 1)
 
-  const updated = updateLoad(db, load.id, { velocity: 2750, sd: 8.2, es: 24 })
+  const updated = updateLoad(db, load.id, {
+    dateUpdated: '2026-11-22',
+    velocity: 2750,
+    sd: 8.2,
+    es: 24
+  })
   assert.equal(updated.velocity, 2750)
   assert.equal(updated.sd, 8.2)
 
   deleteLoad(db, load.id)
   assert.equal(listLoads(db).length, 0)
+})
+
+test('loads: identity-only create is allowed', () => {
+  const db = setup()
+  const load = createLoad(db, {
+    name: 'Notes Draft',
+    caliber: '6mm GT',
+    dateUpdated: '2026-11-22'
+  })
+  assert.equal(load.powderCharge, null)
+  assert.equal(load.bulletManufacturer, '')
+  assert.equal(load.lands, null)
 })
 
 test('ammo CRUD: factory and handload with load link', () => {

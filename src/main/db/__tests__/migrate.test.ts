@@ -100,6 +100,21 @@ test('migrations run forward from empty encrypted DB', () => {
       | undefined
     assert.ok(systemIdCol, 'shooting_logs.system_id missing')
     assert.equal(systemIdCol.notnull, 0, 'shooting_logs.system_id should be nullable')
+    const barrelIdCol = logCols.find((c) => c.name === 'barrel_id') as
+      | { name: string; notnull: number }
+      | undefined
+    assert.ok(barrelIdCol, 'shooting_logs.barrel_id missing')
+    assert.equal(barrelIdCol.notnull, 0, 'shooting_logs.barrel_id should be nullable')
+
+    const loadCols = db.prepare(`PRAGMA table_info(load_developments)`).all() as Array<{
+      name: string
+    }>
+    for (const col of ['shoulder_bump', 'neck_tension', 'lands']) {
+      assert.ok(
+        loadCols.some((c) => c.name === col),
+        `load_developments.${col} missing`
+      )
+    }
 
     const profileCols = db.prepare(`PRAGMA table_info(profile)`).all() as Array<{ name: string }>
     assert.ok(profileCols.some((c) => c.name === 'track_loads'))

@@ -383,7 +383,8 @@ export function resetPartMaintenance(db: Database.Database, id: string): Part {
   return updatePart(db, id, { roundsAfterCleaning: 0 })
 }
 
-function partIsReferenced(db: Database.Database, id: string): boolean {
+/** True when the part is attached to a build (core slot or misc). Logs do not count. */
+function partIsOnSystem(db: Database.Database, id: string): boolean {
   const systemRef = db
     .prepare(
       `SELECT id FROM systems
@@ -397,18 +398,18 @@ function partIsReferenced(db: Database.Database, id: string): boolean {
   const miscRef = db
     .prepare(`SELECT system_id FROM system_misc_parts WHERE part_id = ? LIMIT 1`)
     .get(id) as { system_id: string } | undefined
-  if (miscRef) return true
-
-  const logRef = db.prepare(`SELECT id FROM shooting_logs WHERE barrel_id = ? LIMIT 1`).get(id) as
-    { id: string } | undefined
-  return Boolean(logRef)
+  return Boolean(miscRef)
 }
 
+/**
+ * Delete an unused part. In Use / build-attached parts are blocked.
+ * Shooting logs keep history via barrel_id ON DELETE SET NULL.
+ */
 export function deletePart(db: Database.Database, id: string): void {
   const existing = getPart(db, id)
   if (!existing) throw new Error(`Part not found: ${id}`)
-  if (existing.status === 'In Use' || partIsReferenced(db, id)) {
-    throw new Error('Cannot delete a part that is In Use or referenced by a build or log')
+  if (existing.status === 'In Use' || partIsOnSystem(db, id)) {
+    throw new Error('Cannot delete a part that is In Use or attached to a build')
   }
   db.prepare(`DELETE FROM parts WHERE id = ?`).run(id)
 }

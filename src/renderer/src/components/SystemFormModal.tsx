@@ -363,14 +363,11 @@ export function SystemFormModal({
           notes: form.notes.trim() || null
         }
         if (singleCore) {
-          if (!input.actionId) throw new Error('Custom pistol builds require a pistol')
+          if (!input.actionId) throw new Error('Custom pistol builds require a Frame')
         } else if (!input.actionId || !input.barrelId || !input.chassisId) {
           throw new Error(
             `Custom builds require ${coreLabels.primary}, ${coreLabels.barrel}, and ${coreLabels.furniture}`
           )
-        }
-        if (form.platform === 'bolt_action' && !input.opticId) {
-          throw new Error('Bolt-action custom builds require an optic')
         }
         if (editing && initial) {
           await onUpdate(initial.id, { ...input, buildType: 'custom' })
@@ -570,12 +567,12 @@ export function SystemFormModal({
               {accessorySlots.map((slot) => (
                 <PartSelect
                   key={slot}
-                  label={`${ACCESSORY_SLOT_LABELS[slot]}${slot === 'optic' && form.platform === 'bolt_action' ? '' : ' (optional)'}`}
+                  label={`${ACCESSORY_SLOT_LABELS[slot]} (Optional)`}
                   value={accessoryValue(slot, false)}
                   options={available(ACCESSORY_SLOT_TYPE[slot], accessoryValue(slot, false))}
                   onChange={(v) => setAccessoryValue(slot, false, v)}
-                  required={slot === 'optic' && form.platform === 'bolt_action'}
-                  allowEmpty={!(slot === 'optic' && form.platform === 'bolt_action')}
+                  required={false}
+                  allowEmpty
                   onCreate={() => {
                     setCreateTarget(accessoryCreateTarget(slot, false))
                     setCreatingType(ACCESSORY_SLOT_TYPE[slot])
@@ -659,7 +656,7 @@ export function SystemFormModal({
               {accessorySlots.map((slot) => (
                 <PartSelect
                   key={`factory-${slot}`}
-                  label={`${ACCESSORY_SLOT_LABELS[slot]} (optional)`}
+                  label={`${ACCESSORY_SLOT_LABELS[slot]} (Optional)`}
                   value={accessoryValue(slot, true)}
                   options={available(ACCESSORY_SLOT_TYPE[slot], accessoryValue(slot, true))}
                   onChange={(v) => setAccessoryValue(slot, true, v)}

@@ -27,16 +27,15 @@ export function ammoInputFromLoad(
     quantity,
     acquiredDate,
     loadId: load.id,
-    bulletManufacturer: load.bulletManufacturer,
-    bulletType: load.bulletModel,
-    powderManufacturer: load.powderManufacturer,
-    powder: load.powderModel,
+    bulletManufacturer: load.bulletManufacturer || null,
+    bulletType: load.bulletModel || null,
+    powderManufacturer: load.powderManufacturer || null,
+    powder: load.powderModel || null,
     chargeWeight: load.powderCharge,
-    primerManufacturer: load.primerManufacturer,
-    primer: load.primerModel,
-    caseManufacturer: load.brassManufacturer,
+    primerManufacturer: load.primerManufacturer || null,
+    primer: load.primerModel || null,
+    caseManufacturer: load.brassManufacturer || null,
     caseName: null,
-    seatingDepth:
-      load.cbto != null ? String(load.cbto) : load.coal != null ? String(load.coal) : null
+    seatingDepth: load.cbto != null ? String(load.cbto) : load.lands != null ? String(load.lands) : null
   }
 }
