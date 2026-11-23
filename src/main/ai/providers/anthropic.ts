@@ -100,15 +100,33 @@ export function createAnthropicProvider(options: ProviderFactoryOptions): LLMPro
   }
 
   async function complete(completeOptions: CompleteOptions): Promise<CompleteResult> {
+    const userContent: Array<Record<string, unknown>> = []
+    for (const image of completeOptions.images ?? []) {
+      userContent.push({
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: image.mimeType,
+          data: image.base64
+        }
+      })
+    }
+    userContent.push({ type: 'text', text: completeOptions.prompt })
+
+    const body: Record<string, unknown> = {
+      model: completeOptions.model,
+      max_tokens: completeOptions.maxTokens ?? 16,
+      messages: [{ role: 'user', content: userContent }]
+    }
+    if (completeOptions.system?.trim()) {
+      body.system = completeOptions.system.trim()
+    }
+
     let res: Response
     try {
       res = await request('/messages', {
         method: 'POST',
-        body: JSON.stringify({
-          model: completeOptions.model,
-          max_tokens: completeOptions.maxTokens ?? 16,
-          messages: [{ role: 'user', content: completeOptions.prompt }]
-        })
+        body: JSON.stringify(body)
       })
     } catch (error) {
       throw new Error(mapUnknownError(error, apiKey))
@@ -137,7 +155,22 @@ export function createAnthropicProvider(options: ProviderFactoryOptions): LLMPro
     const textParts = content
       .filter((part) => part.type === 'text' && typeof part.text === 'string')
       .map((part) => part.text as string)
-    return { text: textParts.join(''), model: completeOptions.model }
+
+    const usageRaw =
+      payload && typeof payload === 'object'
+        ? (payload as { usage?: { input_tokens?: number; output_tokens?: number } }).usage
+        : undefined
+
+    return {
+      text: textParts.join(''),
+      model: completeOptions.model,
+      usage: usageRaw
+        ? {
+            inputTokens: usageRaw.input_tokens,
+            outputTokens: usageRaw.output_tokens
+          }
+        : undefined
+    }
   }
 
   async function testConnection(model?: string | null): Promise<TestConnectionResult> {

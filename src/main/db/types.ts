@@ -49,6 +49,7 @@ export type Profile = {
   trackLoads: boolean
   trackedPlatforms: Platform[]
   onboardingComplete: boolean
+  aarPromptOnPractice: boolean
   unlockPinSet: boolean
   createdAt: string
   updatedAt: string

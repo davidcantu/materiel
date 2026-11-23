@@ -270,7 +270,10 @@ export function countBackupRecords(db?: Database.Database): Record<string, numbe
     logs: count('shooting_logs'),
     ammo: count('ammo_inventory'),
     loads: count('load_developments'),
-    users: count('profile')
+    users: count('profile'),
+    aars: count('aar'),
+    aarAttachments: count('aar_attachment'),
+    aiAnalyses: count('ai_analysis')
   }
 }
 

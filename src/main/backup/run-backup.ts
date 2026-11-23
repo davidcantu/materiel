@@ -1,8 +1,10 @@
 /**
  * Orchestrate one backup: snapshot encrypted DB → upload → BackupLog + settings.
+ * AAR attachment files under userData/aar-attachments are packaged alongside (AI keys excluded).
  */
 
-import { copyFileSync, existsSync, mkdirSync, rmSync, statSync } from 'fs'
+import { execFileSync } from 'child_process'
+import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from 'fs'
 import { join } from 'path'
 import { app } from 'electron'
 import {
@@ -20,6 +22,31 @@ function stagingDir(): string {
   const dir = join(app.getPath('temp'), 'materiel-backup-staging')
   mkdirSync(dir, { recursive: true })
   return dir
+}
+
+function aarAttachmentsDir(): string {
+  return join(app.getPath('userData'), 'aar-attachments')
+}
+
+/** Tar aar-attachments for cloud upload; returns path or null when empty / unavailable. */
+function packageAarAttachments(baseFileName: string): { path: string; bytes: number } | null {
+  const attachments = aarAttachmentsDir()
+  if (!existsSync(attachments)) return null
+  const entries = readdirSync(attachments)
+  if (entries.length === 0) return null
+
+  const tarName = baseFileName.replace(/\.db$/i, '') + '.aar-attachments.tar'
+  const tarPath = join(stagingDir(), tarName)
+  try {
+    execFileSync('tar', ['-cf', tarPath, '-C', app.getPath('userData'), 'aar-attachments'], {
+      stdio: 'ignore'
+    })
+  } catch (error) {
+    console.warn('[backup] failed to package aar-attachments (DB backup still proceeds)', error)
+    return null
+  }
+  if (!existsSync(tarPath)) return null
+  return { path: tarPath, bytes: statSync(tarPath).size }
 }
 
 /**
@@ -69,15 +96,40 @@ export async function runBackupOnce(
     }
 
     const upload = await provider.uploadEncryptedBackup(stagingPath, fileName)
+
+    let attachmentsBytes = 0
+    const attachmentsPack = packageAarAttachments(fileName)
+    if (attachmentsPack) {
+      try {
+        const attUpload = await provider.uploadEncryptedBackup(
+          attachmentsPack.path,
+          attachmentsPack.path.split(/[/\\]/).pop() ?? attachmentsPack.path
+        )
+        attachmentsBytes = attUpload.bytes || attachmentsPack.bytes
+        console.info(
+          `[backup] uploaded AAR attachments package (${formatFileSize(attachmentsBytes)})`
+        )
+      } finally {
+        if (existsSync(attachmentsPack.path)) {
+          try {
+            rmSync(attachmentsPack.path, { force: true })
+          } catch {
+            // ignore
+          }
+        }
+      }
+    }
+
     const recordCount = countBackupRecords(requireDatabase().db)
-    const fileSize = formatFileSize(upload.bytes || snapshot.bytes)
+    const totalBytes = (upload.bytes || snapshot.bytes) + attachmentsBytes
+    const fileSize = formatFileSize(totalBytes)
     const now = new Date().toISOString()
 
     const log = insertBackupLog({
       timestamp: now,
       type: 'Full',
       status: 'Success',
-      fileName,
+      fileName: attachmentsBytes > 0 ? `${fileName} (+aar-attachments)` : fileName,
       fileSize,
       recordCount,
       localPath: upload.remotePath ?? stagingPath

@@ -41,6 +41,27 @@ import type {
   AiStatusInfo,
   AiTestConnectionResult
 } from '../shared/ai'
+import type {
+  AarListItem,
+  AarPatch,
+  AarRecord,
+  AarStage,
+  AarStageInput,
+  AarAttachment,
+  CreateAarInput,
+  PpewsMismatchWarning,
+  PpewsPatch,
+  AarCompleteValidation,
+  TrendsFilters,
+  TrendsSummary
+} from '../shared/aar'
+import type {
+  AiAnalysisListItem,
+  AiCoachAnalyzeInput,
+  AiCoachAnalyzeResult,
+  AiExtractCofInput,
+  AiExtractCofResult
+} from '../shared/ai-coach'
 
 const api = {
   getAppInfo: (): Promise<AppInfo> => ipcRenderer.invoke('app:get-info'),
@@ -138,7 +159,50 @@ const api = {
   testAiConnection: (payload?: { provider?: AiProviderId }): Promise<AiTestConnectionResult> =>
     ipcRenderer.invoke('ai:testConnection', payload),
   setAiModel: (input: AiSetModelInput): Promise<AiStatusInfo> =>
-    ipcRenderer.invoke('ai:setModel', input)
+    ipcRenderer.invoke('ai:setModel', input),
+  recheckAiConnection: (payload?: {
+    provider?: AiProviderId
+  }): Promise<AiTestConnectionResult> => ipcRenderer.invoke('ai:recheck', payload),
+  analyzeWithAiCoach: (input?: AiCoachAnalyzeInput): Promise<AiCoachAnalyzeResult> =>
+    ipcRenderer.invoke('ai:analyze', input),
+  extractCof: (input: AiExtractCofInput): Promise<AiExtractCofResult> =>
+    ipcRenderer.invoke('ai:extractCof', input),
+  listAiAnalyses: (limit?: number): Promise<AiAnalysisListItem[]> =>
+    ipcRenderer.invoke('ai:listAnalyses', limit),
+
+  listAars: (): Promise<AarListItem[]> => ipcRenderer.invoke('aar:list'),
+  getAar: (id: string): Promise<AarRecord | null> => ipcRenderer.invoke('aar:get', id),
+  getAarByLog: (logEntryId: string): Promise<AarRecord | null> =>
+    ipcRenderer.invoke('aar:getByLog', logEntryId),
+  createAar: (input?: CreateAarInput): Promise<AarRecord> =>
+    ipcRenderer.invoke('aar:create', input),
+  updateAar: (id: string, patch: AarPatch): Promise<AarRecord> =>
+    ipcRenderer.invoke('aar:update', id, patch),
+  upsertAarPpews: (aarId: string, patches: PpewsPatch[]): Promise<AarRecord> =>
+    ipcRenderer.invoke('aar:upsertPpews', aarId, patches),
+  completeAar: (id: string): Promise<AarRecord> => ipcRenderer.invoke('aar:complete', id),
+  reopenAar: (id: string): Promise<AarRecord> => ipcRenderer.invoke('aar:reopen', id),
+  deleteAar: (id: string): Promise<{ ok: true }> => ipcRenderer.invoke('aar:delete', id),
+  validateAar: (
+    id: string
+  ): Promise<{ validation: AarCompleteValidation; mismatch: PpewsMismatchWarning }> =>
+    ipcRenderer.invoke('aar:validate', id),
+  exportAarMarkdown: (id: string): Promise<{ markdown: string }> =>
+    ipcRenderer.invoke('aar:exportMarkdown', id),
+  getAarTrends: (filters?: TrendsFilters): Promise<TrendsSummary> =>
+    ipcRenderer.invoke('aar:trends', filters),
+  listAarStages: (aarId: string): Promise<AarStage[]> =>
+    ipcRenderer.invoke('aar:listStages', aarId),
+  replaceAarStages: (aarId: string, stages: AarStageInput[]): Promise<AarStage[]> =>
+    ipcRenderer.invoke('aar:replaceStages', aarId, stages),
+  confirmAarStages: (aarId: string, stages: AarStageInput[]): Promise<AarStage[]> =>
+    ipcRenderer.invoke('aar:confirmStages', aarId, stages),
+  pickAarAttachments: (
+    aarId: string
+  ): Promise<{ attachments: AarAttachment[]; skipped: string[] }> =>
+    ipcRenderer.invoke('aar:pickAttachments', aarId),
+  deleteAarAttachment: (id: string): Promise<{ ok: true }> =>
+    ipcRenderer.invoke('aar:deleteAttachment', id)
 }
 
 if (process.contextIsolated) {

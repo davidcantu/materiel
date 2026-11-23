@@ -101,6 +101,29 @@ export function createOpenAiCompatibleProvider(
   }
 
   async function complete(completeOptions: CompleteOptions): Promise<CompleteResult> {
+    const messages: Array<Record<string, unknown>> = []
+    if (completeOptions.system?.trim()) {
+      messages.push({ role: 'system', content: completeOptions.system.trim() })
+    }
+
+    const images = completeOptions.images ?? []
+    if (images.length === 0) {
+      messages.push({ role: 'user', content: completeOptions.prompt })
+    } else {
+      const content: Array<Record<string, unknown>> = [
+        { type: 'text', text: completeOptions.prompt }
+      ]
+      for (const image of images) {
+        content.push({
+          type: 'image_url',
+          image_url: {
+            url: `data:${image.mimeType};base64,${image.base64}`
+          }
+        })
+      }
+      messages.push({ role: 'user', content })
+    }
+
     let res: Response
     try {
       res = await request('/chat/completions', {
@@ -108,7 +131,7 @@ export function createOpenAiCompatibleProvider(
         body: JSON.stringify({
           model: completeOptions.model,
           max_tokens: completeOptions.maxTokens ?? 16,
-          messages: [{ role: 'user', content: completeOptions.prompt }]
+          messages
         })
       })
     } catch (error) {
@@ -140,7 +163,20 @@ export function createOpenAiCompatibleProvider(
         : []
     const content = choices[0]?.message?.content
     const text = typeof content === 'string' ? content : ''
-    return { text, model: completeOptions.model }
+    const usageRaw =
+      payload && typeof payload === 'object'
+        ? (payload as { usage?: { prompt_tokens?: number; completion_tokens?: number } }).usage
+        : undefined
+    return {
+      text,
+      model: completeOptions.model,
+      usage: usageRaw
+        ? {
+            inputTokens: usageRaw.prompt_tokens,
+            outputTokens: usageRaw.completion_tokens
+          }
+        : undefined
+    }
   }
 
   async function testConnection(model?: string | null): Promise<TestConnectionResult> {

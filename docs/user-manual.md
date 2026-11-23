@@ -30,8 +30,9 @@ Unused sections stay hidden until you turn them back on. The **Ammo** nav item a
 | **Inventory** | Parts by platform and category |
 | **Builds** | Complete firearms (custom or factory) |
 | **Logs** | Practice and match sessions |
+| **AARs** | After-Action Reviews, PPEWS Trends, AI Coach |
 | **Ammo** | Ammo lots + **Load data** sub-tab (when enabled) |
-| **Settings** | Profile, updates, theme, tracking prefs, milestones, import / export |
+| **Settings** | Profile, updates, theme, tracking prefs, AI API, milestones, import / export |
 
 There is no separate Loads or Maintenance page — loads live under Ammo; maintenance is on build cards, dashboard alerts, and after logging when due.
 
@@ -86,6 +87,22 @@ List filters: search, system, Practice/Match, time window. Rows paginate **10** 
 
 Dashboard shows placement and % trends (windows 10 / 20 / 50 / All) and optional ammo-rounds KPI when ammo tracking is on. Locations and last-used system/ammo sticky-default for faster entry.
 
+After you save a **Match**, Materiel offers to write an **After-Action Review** (AAR). Practice sessions prompt only when **Settings → Prompt for an AAR after Practice sessions** is on. Each log row also has **Create AAR** / **View AAR**.
+
+---
+
+## AARs, PPEWS & AI Coach
+
+**AARs** capture Match (or Practice) after-action notes with **PPEWS** point attribution (Preparation, Process, Elevation, Wind, Stability, Other).
+
+1. Open **AARs** → **New AAR**, or create from a log.
+2. Fill **Match info** (name, start date, level required to complete). Narratives are optional.
+3. Enter PPEWS points dropped (0 is fine). Soft warning if totals disagree with score vs possible.
+4. Optional **COF**: attach JPEG/PNG stage briefs; **Extract with AI** suggests stages — **confirm before use**. HEIC/PDF soft-fail for now.
+5. **Mark complete**, **Copy Markdown**, or review **Trends** (offline aggregations) and **AI Coach**.
+
+**AI Coach** (Settings → AI API for BYOK keys): Preview local stats, then Send. Analyses save in the encrypted DB; API keys stay in OS secure storage and are **not** backed up. See [ai-coach.md](./ai-coach.md).
+
 ---
 
 ## Ammo & loads
@@ -133,7 +150,8 @@ Maintenance is interval-based on parts that support it (e.g. barrels, actions, s
 | **Profile** | Email, name, location, profile photo |
 | **Milestones** | Unlockable badges as you use the app |
 | **Appearance** | Theme: System / Light / Dark |
-| **Tracking preferences** | Same firearm types + ammo / loads / value toggles as first-run setup |
+| **Tracking preferences** | Firearm types + ammo / loads / value + AAR-after-Practice toggle |
+| **AI API** | BYOK provider/key/model, Test connection, capabilities |
 | **Import / Export** | **Export Excel** (multi-sheet backup) or **Import JSON** (see [import-from-excel.md](./import-from-excel.md)) |
 
 Email remains your local identity. There is no license or activation screen.

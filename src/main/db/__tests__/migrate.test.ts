@@ -44,6 +44,11 @@ test('migrations run forward from empty encrypted DB', () => {
     const names = tables.map((t) => t.name)
     for (const expected of [
       'ammo_inventory',
+      'aar',
+      'aar_attachment',
+      'aar_ppews',
+      'aar_stage',
+      'ai_analysis',
       'backup_logs',
       'backup_settings',
       'load_developments',
@@ -62,6 +67,10 @@ test('migrations run forward from empty encrypted DB', () => {
     assert.ok(
       columns.some((c) => c.name === 'username'),
       'profile.username column missing'
+    )
+    assert.ok(
+      columns.some((c) => c.name === 'aar_prompt_on_practice'),
+      'profile.aar_prompt_on_practice column missing'
     )
 
     // Re-open / re-migrate is a no-op.

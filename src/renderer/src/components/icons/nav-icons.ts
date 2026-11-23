@@ -6,6 +6,7 @@ export const NAV_ICONS: Record<string, IconName> = {
   inventory: 'inventory',
   builds: 'builds',
   logs: 'logs',
+  aars: 'info',
   ammo: 'ammo',
   settings: 'settings'
 }

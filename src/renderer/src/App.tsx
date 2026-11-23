@@ -11,6 +11,7 @@ import {
   subscribeSystemTheme,
   type ThemePreference
 } from './lib/theme'
+import { AarsPage } from './pages/AarsPage'
 import { AmmoPage } from './pages/AmmoPage'
 import { BuildsPage } from './pages/BuildsPage'
 import { DashboardPage } from './pages/DashboardPage'
@@ -19,8 +20,9 @@ import { LogsPage } from './pages/LogsPage'
 import { OnboardingPage } from './pages/OnboardingPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { WelcomePage } from './pages/WelcomePage'
+import { AAR_NAV_LABEL } from '../../shared/aar-template'
 
-type NavId = 'dashboard' | 'inventory' | 'builds' | 'logs' | 'ammo' | 'settings'
+type NavId = 'dashboard' | 'inventory' | 'builds' | 'logs' | 'aars' | 'ammo' | 'settings'
 
 type NavItem = { id: NavId; label: string; enabled: boolean; visible?: boolean }
 
@@ -29,6 +31,7 @@ function AppShell(): React.JSX.Element {
   const [profile, setProfile] = useState<ProfileInfo | null>(null)
   const [active, setActive] = useState<NavId>('dashboard')
   const [bootstrapped, setBootstrapped] = useState(false)
+  const [openAarId, setOpenAarId] = useState<string | null>(null)
   const [themePreference, setThemePreference] = useState<ThemePreference>(() =>
     getStoredThemePreference()
   )
@@ -54,6 +57,7 @@ function AppShell(): React.JSX.Element {
       { id: 'inventory', label: 'Inventory', enabled: true },
       { id: 'builds', label: 'Builds', enabled: true },
       { id: 'logs', label: 'Logs', enabled: true },
+      { id: 'aars', label: AAR_NAV_LABEL, enabled: true },
       { id: 'ammo', label: 'Ammo', enabled: true, visible: showAmmoNav },
       { id: 'settings', label: 'Settings', enabled: true }
     ],
@@ -170,7 +174,22 @@ function AppShell(): React.JSX.Element {
             onNavigateInventory={() => setActive('inventory')}
           />
         ) : null}
-        {view === 'logs' ? <LogsPage onNavigateBuilds={() => setActive('builds')} /> : null}
+        {view === 'logs' ? (
+          <LogsPage
+            onNavigateBuilds={() => setActive('builds')}
+            profile={profile}
+            onOpenAar={(aarId) => {
+              setOpenAarId(aarId)
+              setActive('aars')
+            }}
+          />
+        ) : null}
+        {view === 'aars' ? (
+          <AarsPage
+            initialAarId={openAarId}
+            onConsumedInitial={() => setOpenAarId(null)}
+          />
+        ) : null}
         {view === 'ammo' && showAmmoNav ? (
           <AmmoPage trackAmmo={trackAmmo} trackLoads={trackLoads} />
         ) : null}
