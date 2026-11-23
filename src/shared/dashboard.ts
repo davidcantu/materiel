@@ -10,6 +10,42 @@ export type MonthlyRounds = {
   rounds: number
 }
 
+export type YearlyRounds = {
+  /** YYYY */
+  key: string
+  label: string
+  fullLabel: string
+  rounds: number
+}
+
+/** Roll monthly buckets into calendar years (oldest → newest). */
+export function aggregateMonthlyToYearly(months: MonthlyRounds[]): YearlyRounds[] {
+  const byYear = new Map<string, number>()
+  for (const month of months) {
+    const year = month.key.slice(0, 4)
+    if (!/^\d{4}$/.test(year)) continue
+    byYear.set(year, (byYear.get(year) ?? 0) + month.rounds)
+  }
+  return [...byYear.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([year, rounds]) => ({
+      key: year,
+      label: year,
+      fullLabel: year,
+      rounds
+    }))
+}
+
+export function peakActivityBucket<T extends { rounds: number; fullLabel: string }>(
+  buckets: T[]
+): T | null {
+  let peak: T | null = null
+  for (const bucket of buckets) {
+    if (!peak || bucket.rounds > peak.rounds) peak = bucket
+  }
+  return peak && peak.rounds > 0 ? peak : null
+}
+
 export type RecentActivityItem = {
   id: string
   systemName: string

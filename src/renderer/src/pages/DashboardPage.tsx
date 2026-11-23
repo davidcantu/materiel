@@ -5,7 +5,11 @@ import type {
   DashboardTrendWindow,
   MonthlyRounds
 } from '../../../shared/dashboard'
-import { sliceMatchTrends } from '../../../shared/dashboard'
+import {
+  aggregateMonthlyToYearly,
+  peakActivityBucket,
+  sliceMatchTrends
+} from '../../../shared/dashboard'
 import type { MilestonesSummary, MilestoneStatus, MilestoneTier } from '../../../shared/milestones'
 import { MILESTONE_TIER_LABELS } from '../../../shared/milestones'
 import { formatPercentOfWinner, formatPlacement } from '../../../shared/shooting-logs'
@@ -99,6 +103,14 @@ export function DashboardPage({ onNavigateLogs: _onNavigateLogs }: DashboardPage
     () => (summary ? sliceActivityMonths(summary.monthlyRounds, activityWindow) : []),
     [summary, activityWindow]
   )
+  const activityYears = useMemo(
+    () => (activityWindow === 'lifetime' ? aggregateMonthlyToYearly(activityMonths) : []),
+    [activityMonths, activityWindow]
+  )
+  const lifetimePeak = useMemo(
+    () => (activityWindow === 'lifetime' ? peakActivityBucket(activityYears) : null),
+    [activityWindow, activityYears]
+  )
 
   const placementTrend = useMemo(
     () => (summary ? sliceMatchTrends(summary.matchTrends, placementWindow) : []),
@@ -159,9 +171,16 @@ export function DashboardPage({ onNavigateLogs: _onNavigateLogs }: DashboardPage
 
   const title = summary.firstName ? `Welcome Back, ${summary.firstName}` : 'Welcome'
   const maxMonthRounds = Math.max(1, ...activityMonths.map((m) => m.rounds))
+  const maxYearRounds = Math.max(1, ...activityYears.map((y) => y.rounds))
   const placementPoints = placementTrend.filter((p) => p.placement != null)
   const percentPoints = percentTrend.filter((p) => p.percentOfWinner != null)
   const maxPlace = Math.max(1, ...placementPoints.map((p) => p.placement ?? 1))
+  const isLifetimeActivity = activityWindow === 'lifetime'
+  const activitySubtitle = isLifetimeActivity
+    ? lifetimePeak
+      ? `Rounds By Year · Peak ${lifetimePeak.label} (${lifetimePeak.rounds.toLocaleString()})`
+      : 'Rounds Fired By Year'
+    : 'Rounds Fired Per Month'
   const kpiClass = [
     'kpi-grid',
     summary.trackValue && summary.trackAmmo
@@ -213,7 +232,7 @@ export function DashboardPage({ onNavigateLogs: _onNavigateLogs }: DashboardPage
             <header className="dash-panel-header dash-panel-header-stack">
               <div>
                 <h2>Shooting Activity</h2>
-                <p className="dash-panel-sub">Rounds Fired Per Month</p>
+                <p className="dash-panel-sub">{activitySubtitle}</p>
               </div>
               <div className="chip-row" role="group" aria-label="Activity Window">
                 {ACTIVITY_WINDOWS.map((opt) => (
@@ -228,24 +247,67 @@ export function DashboardPage({ onNavigateLogs: _onNavigateLogs }: DashboardPage
                 ))}
               </div>
             </header>
-            <div className="activity-chart" role="img" aria-label="Shooting Activity Chart">
-              {activityMonths.map((month) => {
-                const height =
-                  month.rounds > 0
-                    ? Math.max(8, Math.round((month.rounds / maxMonthRounds) * 100))
-                    : 6
-                return (
-                  <div key={month.key} className="activity-bar-col">
-                    <div
-                      className={`activity-bar${month.rounds > 0 ? '' : ' activity-bar-zero'}`}
-                      style={{ height: `${height}%` }}
-                      title={`${month.fullLabel}: ${month.rounds} rounds`}
-                    />
-                    <span className="activity-bar-label">{month.label}</span>
-                  </div>
-                )
-              })}
-            </div>
+            {isLifetimeActivity ? (
+              <div
+                className="activity-year-list"
+                role="img"
+                aria-label="Lifetime Shooting Activity By Year"
+              >
+                {activityYears.length === 0 ? (
+                  <p className="dash-empty muted">No Sessions Logged Yet.</p>
+                ) : (
+                  activityYears.map((year) => {
+                    const width =
+                      year.rounds > 0
+                        ? Math.max(6, Math.round((year.rounds / maxYearRounds) * 100))
+                        : 0
+                    const isPeak = lifetimePeak?.key === year.key
+                    return (
+                      <div
+                        key={year.key}
+                        className={`activity-year-row${isPeak ? ' is-peak' : ''}`}
+                        title={`${year.fullLabel}: ${year.rounds.toLocaleString()} rounds`}
+                      >
+                        <span className="activity-year-label">{year.label}</span>
+                        <div className="activity-year-track" aria-hidden="true">
+                          <div
+                            className={`activity-year-bar${year.rounds > 0 ? '' : ' activity-year-bar-zero'}`}
+                            style={{ width: `${width}%` }}
+                          />
+                        </div>
+                        <span className="activity-year-value">
+                          {year.rounds.toLocaleString()}
+                        </span>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            ) : (
+              <div
+                className="activity-chart"
+                role="img"
+                aria-label="Shooting Activity Chart"
+                style={{ ['--activity-cols' as string]: String(Math.max(activityMonths.length, 1)) }}
+              >
+                {activityMonths.map((month) => {
+                  const height =
+                    month.rounds > 0
+                      ? Math.max(8, Math.round((month.rounds / maxMonthRounds) * 100))
+                      : 6
+                  return (
+                    <div key={month.key} className="activity-bar-col">
+                      <div
+                        className={`activity-bar${month.rounds > 0 ? '' : ' activity-bar-zero'}`}
+                        style={{ height: `${height}%` }}
+                        title={`${month.fullLabel}: ${month.rounds} rounds`}
+                      />
+                      <span className="activity-bar-label">{month.label}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </article>
 
           <article className="dash-panel">
