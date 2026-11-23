@@ -9,6 +9,7 @@ import {
   FACTORY_AMMO_MANUFACTURERS,
   MUZZLE_BRAKE_MANUFACTURERS,
   OPTIC_MANUFACTURERS,
+  PISTOL_CALIBER_OPTIONS,
   PISTOL_MANUFACTURERS,
   POWDER_MANUFACTURERS,
   PRIMER_MANUFACTURERS,
@@ -48,6 +49,12 @@ describe('manufacturer catalogs', () => {
     assert.deepEqual(factoryManufacturersForPlatform('bolt_action'), [...ACTION_MANUFACTURERS])
     assert.deepEqual(factoryManufacturersForPlatform('ar_pattern'), [...AR_MANUFACTURERS])
     assert.deepEqual(factoryManufacturersForPlatform('pistol'), [...PISTOL_MANUFACTURERS])
+  })
+
+  it('lists ten common pistol calibers including 9mm and 10mm', () => {
+    assert.equal(PISTOL_CALIBER_OPTIONS.length, 10)
+    assert.ok(PISTOL_CALIBER_OPTIONS.includes('9mm'))
+    assert.ok(PISTOL_CALIBER_OPTIONS.includes('10mm'))
   })
 
   it('keeps approved reloading / factory ammo brand lists', () => {

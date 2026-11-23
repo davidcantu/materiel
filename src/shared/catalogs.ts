@@ -27,6 +27,20 @@ export const CARTRIDGE_OPTIONS = [
   '7 SWC'
 ] as const
 
+/** Ten common handgun cartridges for Frame / Pistol inventory. */
+export const PISTOL_CALIBER_OPTIONS = [
+  '9mm',
+  '10mm',
+  '.45 ACP',
+  '.40 S&W',
+  '.380 ACP',
+  '.38 Special',
+  '.357 Magnum',
+  '.357 SIG',
+  '.22 LR',
+  '5.7x28'
+] as const
+
 /** Bolt / precision actions & rifles — Action + factory bolt builds. */
 export const ACTION_MANUFACTURERS = [
   'Impact Precision',

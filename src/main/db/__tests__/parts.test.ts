@@ -151,6 +151,41 @@ test('barrel requires name; optic serial is optional', () => {
   assert.equal(optic.serialNumber, 'NF-9')
 })
 
+test('pistol Frame requires cartridge/caliber', () => {
+  const db = setup()
+  assert.throws(
+    () =>
+      createPart(db, {
+        manufacturer: 'Glock',
+        type: 'Pistol',
+        model: '19',
+        serialNumber: 'G-1',
+        platforms: ['pistol']
+      }),
+    /Cartridge is required for Frame/
+  )
+
+  const frame = createPart(db, {
+    manufacturer: 'Glock',
+    type: 'Pistol',
+    model: '19',
+    serialNumber: 'G-1',
+    caliber: '9mm',
+    platforms: ['pistol']
+  })
+  assert.equal(frame.caliber, '9mm')
+
+  const ten = createPart(db, {
+    manufacturer: 'Glock',
+    type: 'Pistol',
+    model: '20',
+    serialNumber: 'G-2',
+    caliber: '10mm',
+    platforms: ['pistol']
+  })
+  assert.equal(ten.caliber, '10mm')
+})
+
 test('parts: refuses delete while part is on a system', () => {
   const db = setup()
   const action = createPart(db, {
