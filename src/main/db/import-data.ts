@@ -8,6 +8,7 @@
 import { randomUUID } from 'crypto'
 import type Database from 'better-sqlite3-multiple-ciphers'
 import type {
+  MaterielImportAmmo,
   MaterielImportBuild,
   MaterielImportDocument,
   MaterielImportLog,
@@ -19,9 +20,10 @@ import { MATERIEL_IMPORT_VERSION } from '../../shared/import'
 import type { PartType } from '../../shared/parts'
 import { PART_TYPES } from '../../shared/parts'
 import type { Platform } from '../../shared/platforms'
+import { createAmmoInventory, getAmmoInventory } from './ammo'
 import { createPart, getPart } from './parts'
 import { addShootingLog } from './shooting-logs'
-import { createCustomSystem } from './systems'
+import { createCustomSystem, getSystem, listSystems } from './systems'
 
 const PART_TYPE_SET = new Set<string>(PART_TYPES)
 
@@ -132,6 +134,7 @@ export function importMaterielDocument(
       partsCreated: 0,
       buildsCreated: 0,
       logsCreated: 0,
+      ammoCreated: 0,
       placeholderChassisId: null,
       warnings
     }
@@ -282,8 +285,27 @@ export function importMaterielDocument(
         }
 
         const systemId = build.id?.trim() || randomUUID()
-        if (getPart(db, systemId)) {
-          // unlikely collision with part id
+        const existing = getSystem(db, systemId)
+        if (existing) {
+          warnings.push(`Build id ${systemId} already exists — reusing`)
+          if (build.id?.trim()) buildIdMap.set(build.id.trim(), existing.id)
+          buildIdMap.set(existing.id, existing.id)
+          pairToBuildId.set(resolveBuildKey(actionDocId, barrelDocId), existing.id)
+          pairToBuildId.set(resolveBuildKey(actionId, barrelId), existing.id)
+          continue
+        }
+
+        const opticDocId = optionalString(build.opticId)
+        const suppressorDocId = optionalString(build.suppressorId)
+        let opticId: string | null = null
+        let suppressorId: string | null = null
+        if (opticDocId) {
+          opticId = idMap.get(opticDocId) ?? null
+          if (!opticId) throw new Error(`Build "${name}" references unknown opticId`)
+        }
+        if (suppressorDocId) {
+          suppressorId = idMap.get(suppressorDocId) ?? null
+          if (!suppressorId) throw new Error(`Build "${name}" references unknown suppressorId`)
         }
 
         const created = createCustomSystem(db, {
@@ -293,6 +315,8 @@ export function importMaterielDocument(
           actionId,
           barrelId,
           chassisId,
+          opticId,
+          suppressorId,
           notes:
             optionalString(build.notes) ??
             (build.chassisId
@@ -307,11 +331,61 @@ export function importMaterielDocument(
         summary.buildsCreated += 1
       }
 
+      const ammoRows: MaterielImportAmmo[] = Array.isArray(doc.ammo) ? doc.ammo : []
+      const ammoIdMap = new Map<string, string>()
+      for (const rawAmmo of ammoRows) {
+        const type = requireString(rawAmmo.type, 'ammo[].type')
+        if (type !== 'Factory' && type !== 'Handload') {
+          throw new Error(`ammo type must be Factory or Handload (got "${type}")`)
+        }
+        const caliber = requireString(rawAmmo.caliber, 'ammo[].caliber')
+        const acquiredDate = requireString(rawAmmo.acquiredDate, 'ammo[].acquiredDate')
+        const quantity = Number(rawAmmo.quantity)
+        if (!Number.isFinite(quantity) || quantity < 0) {
+          throw new Error('ammo[].quantity must be a non-negative number')
+        }
+        const preferredId = rawAmmo.id?.trim() || undefined
+        if (preferredId && getAmmoInventory(db, preferredId)) {
+          warnings.push(`Ammo id ${preferredId} already exists — reusing`)
+          ammoIdMap.set(preferredId, preferredId)
+          continue
+        }
+        const created = createAmmoInventory(db, {
+          id: preferredId,
+          name: optionalString(rawAmmo.name) ?? undefined,
+          type,
+          caliber,
+          quantity,
+          acquiredDate,
+          manufacturer: optionalString(rawAmmo.manufacturer),
+          lotNumber: optionalString(rawAmmo.lotNumber),
+          bulletManufacturer: optionalString(rawAmmo.bulletManufacturer),
+          powderManufacturer: optionalString(rawAmmo.powderManufacturer),
+          primerManufacturer: optionalString(rawAmmo.primerManufacturer),
+          caseManufacturer: optionalString(rawAmmo.caseManufacturer),
+          notes: optionalString(rawAmmo.notes)
+        })
+        if (preferredId) ammoIdMap.set(preferredId, created.id)
+        ammoIdMap.set(created.id, created.id)
+        summary.ammoCreated += 1
+      }
+
+      const barrelToBuildIds = new Map<string, string[]>()
+      for (const system of listSystems(db)) {
+        if (!system.barrelId) continue
+        const list = barrelToBuildIds.get(system.barrelId) ?? []
+        list.push(system.id)
+        barrelToBuildIds.set(system.barrelId, list)
+      }
+
       const logs: MaterielImportLog[] = Array.isArray(doc.logs) ? doc.logs : []
       for (const log of logs) {
         let systemId: string | undefined
         if (log.buildId?.trim()) {
           systemId = buildIdMap.get(log.buildId.trim())
+          if (!systemId && getSystem(db, log.buildId.trim())) {
+            systemId = log.buildId.trim()
+          }
           if (!systemId) {
             throw new Error(`Log references unknown buildId "${log.buildId}"`)
           }
@@ -329,8 +403,29 @@ export function importMaterielDocument(
               `Log on ${log.date} has no matching build for action ${log.actionId} + barrel ${log.barrelId}`
             )
           }
+        } else if (log.barrelId?.trim()) {
+          const barrelKey = idMap.get(log.barrelId.trim()) ?? log.barrelId.trim()
+          const matches = barrelToBuildIds.get(barrelKey) ?? []
+          if (matches.length === 1) {
+            systemId = matches[0]
+            warnings.push(
+              `Log on ${log.date}: resolved build from barrel ${log.barrelId} (single match)`
+            )
+          } else if (matches.length === 0) {
+            throw new Error(`Log on ${log.date}: no build found for barrel ${log.barrelId}`)
+          } else {
+            throw new Error(
+              `Log on ${log.date}: barrel ${log.barrelId} matches ${matches.length} builds — set Build ID`
+            )
+          }
         } else {
-          throw new Error('Each log needs buildId or actionId+barrelId')
+          throw new Error('Each log needs buildId, actionId+barrelId, or a unique barrelId')
+        }
+
+        const ammoDocId = optionalString(log.ammoId)
+        const ammoId = ammoDocId ? (ammoIdMap.get(ammoDocId) ?? ammoDocId) : null
+        if (ammoId && !getAmmoInventory(db, ammoId)) {
+          throw new Error(`Log on ${log.date} references unknown ammoId "${ammoDocId}"`)
         }
 
         addShootingLog(db, {
@@ -343,6 +438,7 @@ export function importMaterielDocument(
           velocity: log.velocity ?? null,
           placement: log.placement ?? null,
           percentOfWinner: log.percentOfWinner ?? null,
+          ammoId,
           notes: optionalString(log.notes)
         })
         summary.logsCreated += 1

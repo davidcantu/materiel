@@ -98,7 +98,9 @@ declare global {
       checkForUpdates: () => Promise<UpdateCheckResult>
       importFromJson: (document: MaterielImportDocument) => Promise<MaterielImportResult>
       importPickJsonFile: () => Promise<MaterielImportResult>
+      importPickExcelFile: () => Promise<MaterielImportResult>
       exportExcel: () => Promise<MaterielExportResult>
+      exportSampleExcel: () => Promise<MaterielExportResult>
       getAiStatus: (payload?: {
         provider?: AiProviderId
         rememberProvider?: boolean

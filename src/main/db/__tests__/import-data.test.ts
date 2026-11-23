@@ -76,6 +76,7 @@ describe('importMaterielDocument', () => {
     assert.equal(result.summary.partsCreated, 3) // action + barrel + placeholder chassis
     assert.equal(result.summary.buildsCreated, 1)
     assert.equal(result.summary.logsCreated, 1)
+    assert.equal(result.summary.ammoCreated, 0)
     assert.equal(result.summary.placeholderChassisId, 'chassis-import-placeholder')
 
     const parts = listParts(db)
