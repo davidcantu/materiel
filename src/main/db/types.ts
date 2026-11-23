@@ -109,7 +109,8 @@ export type ShootingLog = {
   id: string
   /** Null when the build was deleted; barrel/history still retained. */
   systemId: string | null
-  barrelId: string
+  /** Null when the barrel/part was deleted; session history retained. */
+  barrelId: string | null
   ammoId: string | null
   cartridge: string | null
   date: string
@@ -136,8 +137,11 @@ export type LoadDevelopment = {
   powderModel: string
   primerManufacturer: string
   primerModel: string
-  powderCharge: number
-  coal: number
+  powderCharge: number | null
+  coal: number | null
+  shoulderBump: number | null
+  neckTension: number | null
+  lands: number | null
   cbto: number | null
   velocity: number | null
   sd: number | null

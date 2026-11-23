@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { AmmoInput, AmmoInventoryInfo } from '../../../shared/ammo'
 import type { LoadDevelopmentInfo, LoadInput } from '../../../shared/loads'
+import {
+  computeJump,
+  formatInches3,
+  formatJump,
+  isoDateFromTimestamp
+} from '../../../shared/loads'
 import { AmmoFormModal } from '../components/AmmoFormModal'
 import { EmptyState } from '../components/EmptyState'
 import { Icon } from '../components/icons/Icon'
@@ -147,84 +153,15 @@ function AmmoCard({
   )
 }
 
-function LoadCard({
-  load,
-  onEdit,
-  onDelete,
-  onMakeAmmo
-}: {
-  load: LoadDevelopmentInfo
-  onEdit: () => void
-  onDelete: () => void
-  onMakeAmmo: () => void
-}): React.JSX.Element {
-  return (
-    <article className="ammo-card">
-      <header className="ammo-card-header">
-        <div className="ammo-card-badges">
-          <span className="ammo-badge ammo-badge-caliber">{load.caliber}</span>
-        </div>
-        <div className="ammo-card-actions">
-          <button type="button" className="btn-ghost btn-sm" onClick={onEdit}>
-            Edit
-          </button>
-          <button type="button" className="btn-ghost btn-sm" onClick={onDelete}>
-            Delete
-          </button>
-        </div>
-      </header>
+function chargeLabel(load: LoadDevelopmentInfo): string {
+  if (load.powderCharge == null) return '—'
+  const powder = [load.powderManufacturer, load.powderModel].filter(Boolean).join(' ')
+  return powder ? `${powder} · ${load.powderCharge} gr` : `${load.powderCharge} gr`
+}
 
-      <h3 className="ammo-card-title">{load.name}</h3>
-
-      <dl className="load-component-grid">
-        <div>
-          <dt>Bullet</dt>
-          <dd>
-            {load.bulletManufacturer} {load.bulletModel}
-          </dd>
-        </div>
-        <div>
-          <dt>Powder</dt>
-          <dd>
-            {load.powderManufacturer} {load.powderModel} ({load.powderCharge}gr)
-          </dd>
-        </div>
-        <div>
-          <dt>Brass</dt>
-          <dd>{load.brassManufacturer}</dd>
-        </div>
-        <div>
-          <dt>Primer</dt>
-          <dd>
-            {load.primerManufacturer} {load.primerModel}
-          </dd>
-        </div>
-      </dl>
-
-      <div className="load-ballistics">
-        <div>
-          <span className="load-ballistics-label">Velocity</span>
-          <span className="load-ballistics-value">{telemetry(load.velocity)}</span>
-        </div>
-        <div>
-          <span className="load-ballistics-label">SD</span>
-          <span className="load-ballistics-value">{telemetry(load.sd)}</span>
-        </div>
-        <div>
-          <span className="load-ballistics-label">ES</span>
-          <span className="load-ballistics-value">{telemetry(load.es)}</span>
-        </div>
-      </div>
-
-      {load.notes ? <p className="ammo-notes">{load.notes}</p> : null}
-
-      <footer className="ammo-card-footer">
-        <button type="button" className="btn-primary btn-sm" onClick={onMakeAmmo}>
-          Make Ammo
-        </button>
-      </footer>
-    </article>
-  )
+function bulletLabel(load: LoadDevelopmentInfo): string {
+  const label = [load.bulletManufacturer, load.bulletModel].filter(Boolean).join(' ')
+  return label || '—'
 }
 
 export function AmmoPage({
@@ -487,26 +424,78 @@ export function AmmoPage({
             <EmptyState
               icon="loads"
               title="No load data yet"
-              description="Create a reloading recipe with charge, COAL, and components."
+              description="Create A Reloading Recipe. Only Cartridge, Load Name, And Date Updated Are Required."
               actionLabel="Create first load"
               onAction={openCreateLoad}
             />
           ) : null}
 
           {!loading && loads.length > 0 ? (
-            <div className="ammo-card-grid">
-              {loads.map((item) => (
-                <LoadCard
-                  key={item.id}
-                  load={item}
-                  onEdit={() => {
-                    setEditingLoad(item)
-                    setLoadModalOpen(true)
-                  }}
-                  onDelete={() => void handleDeleteLoad(item)}
-                  onMakeAmmo={() => openMakeAmmo(item)}
-                />
-              ))}
+            <div className="table-wrap">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Cartridge</th>
+                    <th>Load Name</th>
+                    <th>Date Updated</th>
+                    <th>Charge</th>
+                    <th>Bullet</th>
+                    <th>Jump</th>
+                    <th>Avg Vel</th>
+                    <th>SD</th>
+                    <th>ES</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loads.map((item) => {
+                    const jump = computeJump(item.lands, item.cbto)
+                    return (
+                      <tr
+                        key={item.id}
+                        className="clickable-row"
+                        onClick={() => {
+                          setEditingLoad(item)
+                          setLoadModalOpen(true)
+                        }}
+                      >
+                        <td>{item.caliber}</td>
+                        <td>
+                          <div className="cell-title">{item.name}</div>
+                          {item.notes ? <div className="cell-sub">{item.notes}</div> : null}
+                        </td>
+                        <td>{isoDateFromTimestamp(item.updatedAt)}</td>
+                        <td>{chargeLabel(item)}</td>
+                        <td>{bulletLabel(item)}</td>
+                        <td title={jump == null ? undefined : `Lands ${formatInches3(item.lands)} − CBTO ${formatInches3(item.cbto)}`}>
+                          {formatJump(jump)}
+                        </td>
+                        <td>{telemetry(item.velocity)}</td>
+                        <td>{item.sd == null ? '—' : item.sd.toFixed(1)}</td>
+                        <td>{telemetry(item.es)}</td>
+                        <td onClick={(e) => e.stopPropagation()}>
+                          <div className="row-actions">
+                            <button
+                              type="button"
+                              className="btn-primary btn-sm"
+                              onClick={() => openMakeAmmo(item)}
+                            >
+                              Make Ammo
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-ghost btn-sm"
+                              onClick={() => void handleDeleteLoad(item)}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
             </div>
           ) : null}
         </>

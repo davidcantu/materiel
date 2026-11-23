@@ -10,6 +10,12 @@ import {
   productsForPrimerManufacturer
 } from '../../../shared/catalogs'
 import type { LoadDevelopmentInfo, LoadInput } from '../../../shared/loads'
+import {
+  computeJump,
+  formatJump,
+  isoDateFromTimestamp,
+  todayIsoDate
+} from '../../../shared/loads'
 import { Modal } from './Modal'
 
 type LoadFormModalProps = {
@@ -19,17 +25,20 @@ type LoadFormModalProps = {
 }
 
 type FormState = {
-  name: string
   caliber: string
-  bulletManufacturer: string
-  bulletModel: string
+  name: string
+  dateUpdated: string
   brassManufacturer: string
-  powderManufacturer: string
-  powderModel: string
+  shoulderBump: string
+  neckTension: string
   primerManufacturer: string
   primerModel: string
+  powderManufacturer: string
+  powderModel: string
   powderCharge: string
-  coal: string
+  bulletManufacturer: string
+  bulletModel: string
+  lands: string
   cbto: string
   velocity: string
   sd: string
@@ -39,17 +48,20 @@ type FormState = {
 
 function blankForm(): FormState {
   return {
-    name: '',
     caliber: '',
-    bulletManufacturer: '',
-    bulletModel: '',
+    name: '',
+    dateUpdated: todayIsoDate(),
     brassManufacturer: '',
-    powderManufacturer: '',
-    powderModel: '',
+    shoulderBump: '',
+    neckTension: '',
     primerManufacturer: '',
     primerModel: '',
+    powderManufacturer: '',
+    powderModel: '',
     powderCharge: '',
-    coal: '',
+    bulletManufacturer: '',
+    bulletModel: '',
+    lands: '',
     cbto: '',
     velocity: '',
     sd: '',
@@ -60,17 +72,20 @@ function blankForm(): FormState {
 
 function fromLoad(load: LoadDevelopmentInfo): FormState {
   return {
-    name: load.name,
     caliber: load.caliber,
-    bulletManufacturer: load.bulletManufacturer,
-    bulletModel: load.bulletModel,
+    name: load.name,
+    dateUpdated: isoDateFromTimestamp(load.updatedAt),
     brassManufacturer: load.brassManufacturer,
-    powderManufacturer: load.powderManufacturer,
-    powderModel: load.powderModel,
+    shoulderBump: load.shoulderBump != null ? String(load.shoulderBump) : '',
+    neckTension: load.neckTension != null ? String(load.neckTension) : '',
     primerManufacturer: load.primerManufacturer,
     primerModel: load.primerModel,
-    powderCharge: String(load.powderCharge),
-    coal: String(load.coal),
+    powderManufacturer: load.powderManufacturer,
+    powderModel: load.powderModel,
+    powderCharge: load.powderCharge != null ? String(load.powderCharge) : '',
+    bulletManufacturer: load.bulletManufacturer,
+    bulletModel: load.bulletModel,
+    lands: load.lands != null ? String(load.lands) : '',
     cbto: load.cbto != null ? String(load.cbto) : '',
     velocity: load.velocity != null ? String(load.velocity) : '',
     sd: load.sd != null ? String(load.sd) : '',
@@ -105,6 +120,8 @@ export function LoadFormModal({ initial, onClose, onSave }: LoadFormModalProps):
     [form.primerManufacturer]
   )
 
+  const jump = computeJump(parseOptionalNumber(form.lands), parseOptionalNumber(form.cbto))
+
   function setField<K extends keyof FormState>(key: K, value: FormState[K]): void {
     setForm((prev) => ({ ...prev, [key]: value }))
   }
@@ -113,39 +130,33 @@ export function LoadFormModal({ initial, onClose, onSave }: LoadFormModalProps):
     event.preventDefault()
     setError(null)
 
-    const powderCharge = Number(form.powderCharge)
-    const coal = Number(form.coal)
-    if (!form.name.trim() || !form.caliber.trim()) {
-      setError('Load name and cartridge are required')
-      return
-    }
-    if (!Number.isFinite(powderCharge) || powderCharge <= 0) {
-      setError('Powder charge must be greater than 0')
-      return
-    }
-    if (!Number.isFinite(coal) || coal <= 0) {
-      setError('COAL must be greater than 0')
+    if (!form.name.trim() || !form.caliber.trim() || !form.dateUpdated.trim()) {
+      setError('Cartridge, Load Name, And Date Updated Are Required')
       return
     }
 
     const input: LoadInput = {
       name: form.name.trim(),
       caliber: form.caliber.trim(),
-      bulletManufacturer: form.bulletManufacturer.trim(),
-      bulletModel: form.bulletModel.trim(),
-      brassManufacturer: form.brassManufacturer.trim(),
-      brassModel: null,
-      powderManufacturer: form.powderManufacturer.trim(),
-      powderModel: form.powderModel.trim(),
-      primerManufacturer: form.primerManufacturer.trim(),
-      primerModel: form.primerModel.trim(),
-      powderCharge,
-      coal,
+      dateUpdated: form.dateUpdated.trim(),
+      brassManufacturer: form.brassManufacturer.trim() || null,
+      shoulderBump: parseOptionalNumber(form.shoulderBump),
+      neckTension: parseOptionalNumber(form.neckTension),
+      primerManufacturer: form.primerManufacturer.trim() || null,
+      primerModel: form.primerModel.trim() || null,
+      powderManufacturer: form.powderManufacturer.trim() || null,
+      powderModel: form.powderModel.trim() || null,
+      powderCharge: parseOptionalNumber(form.powderCharge),
+      bulletManufacturer: form.bulletManufacturer.trim() || null,
+      bulletModel: form.bulletModel.trim() || null,
+      lands: parseOptionalNumber(form.lands),
       cbto: parseOptionalNumber(form.cbto),
       velocity: parseOptionalNumber(form.velocity),
       sd: parseOptionalNumber(form.sd),
       es: parseOptionalNumber(form.es),
-      notes: form.notes.trim() || null
+      notes: form.notes.trim() || null,
+      brassModel: null,
+      coal: null
     }
 
     setSaving(true)
@@ -176,191 +187,258 @@ export function LoadFormModal({ initial, onClose, onSave }: LoadFormModalProps):
       }
     >
       <form id="load-form" className="form-grid" onSubmit={(e) => void handleSubmit(e)}>
-        <label className="field">
-          <span className="field-label">Cartridge</span>
-          <input
-            list="load-cartridge-suggestions"
-            value={form.caliber}
-            onChange={(e) => setField('caliber', e.target.value)}
-            required
-          />
-          <datalist id="load-cartridge-suggestions">
-            {CARTRIDGE_OPTIONS.map((item) => (
-              <option key={item} value={item} />
-            ))}
-          </datalist>
-        </label>
+        <fieldset className="form-section field-span">
+          <legend className="field-label">Identity</legend>
+          <div className="form-grid">
+            <label className="field">
+              <span className="field-label">Cartridge</span>
+              <input
+                list="load-cartridge-suggestions"
+                value={form.caliber}
+                onChange={(e) => setField('caliber', e.target.value)}
+                required
+              />
+              <datalist id="load-cartridge-suggestions">
+                {CARTRIDGE_OPTIONS.map((item) => (
+                  <option key={item} value={item} />
+                ))}
+              </datalist>
+            </label>
 
-        <label className="field">
-          <span className="field-label">Load Name</span>
-          <input value={form.name} onChange={(e) => setField('name', e.target.value)} required />
-        </label>
+            <label className="field">
+              <span className="field-label">Load Name</span>
+              <input
+                value={form.name}
+                onChange={(e) => setField('name', e.target.value)}
+                required
+              />
+            </label>
 
-        <label className="field">
-          <span className="field-label">Bullet Manufacturer</span>
-          <input
-            list="load-bullet-mfr"
-            value={form.bulletManufacturer}
-            onChange={(e) => setField('bulletManufacturer', e.target.value)}
-            required
-          />
-          <datalist id="load-bullet-mfr">
-            {BULLET_MANUFACTURERS.map((item) => (
-              <option key={item} value={item} />
-            ))}
-          </datalist>
-        </label>
-        <label className="field">
-          <span className="field-label">Bullet Model</span>
-          <input
-            list="load-bullet-model"
-            value={form.bulletModel}
-            onChange={(e) => setField('bulletModel', e.target.value)}
-            required
-          />
-          <datalist id="load-bullet-model">
-            {bulletSuggestions.map((item) => (
-              <option key={item} value={item} />
-            ))}
-          </datalist>
-        </label>
+            <label className="field">
+              <span className="field-label">Date Updated</span>
+              <input
+                type="date"
+                value={form.dateUpdated}
+                onChange={(e) => setField('dateUpdated', e.target.value)}
+                required
+              />
+            </label>
+          </div>
+        </fieldset>
 
-        <label className="field">
-          <span className="field-label">Powder Manufacturer</span>
-          <input
-            list="load-powder-mfr"
-            value={form.powderManufacturer}
-            onChange={(e) => setField('powderManufacturer', e.target.value)}
-            required
-          />
-          <datalist id="load-powder-mfr">
-            {POWDER_MANUFACTURERS.map((item) => (
-              <option key={item} value={item} />
-            ))}
-          </datalist>
-        </label>
-        <label className="field">
-          <span className="field-label">Powder Model</span>
-          <input
-            list="load-powder-model"
-            value={form.powderModel}
-            onChange={(e) => setField('powderModel', e.target.value)}
-            required
-          />
-          <datalist id="load-powder-model">
-            {powderSuggestions.map((item) => (
-              <option key={item} value={item} />
-            ))}
-          </datalist>
-        </label>
+        <fieldset className="form-section field-span">
+          <legend className="field-label">Case Prep</legend>
+          <div className="form-grid">
+            <label className="field">
+              <span className="field-label">Brass</span>
+              <input
+                list="load-brass-mfr"
+                value={form.brassManufacturer}
+                onChange={(e) => setField('brassManufacturer', e.target.value)}
+              />
+              <datalist id="load-brass-mfr">
+                {BRASS_MANUFACTURERS.map((item) => (
+                  <option key={item} value={item} />
+                ))}
+              </datalist>
+            </label>
 
-        <label className="field">
-          <span className="field-label">Powder Charge (gr)</span>
-          <input
-            type="number"
-            step="0.1"
-            min="0.1"
-            value={form.powderCharge}
-            onChange={(e) => setField('powderCharge', e.target.value)}
-            required
-          />
-        </label>
-        <label className="field">
-          <span className="field-label">COAL (in)</span>
-          <input
-            type="number"
-            step="0.001"
-            min="0.001"
-            value={form.coal}
-            onChange={(e) => setField('coal', e.target.value)}
-            required
-          />
-        </label>
+            <label className="field">
+              <span className="field-label">Shoulder Bump (in)</span>
+              <input
+                type="number"
+                step="0.001"
+                min="0"
+                placeholder="0.002"
+                value={form.shoulderBump}
+                onChange={(e) => setField('shoulderBump', e.target.value)}
+              />
+            </label>
 
-        <label className="field">
-          <span className="field-label">Brass Manufacturer</span>
-          <input
-            list="load-brass-mfr"
-            value={form.brassManufacturer}
-            onChange={(e) => setField('brassManufacturer', e.target.value)}
-            required
-          />
-          <datalist id="load-brass-mfr">
-            {BRASS_MANUFACTURERS.map((item) => (
-              <option key={item} value={item} />
-            ))}
-          </datalist>
-        </label>
+            <label className="field">
+              <span className="field-label">Neck Tension (in)</span>
+              <input
+                type="number"
+                step="0.001"
+                min="0"
+                placeholder="0.002"
+                value={form.neckTension}
+                onChange={(e) => setField('neckTension', e.target.value)}
+              />
+            </label>
+          </div>
+        </fieldset>
 
-        <label className="field">
-          <span className="field-label">Primer Manufacturer</span>
-          <input
-            list="load-primer-mfr"
-            value={form.primerManufacturer}
-            onChange={(e) => setField('primerManufacturer', e.target.value)}
-            required
-          />
-          <datalist id="load-primer-mfr">
-            {PRIMER_MANUFACTURERS.map((item) => (
-              <option key={item} value={item} />
-            ))}
-          </datalist>
-        </label>
-        <label className="field">
-          <span className="field-label">Primer Model</span>
-          <input
-            list="load-primer-model"
-            value={form.primerModel}
-            onChange={(e) => setField('primerModel', e.target.value)}
-            required
-          />
-          <datalist id="load-primer-model">
-            {primerSuggestions.map((item) => (
-              <option key={item} value={item} />
-            ))}
-          </datalist>
-        </label>
+        <fieldset className="form-section field-span">
+          <legend className="field-label">Components</legend>
+          <div className="form-grid">
+            <label className="field">
+              <span className="field-label">Primer</span>
+              <input
+                list="load-primer-mfr"
+                value={form.primerManufacturer}
+                onChange={(e) => setField('primerManufacturer', e.target.value)}
+              />
+              <datalist id="load-primer-mfr">
+                {PRIMER_MANUFACTURERS.map((item) => (
+                  <option key={item} value={item} />
+                ))}
+              </datalist>
+            </label>
+            <label className="field">
+              <span className="field-label">Primer Model</span>
+              <input
+                list="load-primer-model"
+                value={form.primerModel}
+                onChange={(e) => setField('primerModel', e.target.value)}
+              />
+              <datalist id="load-primer-model">
+                {primerSuggestions.map((item) => (
+                  <option key={item} value={item} />
+                ))}
+              </datalist>
+            </label>
 
-        <label className="field">
-          <span className="field-label">CBTO (in)</span>
-          <input
-            type="number"
-            step="0.001"
-            min="0"
-            value={form.cbto}
-            onChange={(e) => setField('cbto', e.target.value)}
-          />
-        </label>
-        <label className="field">
-          <span className="field-label">Velocity (fps)</span>
-          <input
-            type="number"
-            step="1"
-            min="0"
-            value={form.velocity}
-            onChange={(e) => setField('velocity', e.target.value)}
-          />
-        </label>
-        <label className="field">
-          <span className="field-label">SD</span>
-          <input
-            type="number"
-            step="0.1"
-            min="0"
-            value={form.sd}
-            onChange={(e) => setField('sd', e.target.value)}
-          />
-        </label>
-        <label className="field">
-          <span className="field-label">ES</span>
-          <input
-            type="number"
-            step="1"
-            min="0"
-            value={form.es}
-            onChange={(e) => setField('es', e.target.value)}
-          />
-        </label>
+            <label className="field">
+              <span className="field-label">Powder</span>
+              <input
+                list="load-powder-mfr"
+                value={form.powderManufacturer}
+                onChange={(e) => setField('powderManufacturer', e.target.value)}
+              />
+              <datalist id="load-powder-mfr">
+                {POWDER_MANUFACTURERS.map((item) => (
+                  <option key={item} value={item} />
+                ))}
+              </datalist>
+            </label>
+            <label className="field">
+              <span className="field-label">Powder Type</span>
+              <input
+                list="load-powder-model"
+                value={form.powderModel}
+                onChange={(e) => setField('powderModel', e.target.value)}
+              />
+              <datalist id="load-powder-model">
+                {powderSuggestions.map((item) => (
+                  <option key={item} value={item} />
+                ))}
+              </datalist>
+            </label>
+
+            <label className="field">
+              <span className="field-label">Charge Weight (gr)</span>
+              <input
+                type="number"
+                step="0.1"
+                min="0.1"
+                placeholder="30.4"
+                value={form.powderCharge}
+                onChange={(e) => setField('powderCharge', e.target.value)}
+              />
+            </label>
+
+            <label className="field">
+              <span className="field-label">Bullet</span>
+              <input
+                list="load-bullet-mfr"
+                value={form.bulletManufacturer}
+                onChange={(e) => setField('bulletManufacturer', e.target.value)}
+              />
+              <datalist id="load-bullet-mfr">
+                {BULLET_MANUFACTURERS.map((item) => (
+                  <option key={item} value={item} />
+                ))}
+              </datalist>
+            </label>
+            <label className="field">
+              <span className="field-label">Bullet Model</span>
+              <input
+                list="load-bullet-model"
+                value={form.bulletModel}
+                onChange={(e) => setField('bulletModel', e.target.value)}
+              />
+              <datalist id="load-bullet-model">
+                {bulletSuggestions.map((item) => (
+                  <option key={item} value={item} />
+                ))}
+              </datalist>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset className="form-section field-span">
+          <legend className="field-label">Seating</legend>
+          <div className="form-grid">
+            <label className="field">
+              <span className="field-label">Lands (in)</span>
+              <input
+                type="number"
+                step="0.001"
+                min="0"
+                placeholder="CBTO at touch"
+                value={form.lands}
+                onChange={(e) => setField('lands', e.target.value)}
+              />
+              <span className="muted field-hint">CBTO At Touch</span>
+            </label>
+            <label className="field">
+              <span className="field-label">CBTO (in)</span>
+              <input
+                type="number"
+                step="0.001"
+                min="0"
+                placeholder="Loaded CBTO"
+                value={form.cbto}
+                onChange={(e) => setField('cbto', e.target.value)}
+              />
+              <span className="muted field-hint">Loaded Cartridge Base To Ogive</span>
+            </label>
+            <div className="field">
+              <span className="field-label">Jump (in)</span>
+              <input value={formatJump(jump) === '—' ? '' : formatJump(jump)} readOnly disabled />
+              <span className="muted field-hint">
+                Lands − CBTO. Positive = Jump; Negative = Jam.
+              </span>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset className="form-section field-span">
+          <legend className="field-label">Results</legend>
+          <div className="form-grid">
+            <label className="field">
+              <span className="field-label">Average Velocity (fps)</span>
+              <input
+                type="number"
+                step="1"
+                min="0"
+                value={form.velocity}
+                onChange={(e) => setField('velocity', e.target.value)}
+              />
+            </label>
+            <label className="field">
+              <span className="field-label">SD (fps)</span>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                value={form.sd}
+                onChange={(e) => setField('sd', e.target.value)}
+              />
+            </label>
+            <label className="field">
+              <span className="field-label">ES (fps)</span>
+              <input
+                type="number"
+                step="1"
+                min="0"
+                value={form.es}
+                onChange={(e) => setField('es', e.target.value)}
+              />
+            </label>
+          </div>
+        </fieldset>
 
         <label className="field field-span">
           <span className="field-label">Notes</span>

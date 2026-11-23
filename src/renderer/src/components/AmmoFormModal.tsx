@@ -118,11 +118,12 @@ function fromLoad(load: LoadDevelopmentInfo): FormState {
     bulletType: load.bulletModel,
     powderManufacturer: load.powderManufacturer,
     powder: load.powderModel,
-    chargeWeight: String(load.powderCharge),
+    chargeWeight: load.powderCharge != null ? String(load.powderCharge) : '',
     primerManufacturer: load.primerManufacturer,
     primer: load.primerModel,
     caseManufacturer: load.brassManufacturer,
-    seatingDepth: load.cbto != null ? String(load.cbto) : String(load.coal),
+    seatingDepth:
+      load.cbto != null ? String(load.cbto) : load.lands != null ? String(load.lands) : '',
     notes: '',
     showComponents: true
   }
@@ -138,11 +139,12 @@ function applyLoadFields(prev: FormState, load: LoadDevelopmentInfo): FormState 
     bulletType: load.bulletModel,
     powderManufacturer: load.powderManufacturer,
     powder: load.powderModel,
-    chargeWeight: String(load.powderCharge),
+    chargeWeight: load.powderCharge != null ? String(load.powderCharge) : '',
     primerManufacturer: load.primerManufacturer,
     primer: load.primerModel,
     caseManufacturer: load.brassManufacturer,
-    seatingDepth: load.cbto != null ? String(load.cbto) : String(load.coal),
+    seatingDepth:
+      load.cbto != null ? String(load.cbto) : load.lands != null ? String(load.lands) : '',
     showComponents: true
   }
 }

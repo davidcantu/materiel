@@ -1,9 +1,11 @@
 /**
  * Load development (reloading recipe) CRUD — software-spec §3.5 / §6.5.
+ * Identity (cartridge, load name, date updated) is required; all else optional.
  */
 
 import { randomUUID } from 'crypto'
 import type Database from 'better-sqlite3-multiple-ciphers'
+import { timestampFromIsoDate, todayIsoDate } from '../../shared/loads'
 import type { LoadDevelopment } from './types'
 
 type LoadRow = {
@@ -18,8 +20,11 @@ type LoadRow = {
   powder_model: string
   primer_manufacturer: string
   primer_model: string
-  powder_charge: number
-  coal: number
+  powder_charge: number | null
+  coal: number | null
+  shoulder_bump: number | null
+  neck_tension: number | null
+  lands: number | null
   cbto: number | null
   velocity: number | null
   sd: number | null
@@ -33,16 +38,20 @@ export type NewLoadInput = {
   id?: string
   name: string
   caliber: string
-  bulletManufacturer: string
-  bulletModel: string
-  brassManufacturer: string
+  dateUpdated: string
+  bulletManufacturer?: string | null
+  bulletModel?: string | null
+  brassManufacturer?: string | null
   brassModel?: string | null
-  powderManufacturer: string
-  powderModel: string
-  primerManufacturer: string
-  primerModel: string
-  powderCharge: number
-  coal: number
+  powderManufacturer?: string | null
+  powderModel?: string | null
+  primerManufacturer?: string | null
+  primerModel?: string | null
+  powderCharge?: number | null
+  coal?: number | null
+  shoulderBump?: number | null
+  neckTension?: number | null
+  lands?: number | null
   cbto?: number | null
   velocity?: number | null
   sd?: number | null
@@ -56,10 +65,39 @@ function nowIso(): string {
   return new Date().toISOString()
 }
 
+function emptyString(value: string | null | undefined): string {
+  if (value == null) return ''
+  return value.trim()
+}
+
 function nullIfEmpty(value: string | null | undefined): string | null {
-  if (value == null) return null
-  const trimmed = value.trim()
+  const trimmed = emptyString(value)
   return trimmed.length ? trimmed : null
+}
+
+function optionalNumber(
+  value: number | null | undefined,
+  label: string,
+  opts?: { integer?: boolean; min?: number; allowZero?: boolean }
+): number | null {
+  if (value == null || (typeof value === 'number' && Number.isNaN(value))) return null
+  if (!Number.isFinite(value)) throw new Error(`${label} must be a number`)
+  if (opts?.integer && !Number.isInteger(value)) {
+    throw new Error(`${label} must be a whole number`)
+  }
+  const min = opts?.min ?? (opts?.allowZero ? 0 : undefined)
+  if (min != null && value < min) {
+    throw new Error(`${label} must be ≥ ${min}`)
+  }
+  return value
+}
+
+function requireIsoDate(value: string | undefined, label: string): string {
+  const trimmed = value?.trim() ?? ''
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    throw new Error(`${label} is required (YYYY-MM-DD)`)
+  }
+  return trimmed
 }
 
 function mapLoad(row: LoadRow): LoadDevelopment {
@@ -77,6 +115,9 @@ function mapLoad(row: LoadRow): LoadDevelopment {
     primerModel: row.primer_model,
     powderCharge: row.powder_charge,
     coal: row.coal,
+    shoulderBump: row.shoulder_bump,
+    neckTension: row.neck_tension,
+    lands: row.lands,
     cbto: row.cbto,
     velocity: row.velocity,
     sd: row.sd,
@@ -93,14 +134,6 @@ function requireTrimmed(value: string | undefined, label: string): string {
   return trimmed
 }
 
-function requirePositiveNumber(value: number | undefined, label: string): number {
-  if (value == null || !Number.isFinite(value)) {
-    throw new Error(`${label} is required`)
-  }
-  if (value <= 0) throw new Error(`${label} must be greater than 0`)
-  return value
-}
-
 export function listLoads(db: Database.Database): LoadDevelopment[] {
   const rows = db
     .prepare(`SELECT * FROM load_developments ORDER BY caliber ASC, name ASC`)
@@ -110,25 +143,30 @@ export function listLoads(db: Database.Database): LoadDevelopment[] {
 
 export function getLoad(db: Database.Database, id: string): LoadDevelopment | null {
   const row = db.prepare(`SELECT * FROM load_developments WHERE id = ?`).get(id) as
-    LoadRow | undefined
+    | LoadRow
+    | undefined
   return row ? mapLoad(row) : null
 }
 
 export function createLoad(db: Database.Database, input: NewLoadInput): LoadDevelopment {
   const name = requireTrimmed(input.name, 'Load name')
   const caliber = requireTrimmed(input.caliber, 'Cartridge')
-  const bulletManufacturer = requireTrimmed(input.bulletManufacturer, 'Bullet manufacturer')
-  const bulletModel = requireTrimmed(input.bulletModel, 'Bullet model')
-  const brassManufacturer = requireTrimmed(input.brassManufacturer, 'Brass manufacturer')
-  const powderManufacturer = requireTrimmed(input.powderManufacturer, 'Powder manufacturer')
-  const powderModel = requireTrimmed(input.powderModel, 'Powder model')
-  const primerManufacturer = requireTrimmed(input.primerManufacturer, 'Primer manufacturer')
-  const primerModel = requireTrimmed(input.primerModel, 'Primer model')
-  const powderCharge = requirePositiveNumber(input.powderCharge, 'Powder charge')
-  const coal = requirePositiveNumber(input.coal, 'COAL')
-
-  const id = input.id ?? randomUUID()
+  const dateUpdated = requireIsoDate(input.dateUpdated ?? todayIsoDate(), 'Date updated')
+  const updatedAt = timestampFromIsoDate(dateUpdated)
   const createdAt = nowIso()
+  const id = input.id ?? randomUUID()
+
+  const powderCharge = optionalNumber(input.powderCharge, 'Charge weight', { min: 0.1 })
+  const shoulderBump = optionalNumber(input.shoulderBump, 'Shoulder bump', { allowZero: true })
+  const neckTension = optionalNumber(input.neckTension, 'Neck tension', { allowZero: true })
+  const lands = optionalNumber(input.lands, 'Lands', { min: 0 })
+  const cbto = optionalNumber(input.cbto, 'CBTO', { min: 0 })
+  const velocity = optionalNumber(input.velocity, 'Average velocity', {
+    integer: true,
+    allowZero: true
+  })
+  const sd = optionalNumber(input.sd, 'SD', { allowZero: true })
+  const es = optionalNumber(input.es, 'ES', { integer: true, allowZero: true })
 
   db.prepare(
     `INSERT INTO load_developments (
@@ -137,7 +175,8 @@ export function createLoad(db: Database.Database, input: NewLoadInput): LoadDeve
       brass_manufacturer, brass_model,
       powder_manufacturer, powder_model,
       primer_manufacturer, primer_model,
-      powder_charge, coal, cbto, velocity, sd, es, notes,
+      powder_charge, coal, shoulder_bump, neck_tension, lands,
+      cbto, velocity, sd, es, notes,
       created_at, updated_at
     ) VALUES (
       @id, @name, @caliber,
@@ -145,29 +184,34 @@ export function createLoad(db: Database.Database, input: NewLoadInput): LoadDeve
       @brassManufacturer, @brassModel,
       @powderManufacturer, @powderModel,
       @primerManufacturer, @primerModel,
-      @powderCharge, @coal, @cbto, @velocity, @sd, @es, @notes,
-      @createdAt, @createdAt
+      @powderCharge, @coal, @shoulderBump, @neckTension, @lands,
+      @cbto, @velocity, @sd, @es, @notes,
+      @createdAt, @updatedAt
     )`
   ).run({
     id,
     name,
     caliber,
-    bulletManufacturer,
-    bulletModel,
-    brassManufacturer,
+    bulletManufacturer: emptyString(input.bulletManufacturer),
+    bulletModel: emptyString(input.bulletModel),
+    brassManufacturer: emptyString(input.brassManufacturer),
     brassModel: nullIfEmpty(input.brassModel),
-    powderManufacturer,
-    powderModel,
-    primerManufacturer,
-    primerModel,
+    powderManufacturer: emptyString(input.powderManufacturer),
+    powderModel: emptyString(input.powderModel),
+    primerManufacturer: emptyString(input.primerManufacturer),
+    primerModel: emptyString(input.primerModel),
     powderCharge,
-    coal,
-    cbto: input.cbto ?? null,
-    velocity: input.velocity ?? null,
-    sd: input.sd ?? null,
-    es: input.es ?? null,
+    coal: optionalNumber(input.coal, 'COAL', { min: 0 }),
+    shoulderBump,
+    neckTension,
+    lands,
+    cbto,
+    velocity,
+    sd,
+    es,
     notes: nullIfEmpty(input.notes),
-    createdAt
+    createdAt,
+    updatedAt
   })
 
   return getLoad(db, id)!
@@ -184,41 +228,41 @@ export function updateLoad(
   const name = patch.name !== undefined ? requireTrimmed(patch.name, 'Load name') : existing.name
   const caliber =
     patch.caliber !== undefined ? requireTrimmed(patch.caliber, 'Cartridge') : existing.caliber
-  const bulletManufacturer =
-    patch.bulletManufacturer !== undefined
-      ? requireTrimmed(patch.bulletManufacturer, 'Bullet manufacturer')
-      : existing.bulletManufacturer
-  const bulletModel =
-    patch.bulletModel !== undefined
-      ? requireTrimmed(patch.bulletModel, 'Bullet model')
-      : existing.bulletModel
-  const brassManufacturer =
-    patch.brassManufacturer !== undefined
-      ? requireTrimmed(patch.brassManufacturer, 'Brass manufacturer')
-      : existing.brassManufacturer
-  const powderManufacturer =
-    patch.powderManufacturer !== undefined
-      ? requireTrimmed(patch.powderManufacturer, 'Powder manufacturer')
-      : existing.powderManufacturer
-  const powderModel =
-    patch.powderModel !== undefined
-      ? requireTrimmed(patch.powderModel, 'Powder model')
-      : existing.powderModel
-  const primerManufacturer =
-    patch.primerManufacturer !== undefined
-      ? requireTrimmed(patch.primerManufacturer, 'Primer manufacturer')
-      : existing.primerManufacturer
-  const primerModel =
-    patch.primerModel !== undefined
-      ? requireTrimmed(patch.primerModel, 'Primer model')
-      : existing.primerModel
+  const dateUpdated =
+    patch.dateUpdated !== undefined
+      ? requireIsoDate(patch.dateUpdated, 'Date updated')
+      : todayIsoDate()
+  const updatedAt = timestampFromIsoDate(dateUpdated)
+
   const powderCharge =
     patch.powderCharge !== undefined
-      ? requirePositiveNumber(patch.powderCharge, 'Powder charge')
+      ? optionalNumber(patch.powderCharge, 'Charge weight', { min: 0.1 })
       : existing.powderCharge
-  const coal = patch.coal !== undefined ? requirePositiveNumber(patch.coal, 'COAL') : existing.coal
+  const shoulderBump =
+    patch.shoulderBump !== undefined
+      ? optionalNumber(patch.shoulderBump, 'Shoulder bump', { allowZero: true })
+      : existing.shoulderBump
+  const neckTension =
+    patch.neckTension !== undefined
+      ? optionalNumber(patch.neckTension, 'Neck tension', { allowZero: true })
+      : existing.neckTension
+  const lands =
+    patch.lands !== undefined
+      ? optionalNumber(patch.lands, 'Lands', { min: 0 })
+      : existing.lands
+  const cbto =
+    patch.cbto !== undefined ? optionalNumber(patch.cbto, 'CBTO', { min: 0 }) : existing.cbto
+  const velocity =
+    patch.velocity !== undefined
+      ? optionalNumber(patch.velocity, 'Average velocity', { integer: true, allowZero: true })
+      : existing.velocity
+  const sd =
+    patch.sd !== undefined ? optionalNumber(patch.sd, 'SD', { allowZero: true }) : existing.sd
+  const es =
+    patch.es !== undefined
+      ? optionalNumber(patch.es, 'ES', { integer: true, allowZero: true })
+      : existing.es
 
-  const updatedAt = nowIso()
   db.prepare(
     `UPDATE load_developments SET
       name = @name,
@@ -233,6 +277,9 @@ export function updateLoad(
       primer_model = @primerModel,
       powder_charge = @powderCharge,
       coal = @coal,
+      shoulder_bump = @shoulderBump,
+      neck_tension = @neckTension,
+      lands = @lands,
       cbto = @cbto,
       velocity = @velocity,
       sd = @sd,
@@ -244,21 +291,42 @@ export function updateLoad(
     id,
     name,
     caliber,
-    bulletManufacturer,
-    bulletModel,
-    brassManufacturer,
+    bulletManufacturer:
+      patch.bulletManufacturer !== undefined
+        ? emptyString(patch.bulletManufacturer)
+        : existing.bulletManufacturer,
+    bulletModel:
+      patch.bulletModel !== undefined ? emptyString(patch.bulletModel) : existing.bulletModel,
+    brassManufacturer:
+      patch.brassManufacturer !== undefined
+        ? emptyString(patch.brassManufacturer)
+        : existing.brassManufacturer,
     brassModel:
       patch.brassModel !== undefined ? nullIfEmpty(patch.brassModel) : existing.brassModel,
-    powderManufacturer,
-    powderModel,
-    primerManufacturer,
-    primerModel,
+    powderManufacturer:
+      patch.powderManufacturer !== undefined
+        ? emptyString(patch.powderManufacturer)
+        : existing.powderManufacturer,
+    powderModel:
+      patch.powderModel !== undefined ? emptyString(patch.powderModel) : existing.powderModel,
+    primerManufacturer:
+      patch.primerManufacturer !== undefined
+        ? emptyString(patch.primerManufacturer)
+        : existing.primerManufacturer,
+    primerModel:
+      patch.primerModel !== undefined ? emptyString(patch.primerModel) : existing.primerModel,
     powderCharge,
-    coal,
-    cbto: patch.cbto !== undefined ? patch.cbto : existing.cbto,
-    velocity: patch.velocity !== undefined ? patch.velocity : existing.velocity,
-    sd: patch.sd !== undefined ? patch.sd : existing.sd,
-    es: patch.es !== undefined ? patch.es : existing.es,
+    coal:
+      patch.coal !== undefined
+        ? optionalNumber(patch.coal, 'COAL', { min: 0 })
+        : existing.coal,
+    shoulderBump,
+    neckTension,
+    lands,
+    cbto,
+    velocity,
+    sd,
+    es,
     notes: patch.notes !== undefined ? nullIfEmpty(patch.notes) : existing.notes,
     updatedAt
   })

@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { afterEach, test } from 'node:test'
 import type Database from 'better-sqlite3-multiple-ciphers'
 import { openTestDatabase } from '../connection'
-import { createPart, getPart } from '../parts'
+import { createPart, deletePart, getPart, setPartStatus } from '../parts'
 import { ensureLocalProfile } from '../profile'
 import { addShootingLog, listShootingLogs } from '../shooting-logs'
 import { createCustomSystem, deleteSystem, getSystem } from '../systems'
@@ -92,4 +92,56 @@ test('deleteSystem keeps logs and round counts; parts return to In Stock', () =>
   assert.equal(getPart(db, chassis.id)?.status, 'In Stock')
   assert.equal(getPart(db, barrel.id)?.totalRoundCount, 60)
   assert.equal(getPart(db, action.id)?.totalRoundCount, 60)
+})
+
+test('deletePart Retired barrel keeps logs with null barrel_id', () => {
+  const db = setup()
+  ensureLocalProfile(db)
+
+  const action = createPart(db, {
+    manufacturer: 'Impact',
+    type: 'Action',
+    model: '737R',
+    serialNumber: 'A-ret-1'
+  })
+  const barrel = createPart(db, {
+    manufacturer: 'Proof',
+    type: 'Barrel',
+    name: 'Proof Retire',
+    caliber: '6.5 Creedmoor',
+    gunsmith: 'S&S'
+  })
+  const chassis = createPart(db, {
+    manufacturer: 'MDT',
+    type: 'Chassis',
+    model: 'ACC'
+  })
+
+  const system = createCustomSystem(db, {
+    name: 'Retire barrel build',
+    platform: 'bolt_action',
+    actionId: action.id,
+    barrelId: barrel.id,
+    chassisId: chassis.id
+  })
+
+  addShootingLog(db, {
+    systemId: system.id,
+    date: '2026-02-01',
+    location: 'Range',
+    roundsFired: 25,
+    sessionType: 'Practice'
+  })
+
+  deleteSystem(db, system.id)
+  setPartStatus(db, barrel.id, 'Retired')
+  assert.equal(getPart(db, barrel.id)?.status, 'Retired')
+
+  deletePart(db, barrel.id)
+  assert.equal(getPart(db, barrel.id), null)
+
+  const logs = listShootingLogs(db)
+  assert.equal(logs.length, 1)
+  assert.equal(logs[0].barrelId, null)
+  assert.equal(logs[0].roundsFired, 25)
 })

@@ -356,7 +356,7 @@ export function LogsPage({ onNavigateBuilds }: LogsPageProps = {}): React.JSX.El
               </thead>
               <tbody>
                 {visibleLogs.map((log) => {
-                  const barrel = partsById.get(log.barrelId)
+                  const barrel = log.barrelId ? partsById.get(log.barrelId) : undefined
                   return (
                     <tr key={log.id}>
                       <td>
@@ -364,9 +364,7 @@ export function LogsPage({ onNavigateBuilds }: LogsPageProps = {}): React.JSX.El
                         <div className="cell-sub">{log.sessionType}</div>
                       </td>
                       <td>
-                        {barrel
-                          ? partPrimaryTitle(barrel)
-                          : 'Unknown Barrel'}
+                        {barrel ? partPrimaryTitle(barrel) : '—'}
                       </td>
                       <td>{log.location}</td>
                       <td>

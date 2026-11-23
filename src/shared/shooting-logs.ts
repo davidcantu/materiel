@@ -6,7 +6,7 @@ export type ShootingLogInfo = {
   id: string
   /** Null when the build was deleted; barrel/history still retained. */
   systemId: string | null
-  barrelId: string
+  barrelId: string | null
   ammoId: string | null
   cartridge: string | null
   date: string
