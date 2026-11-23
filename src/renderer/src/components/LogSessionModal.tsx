@@ -21,6 +21,8 @@ type LogSessionModalProps = {
   logs: ShootingLogInfo[]
   loads?: import('../../../shared/loads').LoadDevelopmentInfo[]
   initial?: ShootingLogInfo | null
+  /** Prefill build when logging from a build card. */
+  defaultSystemId?: string | null
   onClose: () => void
   onSave: (input: NewShootingLogInputInfo, editingId?: string) => Promise<void>
   onAmmoChanged?: () => void
@@ -94,10 +96,14 @@ function blankForm(
   systems: CompleteSystemInfo[],
   partsById: Map<string, PartInfo>,
   ammo: AmmoInventoryInfo[],
-  logs: ShootingLogInfo[]
+  logs: ShootingLogInfo[],
+  preferredSystemId?: string | null
 ): FormState {
   const sticky = getLogSessionDefaults()
   const systemId =
+    (preferredSystemId && systems.some((s) => s.id === preferredSystemId)
+      ? preferredSystemId
+      : null) ??
     (sticky.systemId && systems.some((s) => s.id === sticky.systemId) ? sticky.systemId : null) ??
     systems[0]?.id ??
     ''
@@ -157,6 +163,7 @@ export function LogSessionModal({
   logs,
   loads = [],
   initial,
+  defaultSystemId = null,
   onClose,
   onSave,
   onAmmoChanged,
@@ -178,7 +185,9 @@ export function LogSessionModal({
   }, [ammoProp, createdAmmo])
 
   const [form, setForm] = useState<FormState>(() =>
-    initial ? fromLog(initial) : blankForm(systems, partsById, ammoProp, logs)
+    initial
+      ? fromLog(initial)
+      : blankForm(systems, partsById, ammoProp, logs, defaultSystemId)
   )
   const [ammoTouched, setAmmoTouched] = useState(() => Boolean(initial))
   const [error, setError] = useState<string | null>(null)

@@ -1731,6 +1731,66 @@ html[data-theme='dark'] .brand-logo-dark {
   flex-shrink: 0;
 }
 
+.toast-action {
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.inline-nudge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--brand-primary) 28%, var(--border-subtle));
+  background: color-mix(in srgb, var(--brand-secondary) 18%, var(--surface));
+}
+
+.inline-nudge p {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--brand-deep);
+}
+
+.getting-started {
+  margin: 0 0 1.25rem;
+  padding: 1rem 1.15rem;
+  border-radius: 14px;
+  border: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--brand-secondary) 14%, var(--surface));
+}
+
+.getting-started h2 {
+  margin: 0 0 0.65rem;
+  font-size: 1.05rem;
+  color: var(--brand-deep);
+}
+
+.getting-started-steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.getting-started-steps li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.92rem;
+  color: var(--brand-deep);
+}
+
+.getting-started-steps li.done {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
 .toast-error {
   border-color: color-mix(in srgb, var(--danger) 35%, var(--border-subtle));
   background: color-mix(in srgb, var(--danger) 8%, var(--surface));

@@ -70,6 +70,7 @@ export function LogsPage({ onNavigateBuilds }: LogsPageProps = {}): React.JSX.El
   const [editing, setEditing] = useState<ShootingLogInfo | null>(null)
   const [maintenanceSystemId, setMaintenanceSystemId] = useState<string | null>(null)
   const [visibleCount, setVisibleCount] = useState(10)
+  const [matchNudge, setMatchNudge] = useState<string | null>(null)
 
   const systemsById = useMemo(() => {
     const map = new Map<string, CompleteSystemInfo>()
@@ -186,6 +187,18 @@ export function LogsPage({ onNavigateBuilds }: LogsPageProps = {}): React.JSX.El
     }
     await load()
 
+    const dismissedKey = 'materiel.matchFieldsNudgeDismissed'
+    const nudgeDismissed = localStorage.getItem(dismissedKey) === '1'
+    if (
+      !nudgeDismissed &&
+      input.sessionType === 'Match' &&
+      (input.placement == null || input.percentOfWinner == null)
+    ) {
+      setMatchNudge(
+        'Match tip: add Place and % of Winner when you have them — they power Dashboard trends.'
+      )
+    }
+
     // After a new session, scope due maintenance to that firearm (no system picker).
     if (!editingId) {
       const system = systemsById.get(input.systemId)
@@ -300,12 +313,28 @@ export function LogsPage({ onNavigateBuilds }: LogsPageProps = {}): React.JSX.El
         onRetry={() => void load()}
       />
 
+      {matchNudge ? (
+        <div className="inline-nudge" role="status">
+          <p>{matchNudge}</p>
+          <button
+            type="button"
+            className="btn-ghost btn-sm"
+            onClick={() => {
+              localStorage.setItem('materiel.matchFieldsNudgeDismissed', '1')
+              setMatchNudge(null)
+            }}
+          >
+            Got it
+          </button>
+        </div>
+      ) : null}
+
       {!loading && systems.length === 0 ? (
         <EmptyState
           icon="builds"
-          title="No complete firearms yet"
-          description="Add a complete build before you can log practice or match sessions."
-          actionLabel="Add your first complete build"
+          title="Build first, then log"
+          description="Create a complete build (or add a Frame for a pistol) so sessions have something to attach to."
+          actionLabel="Go to Builds"
           onAction={() => onNavigateBuilds?.()}
         />
       ) : null}
@@ -313,8 +342,8 @@ export function LogsPage({ onNavigateBuilds }: LogsPageProps = {}): React.JSX.El
       {!loading && systems.length > 0 && logs.length === 0 ? (
         <EmptyState
           icon="logs"
-          title="No shooting logs yet"
-          description="Log your first practice or match session to start tracking rounds."
+          title="Ready for your first session"
+          description="Log practice or a match — rounds update barrel wear, maintenance, and ammo."
           actionLabel="Log first session"
           onAction={openCreate}
         />

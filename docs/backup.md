@@ -88,4 +88,9 @@ No full Settings UI in this PR — shell still shows the active provider name.
 
 ## Restore
 
-`downloadLatestBackup(destPath)` is implemented on each provider for a later restore flow. It is not yet wired to a full replace-DB UX.
+**Settings → Backup & restore** offers:
+
+- **Restore from file…** — pick an encrypted `.db` snapshot (or a previously downloaded backup) and replace the live database.
+- **Restore latest cloud…** — uses `downloadLatestBackup` on the active provider, then swaps the live DB.
+
+Both flows write a safety copy under `{userData}/restore-safety/`, then relaunch the app. AI API keys are not part of the DB backup package.

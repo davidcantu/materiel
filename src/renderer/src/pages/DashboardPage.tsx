@@ -19,6 +19,8 @@ import { formatCurrency } from '../lib/format'
 
 type DashboardPageProps = {
   onNavigateLogs: () => void
+  onNavigateInventory?: () => void
+  onNavigateBuilds?: () => void
 }
 
 const TREND_WINDOWS: Array<{ id: DashboardTrendWindow; label: string }> = [
@@ -69,7 +71,11 @@ function MilestoneCard({ milestone }: { milestone: MilestoneStatus }): React.JSX
   )
 }
 
-export function DashboardPage({ onNavigateLogs: _onNavigateLogs }: DashboardPageProps): React.JSX.Element {
+export function DashboardPage({
+  onNavigateLogs: _onNavigateLogs,
+  onNavigateInventory,
+  onNavigateBuilds
+}: DashboardPageProps): React.JSX.Element {
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
   const [milestones, setMilestones] = useState<MilestonesSummary | null>(null)
   const [loading, setLoading] = useState(true)
@@ -190,9 +196,44 @@ export function DashboardPage({ onNavigateLogs: _onNavigateLogs }: DashboardPage
         : 'kpi-grid-3'
   ].join(' ')
 
+  const showGettingStarted =
+    summary.inventoryItems === 0 || summary.activeSystems === 0 || summary.totalRounds === 0
+
   return (
     <div className="page dashboard-page">
       <PageHeader title={title} description="Your Firearms, Rounds, And Builds At A Glance." />
+
+      {showGettingStarted ? (
+        <section className="getting-started" aria-label="Getting started">
+          <h2>Getting started</h2>
+          <ol className="getting-started-steps">
+            <li className={summary.inventoryItems > 0 ? 'done' : undefined}>
+              <span>Add a Frame, Action, or Barrel in Inventory</span>
+              {summary.inventoryItems === 0 && onNavigateInventory ? (
+                <button type="button" className="btn-ghost btn-sm" onClick={onNavigateInventory}>
+                  Inventory
+                </button>
+              ) : null}
+            </li>
+            <li className={summary.activeSystems > 0 ? 'done' : undefined}>
+              <span>Assemble a complete build</span>
+              {summary.activeSystems === 0 && onNavigateBuilds ? (
+                <button type="button" className="btn-ghost btn-sm" onClick={onNavigateBuilds}>
+                  Builds
+                </button>
+              ) : null}
+            </li>
+            <li className={summary.totalRounds > 0 ? 'done' : undefined}>
+              <span>Log your first session</span>
+              {summary.totalRounds === 0 ? (
+                <button type="button" className="btn-ghost btn-sm" onClick={_onNavigateLogs}>
+                  Logs
+                </button>
+              ) : null}
+            </li>
+          </ol>
+        </section>
+      ) : null}
 
       <section className="dash-top" aria-label="Key Metrics">
         <div className={kpiClass}>

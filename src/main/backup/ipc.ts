@@ -5,7 +5,9 @@ import {
   updateBackupSettings,
   type BackupSettingsPatch
 } from '../db/backup'
+import type { BackupRestoreResult } from '../../shared/backup'
 import { getBackupProvider, resolveProviderId } from './providers'
+import { restoreFromCloudLatest, restoreFromLocalFile } from './restore'
 import {
   getActiveBackupProvider,
   setActiveBackupProvider,
@@ -69,5 +71,13 @@ export function registerBackupIpc(): void {
     const provider = getActiveBackupProvider() ?? getBackupProvider()
     await provider.disconnect()
     return buildStatus()
+  })
+
+  ipcMain.handle('backup:restore-from-file', async (): Promise<BackupRestoreResult> => {
+    return restoreFromLocalFile()
+  })
+
+  ipcMain.handle('backup:restore-from-cloud', async (): Promise<BackupRestoreResult> => {
+    return restoreFromCloudLatest()
   })
 }
