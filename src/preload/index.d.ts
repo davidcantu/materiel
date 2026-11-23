@@ -1,6 +1,7 @@
 import type { AppInfo, DatabaseHealthInfo } from '../shared/app-info'
 import type {
   BackupLogInfo,
+  BackupRestoreResult,
   BackupRunResultInfo,
   BackupSettingsInfo,
   BackupSettingsPatchInfo,
@@ -52,6 +53,8 @@ declare global {
       getBackupStatus: () => Promise<BackupStatusInfo>
       authenticateBackup: () => Promise<BackupStatusInfo>
       disconnectBackup: () => Promise<BackupStatusInfo>
+      restoreBackupFromFile: () => Promise<BackupRestoreResult>
+      restoreBackupFromCloud: () => Promise<BackupRestoreResult>
       getProfile: () => Promise<ProfileInfo>
       updateProfile: (patch: ProfilePatch) => Promise<ProfileInfo>
       listParts: (filter?: PartsListFilter) => Promise<PartInfo[]>

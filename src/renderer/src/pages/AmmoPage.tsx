@@ -273,7 +273,48 @@ export function AmmoPage({
     if (!window.confirm(`Delete ${label}?`)) return
     try {
       await window.api.deleteAmmo(item.id)
-      toast.success('Ammo deleted.')
+      const snapshot = item
+      toast.success('Ammo deleted.', {
+        action: {
+          label: 'Undo',
+          onClick: () => {
+            void (async () => {
+              try {
+                if (!snapshot.acquiredDate) {
+                  toast.error('Cannot undo — missing acquired date')
+                  return
+                }
+                await window.api.createAmmo({
+                  id: snapshot.id,
+                  name: snapshot.name,
+                  type: snapshot.type,
+                  caliber: snapshot.caliber,
+                  quantity: snapshot.quantity,
+                  acquiredDate: snapshot.acquiredDate,
+                  loadId: snapshot.loadId,
+                  manufacturer: snapshot.manufacturer,
+                  lotNumber: snapshot.lotNumber,
+                  notes: snapshot.notes,
+                  bulletManufacturer: snapshot.bulletManufacturer,
+                  bulletType: snapshot.bulletType,
+                  powderManufacturer: snapshot.powderManufacturer,
+                  powder: snapshot.powder,
+                  chargeWeight: snapshot.chargeWeight,
+                  primerManufacturer: snapshot.primerManufacturer,
+                  primer: snapshot.primer,
+                  caseManufacturer: snapshot.caseManufacturer,
+                  caseName: snapshot.caseName,
+                  seatingDepth: snapshot.seatingDepth
+                })
+                toast.success('Ammo restored.')
+                await load()
+              } catch (err) {
+                toast.error(err instanceof Error ? err.message : 'Undo failed')
+              }
+            })()
+          }
+        }
+      })
       await load()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Delete failed')
@@ -284,7 +325,46 @@ export function AmmoPage({
     if (!window.confirm(`Delete load “${item.name}”?`)) return
     try {
       await window.api.deleteLoad(item.id)
-      toast.success('Load deleted.')
+      const snapshot = item
+      toast.success('Load deleted.', {
+        action: {
+          label: 'Undo',
+          onClick: () => {
+            void (async () => {
+              try {
+                await window.api.createLoad({
+                  id: snapshot.id,
+                  name: snapshot.name,
+                  caliber: snapshot.caliber,
+                  dateUpdated: snapshot.updatedAt.slice(0, 10),
+                  bulletManufacturer: snapshot.bulletManufacturer,
+                  bulletModel: snapshot.bulletModel,
+                  brassManufacturer: snapshot.brassManufacturer,
+                  brassModel: snapshot.brassModel,
+                  powderManufacturer: snapshot.powderManufacturer,
+                  powderModel: snapshot.powderModel,
+                  primerManufacturer: snapshot.primerManufacturer,
+                  primerModel: snapshot.primerModel,
+                  powderCharge: snapshot.powderCharge,
+                  coal: snapshot.coal,
+                  shoulderBump: snapshot.shoulderBump,
+                  neckTension: snapshot.neckTension,
+                  lands: snapshot.lands,
+                  cbto: snapshot.cbto,
+                  velocity: snapshot.velocity,
+                  sd: snapshot.sd,
+                  es: snapshot.es,
+                  notes: snapshot.notes
+                })
+                toast.success('Load restored.')
+                await load()
+              } catch (err) {
+                toast.error(err instanceof Error ? err.message : 'Undo failed')
+              }
+            })()
+          }
+        }
+      })
       await load()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Delete failed')

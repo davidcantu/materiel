@@ -1,13 +1,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { ToastContext, type ToastApi, type ToastTone } from './toast-context'
+import {
+  ToastContext,
+  type ToastAction,
+  type ToastApi,
+  type ToastOptions,
+  type ToastTone
+} from './toast-context'
 
 type ToastItem = {
   id: number
   message: string
   tone: ToastTone
+  action?: ToastAction
+  durationMs: number
 }
 
 const AUTO_DISMISS_MS = 4200
+const UNDO_DISMISS_MS = 8000
 
 export function ToastProvider({ children }: { children: ReactNode }): React.JSX.Element {
   const [items, setItems] = useState<ToastItem[]>([])
@@ -17,16 +26,30 @@ export function ToastProvider({ children }: { children: ReactNode }): React.JSX.
     setItems((prev) => prev.filter((item) => item.id !== id))
   }, [])
 
-  const push = useCallback((message: string, tone: ToastTone = 'info') => {
+  const push = useCallback((message: string, toneOrOptions?: ToastTone | ToastOptions) => {
+    const options: ToastOptions =
+      typeof toneOrOptions === 'string' || toneOrOptions == null
+        ? { tone: toneOrOptions ?? 'info' }
+        : toneOrOptions
     const id = nextId.current++
-    setItems((prev) => [...prev.slice(-4), { id, message, tone }])
+    const durationMs = options.durationMs ?? (options.action ? UNDO_DISMISS_MS : AUTO_DISMISS_MS)
+    setItems((prev) => [
+      ...prev.slice(-4),
+      {
+        id,
+        message,
+        tone: options.tone ?? 'info',
+        action: options.action,
+        durationMs
+      }
+    ])
   }, [])
 
   const api = useMemo<ToastApi>(
     () => ({
       push,
       error: (message) => push(message, 'error'),
-      success: (message) => push(message, 'success')
+      success: (message, options) => push(message, { ...options, tone: 'success' })
     }),
     [push]
   )
@@ -51,13 +74,25 @@ function ToastCard({
   onDismiss: () => void
 }): React.JSX.Element {
   useEffect(() => {
-    const timer = window.setTimeout(onDismiss, AUTO_DISMISS_MS)
+    const timer = window.setTimeout(onDismiss, item.durationMs)
     return () => window.clearTimeout(timer)
-  }, [onDismiss])
+  }, [onDismiss, item.durationMs])
 
   return (
     <div className={`toast toast-${item.tone}`} role={item.tone === 'error' ? 'alert' : 'status'}>
       <p>{item.message}</p>
+      {item.action ? (
+        <button
+          type="button"
+          className="btn-ghost btn-sm toast-action"
+          onClick={() => {
+            item.action?.onClick()
+            onDismiss()
+          }}
+        >
+          {item.action.label}
+        </button>
+      ) : null}
       <button
         type="button"
         className="icon-btn toast-dismiss"

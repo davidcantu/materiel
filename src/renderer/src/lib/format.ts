@@ -16,6 +16,12 @@ export function maintenancePercent(part: PartInfo): number | null {
   return Math.round((part.roundsAfterCleaning / part.maintenanceInterval) * 100)
 }
 
+/** e.g. "420 / 500" for rounds since clean vs interval. */
+export function maintenanceLabel(part: PartInfo): string | null {
+  if (!isMaintenanceTracked(part.type) || !part.maintenanceInterval) return null
+  return `${part.roundsAfterCleaning.toLocaleString()} / ${part.maintenanceInterval.toLocaleString()}`
+}
+
 export function maintenanceTone(percent: number): 'ok' | 'warn' | 'high' {
   if (percent <= 60) return 'ok'
   if (percent <= 90) return 'warn'

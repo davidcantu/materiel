@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 import type { AppInfo, DatabaseHealthInfo } from '../shared/app-info'
 import type {
   BackupLogInfo,
+  BackupRestoreResult,
   BackupRunResultInfo,
   BackupSettingsInfo,
   BackupSettingsPatchInfo,
@@ -53,6 +54,10 @@ const api = {
   getBackupStatus: (): Promise<BackupStatusInfo> => ipcRenderer.invoke('backup:get-status'),
   authenticateBackup: (): Promise<BackupStatusInfo> => ipcRenderer.invoke('backup:authenticate'),
   disconnectBackup: (): Promise<BackupStatusInfo> => ipcRenderer.invoke('backup:disconnect'),
+  restoreBackupFromFile: (): Promise<BackupRestoreResult> =>
+    ipcRenderer.invoke('backup:restore-from-file'),
+  restoreBackupFromCloud: (): Promise<BackupRestoreResult> =>
+    ipcRenderer.invoke('backup:restore-from-cloud'),
   getProfile: (): Promise<ProfileInfo> => ipcRenderer.invoke('profile:get'),
   updateProfile: (patch: ProfilePatch) => ipcRenderer.invoke('profile:update', patch),
   listParts: (filter?: PartsListFilter): Promise<PartInfo[]> =>

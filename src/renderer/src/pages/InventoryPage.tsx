@@ -16,6 +16,7 @@ import { StatusBadge } from '../components/StatusBadge'
 import { useToast } from '../components/toast-context'
 import {
   isMaintenanceTracked,
+  maintenanceLabel,
   maintenancePercent,
   maintenanceTone,
   partPrimaryTitle,
@@ -210,10 +211,52 @@ export function InventoryPage({
   }
 
   async function handleDelete(part: PartInfo): Promise<void> {
-    if (!window.confirm(`Delete ${partPrimaryTitle(part)}?`)) return
+    if (
+      !window.confirm(
+        `Delete ${partPrimaryTitle(part)}? Session logs that used this part stay on file.`
+      )
+    ) {
+      return
+    }
     try {
       await window.api.deletePart(part.id)
-      toast.success('Part deleted.')
+      const snapshot = part
+      toast.success('Part deleted.', {
+        action: {
+          label: 'Undo',
+          onClick: () => {
+            void (async () => {
+              try {
+                await window.api.createPart({
+                  id: snapshot.id,
+                  type: snapshot.type,
+                  manufacturer: snapshot.manufacturer,
+                  model: snapshot.model,
+                  name: snapshot.name,
+                  caliber: snapshot.caliber,
+                  gunsmith: snapshot.gunsmith,
+                  serialNumber: snapshot.serialNumber,
+                  platforms: snapshot.platforms,
+                  totalRoundCount: snapshot.totalRoundCount,
+                  roundsAfterCleaning: snapshot.roundsAfterCleaning,
+                  maintenanceInterval: snapshot.maintenanceInterval,
+                  twistRate: snapshot.twistRate,
+                  barrelLife: snapshot.barrelLife,
+                  muzzleType: snapshot.muzzleType,
+                  value: snapshot.value,
+                  notes: snapshot.notes,
+                  status: snapshot.status,
+                  soldToNote: snapshot.soldToNote
+                })
+                toast.success('Part restored.')
+                await load()
+              } catch (err) {
+                toast.error(err instanceof Error ? err.message : 'Undo failed')
+              }
+            })()
+          }
+        }
+      })
       await load()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Delete failed')
@@ -339,7 +382,7 @@ export function InventoryPage({
         <EmptyState
           icon="inventory"
           title="Your armory is empty"
-          description="Add bolt-action, AR, or pistol parts to get started."
+          description="Start with a Frame, Action, or Barrel — then assemble a build and log your first session."
           actionLabel="Add your first part"
           onAction={openCreate}
         />
@@ -408,14 +451,16 @@ export function InventoryPage({
                         <div className="maint-cell">
                           <div
                             className={`progress-track tone-${maintenanceTone(percent)}`}
-                            title={`${percent}%`}
+                            title={`${maintenanceLabel(part)} · ${percent}%`}
                           >
                             <div
                               className="progress-fill"
                               style={{ width: `${Math.min(percent, 100)}%` }}
                             />
                           </div>
-                          <span className="muted">{percent}%</span>
+                          <span className="muted">
+                            {maintenanceLabel(part)} · {percent}%
+                          </span>
                         </div>
                       ) : (
                         <span className="muted">—</span>

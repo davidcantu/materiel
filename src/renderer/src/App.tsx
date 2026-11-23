@@ -150,7 +150,13 @@ function AppShell(): React.JSX.Element {
       </aside>
 
       <main className="main">
-        {view === 'dashboard' ? <DashboardPage onNavigateLogs={() => setActive('logs')} /> : null}
+        {view === 'dashboard' ? (
+          <DashboardPage
+            onNavigateLogs={() => setActive('logs')}
+            onNavigateInventory={() => setActive('inventory')}
+            onNavigateBuilds={() => setActive('builds')}
+          />
+        ) : null}
         {view === 'inventory' ? (
           <InventoryPage
             trackValue={profile?.trackValue ?? true}
@@ -161,6 +167,7 @@ function AppShell(): React.JSX.Element {
           <BuildsPage
             trackValue={profile?.trackValue ?? true}
             trackedPlatforms={profile?.trackedPlatforms}
+            onNavigateInventory={() => setActive('inventory')}
           />
         ) : null}
         {view === 'logs' ? <LogsPage onNavigateBuilds={() => setActive('builds')} /> : null}

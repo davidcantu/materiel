@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import type { AmmoInventoryInfo } from '../../../shared/ammo'
 import type { PartInfo } from '../../../shared/parts'
+import type {
+  NewShootingLogInputInfo,
+  ShootingLogInfo
+} from '../../../shared/shooting-logs'
 import type { CompleteSystemInfo } from '../../../shared/systems'
 import {
   PLATFORM_CORE_LABELS,
@@ -9,25 +14,41 @@ import {
 } from '../../../shared/platforms'
 import { EmptyState } from '../components/EmptyState'
 import { Icon } from '../components/icons/Icon'
+import { LogSessionModal } from '../components/LogSessionModal'
 import { PageFeedback } from '../components/PageFeedback'
 import { PageHeader } from '../components/PageHeader'
 import { SystemFormModal } from '../components/SystemFormModal'
 import { useToast } from '../components/toast-context'
-import { formatCurrency, maintenancePercent, partPrimaryTitle } from '../lib/format'
+import {
+  formatCurrency,
+  maintenanceLabel,
+  maintenancePercent,
+  partPrimaryTitle
+} from '../lib/format'
 
 type BuildsPageProps = {
   trackValue: boolean
   trackedPlatforms?: Platform[]
+  onNavigateInventory?: () => void
 }
 
-export function BuildsPage({ trackValue, trackedPlatforms }: BuildsPageProps): React.JSX.Element {
+export function BuildsPage({
+  trackValue,
+  trackedPlatforms,
+  onNavigateInventory
+}: BuildsPageProps): React.JSX.Element {
   const toast = useToast()
   const [systems, setSystems] = useState<CompleteSystemInfo[]>([])
   const [parts, setParts] = useState<PartInfo[]>([])
+  const [ammo, setAmmo] = useState<AmmoInventoryInfo[]>([])
+  const [logs, setLogs] = useState<ShootingLogInfo[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<CompleteSystemInfo | null>(null)
+  const [search, setSearch] = useState('')
+  const [logModalOpen, setLogModalOpen] = useState(false)
+  const [logSystemId, setLogSystemId] = useState<string | null>(null)
 
   const availablePlatforms = useMemo(
     () =>
@@ -45,18 +66,42 @@ export function BuildsPage({ trackValue, trackedPlatforms }: BuildsPageProps): R
 
   const visibleSystems = useMemo(() => {
     const allowed = new Set(availablePlatforms)
-    return systems.filter((system) => allowed.has(system.platform))
-  }, [systems, availablePlatforms])
+    const q = search.trim().toLowerCase()
+    return systems.filter((system) => {
+      if (!allowed.has(system.platform)) return false
+      if (!q) return true
+      const barrel = partsById.get(system.barrelId)
+      const caliber =
+        system.buildType === 'factory' ? system.factoryCartridge : barrel?.caliber
+      const hay = [
+        system.name,
+        PLATFORM_LABELS[system.platform],
+        system.buildType,
+        caliber,
+        partsById.get(system.actionId)?.manufacturer,
+        barrel?.name,
+        barrel?.manufacturer
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+      return hay.includes(q)
+    })
+  }, [systems, availablePlatforms, search, partsById])
 
   const load = useCallback(async () => {
     setError(null)
     try {
-      const [nextSystems, nextParts] = await Promise.all([
+      const [nextSystems, nextParts, nextAmmo, nextLogs] = await Promise.all([
         window.api.listSystems(),
-        window.api.listParts()
+        window.api.listParts(),
+        window.api.listAmmo(),
+        window.api.listLogs()
       ])
       setSystems(nextSystems)
       setParts(nextParts)
+      setAmmo(nextAmmo)
+      setLogs(nextLogs)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load builds')
     } finally {
@@ -66,11 +111,18 @@ export function BuildsPage({ trackValue, trackedPlatforms }: BuildsPageProps): R
 
   useEffect(() => {
     let cancelled = false
-    void Promise.all([window.api.listSystems(), window.api.listParts()])
-      .then(([nextSystems, nextParts]) => {
+    void Promise.all([
+      window.api.listSystems(),
+      window.api.listParts(),
+      window.api.listAmmo(),
+      window.api.listLogs()
+    ])
+      .then(([nextSystems, nextParts, nextAmmo, nextLogs]) => {
         if (!cancelled) {
           setSystems(nextSystems)
           setParts(nextParts)
+          setAmmo(nextAmmo)
+          setLogs(nextLogs)
           setLoading(false)
         }
       })
@@ -90,11 +142,16 @@ export function BuildsPage({ trackValue, trackedPlatforms }: BuildsPageProps): R
     setModalOpen(true)
   }
 
+  function openLogSession(systemId: string): void {
+    setLogSystemId(systemId)
+    setLogModalOpen(true)
+  }
+
   async function handleCreateCustom(
     input: Parameters<typeof window.api.createCustomSystem>[0]
   ): Promise<void> {
     await window.api.createCustomSystem(input)
-    toast.success('Build created.')
+    toast.success('Build created. Log a session from the card when you shoot.')
     await load()
   }
 
@@ -118,7 +175,6 @@ export function BuildsPage({ trackValue, trackedPlatforms }: BuildsPageProps): R
   async function handleDelete(system: CompleteSystemInfo): Promise<void> {
     let logCount = 0
     try {
-      const logs = await window.api.listLogs()
       logCount = logs.filter((log) => log.systemId === system.id).length
     } catch {
       // Confirm without count if logs can't be loaded.
@@ -147,6 +203,16 @@ export function BuildsPage({ trackValue, trackedPlatforms }: BuildsPageProps): R
     }
   }
 
+  async function handleLogSave(input: NewShootingLogInputInfo): Promise<void> {
+    await window.api.addLog(input)
+    toast.success('Session logged.')
+    await load()
+  }
+
+  const emptyBecauseFilter = !loading && systems.length > 0 && visibleSystems.length === 0
+  const trulyEmpty = !loading && systems.length === 0
+  const hasParts = parts.length > 0
+
   return (
     <div className="page">
       <PageHeader
@@ -160,6 +226,18 @@ export function BuildsPage({ trackValue, trackedPlatforms }: BuildsPageProps): R
         }
       />
 
+      {!loading && systems.length > 0 ? (
+        <div className="toolbar">
+          <input
+            className="search-input"
+            placeholder="Search builds…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Search builds"
+          />
+        </div>
+      ) : null}
+
       <PageFeedback
         loading={loading}
         loadingLabel="Loading builds…"
@@ -167,13 +245,35 @@ export function BuildsPage({ trackValue, trackedPlatforms }: BuildsPageProps): R
         onRetry={() => void load()}
       />
 
-      {!loading && visibleSystems.length === 0 ? (
+      {trulyEmpty ? (
         <EmptyState
           icon="builds"
-          title="No complete firearms yet"
-          description="Assemble a custom build from inventory parts, or add a factory firearm."
-          actionLabel="Add your first complete build"
-          onAction={openCreate}
+          title={hasParts ? 'Parts ready — assemble a build' : 'Start with inventory'}
+          description={
+            hasParts
+              ? 'You have parts in stock. Create a complete build so you can log sessions against it.'
+              : 'Add a Frame, Action, or Barrel in Inventory first, then come back to assemble a build and log your first session.'
+          }
+          actionLabel={hasParts ? 'Add your first complete build' : 'Go to Inventory'}
+          onAction={
+            hasParts
+              ? openCreate
+              : () => {
+                  if (onNavigateInventory) onNavigateInventory()
+                  else openCreate()
+                }
+          }
+        />
+      ) : null}
+
+      {emptyBecauseFilter ? (
+        <EmptyState
+          icon="filter"
+          actionIcon="filter"
+          title="No builds match this search"
+          description="Clear the search box to see every complete firearm."
+          actionLabel="Clear search"
+          onAction={() => setSearch('')}
         />
       ) : null}
 
@@ -191,6 +291,7 @@ export function BuildsPage({ trackValue, trackedPlatforms }: BuildsPageProps): R
             const caliber =
               system.buildType === 'factory' ? system.factoryCartridge : barrel?.caliber
             const maint = barrel ? maintenancePercent(barrel) : null
+            const maintText = barrel ? maintenanceLabel(barrel) : null
             const valueParts = [
               action,
               barrel,
@@ -224,7 +325,7 @@ export function BuildsPage({ trackValue, trackedPlatforms }: BuildsPageProps): R
 
                 <div className="build-card-body">
                   <header className="build-card-header">
-                      <div>
+                    <div>
                       <h3 className="build-card-title">{system.name}</h3>
                       <p className="build-card-sub muted">
                         Total Rounds: {(system.totalRounds ?? 0).toLocaleString()}
@@ -293,11 +394,22 @@ export function BuildsPage({ trackValue, trackedPlatforms }: BuildsPageProps): R
                   <div className="build-card-meta">
                     <span>Total Rounds: {(system.totalRounds ?? 0).toLocaleString()}</span>
                     <span>Barrel Rounds: {barrel?.totalRoundCount ?? 0}</span>
-                    <span>Maintenance: {maint != null ? `${maint}%` : '—'}</span>
+                    <span>
+                      Maintenance:{' '}
+                      {maintText != null && maint != null ? `${maintText} (${maint}%)` : '—'}
+                    </span>
                     {trackValue ? <span>Value: {formatCurrency(totalValue)}</span> : null}
                   </div>
 
                   <footer className="build-card-actions">
+                    <button
+                      type="button"
+                      className="btn-primary btn-sm btn-with-icon"
+                      onClick={() => openLogSession(system.id)}
+                    >
+                      <Icon name="add" size={14} />
+                      Log Session
+                    </button>
                     <button
                       type="button"
                       className="btn-ghost btn-sm"
@@ -342,6 +454,23 @@ export function BuildsPage({ trackValue, trackedPlatforms }: BuildsPageProps): R
         />
       ) : null}
 
+      {logModalOpen ? (
+        <LogSessionModal
+          systems={systems}
+          parts={parts}
+          ammo={ammo}
+          logs={logs}
+          defaultSystemId={logSystemId}
+          onClose={() => {
+            setLogModalOpen(false)
+            setLogSystemId(null)
+          }}
+          onSave={handleLogSave}
+          onAmmoChanged={() => {
+            void window.api.listAmmo().then(setAmmo)
+          }}
+        />
+      ) : null}
     </div>
   )
 }

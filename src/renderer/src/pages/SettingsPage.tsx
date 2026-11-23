@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import type { BackupStatusInfo } from '../../../shared/backup'
 import { PLATFORMS, PLATFORM_LABELS, type Platform } from '../../../shared/platforms'
 import { type ProfileInfo, type ProfilePatch } from '../../../shared/profile'
 import type { UpdateCheckResult } from '../../../shared/updates'
@@ -124,6 +125,9 @@ export function SettingsPage({
   const [importBusy, setImportBusy] = useState(false)
   const [importMessage, setImportMessage] = useState<string | null>(null)
   const [sampleBusy, setSampleBusy] = useState(false)
+  const [backupStatus, setBackupStatus] = useState<BackupStatusInfo | null>(null)
+  const [backupBusy, setBackupBusy] = useState(false)
+  const [backupMessage, setBackupMessage] = useState<string | null>(null)
   const [aiStatus, setAiStatus] = useState<AiStatusInfo | null>(null)
   const [aiModels, setAiModels] = useState<AiModelInfo[]>([])
   const [aiKeyDraft, setAiKeyDraft] = useState('')
@@ -140,6 +144,14 @@ export function SettingsPage({
       })
       .catch(() => {
         if (!cancelled) setAppVersion('unknown')
+      })
+    void window.api
+      .getBackupStatus()
+      .then((status) => {
+        if (!cancelled) setBackupStatus(status)
+      })
+      .catch(() => {
+        /* backup optional at boot */
       })
     return () => {
       cancelled = true
@@ -370,6 +382,99 @@ export function SettingsPage({
       toast.error(text)
     } finally {
       setImportBusy(false)
+    }
+  }
+
+  async function refreshBackupStatus(): Promise<void> {
+    try {
+      setBackupStatus(await window.api.getBackupStatus())
+    } catch {
+      /* ignore */
+    }
+  }
+
+  async function runBackupNow(): Promise<void> {
+    setBackupBusy(true)
+    setBackupMessage(null)
+    try {
+      const result = await window.api.runBackupNow()
+      if (!result.ok) {
+        setBackupMessage(result.errorMessage ?? 'Backup failed')
+        toast.error(result.errorMessage ?? 'Backup failed')
+      } else {
+        setBackupMessage(`Backup saved (${result.fileName}, ${result.fileSize})`)
+        toast.success('Backup complete')
+      }
+      await refreshBackupStatus()
+    } catch (err) {
+      const text = err instanceof Error ? err.message : 'Backup failed'
+      setBackupMessage(text)
+      toast.error(text)
+    } finally {
+      setBackupBusy(false)
+    }
+  }
+
+  async function connectBackup(): Promise<void> {
+    setBackupBusy(true)
+    setBackupMessage(null)
+    try {
+      const status = await window.api.authenticateBackup()
+      setBackupStatus(status)
+      setBackupMessage(`Connected to ${status.providerLabel}`)
+      toast.success(`Connected to ${status.providerLabel}`)
+    } catch (err) {
+      const text = err instanceof Error ? err.message : 'Connect failed'
+      setBackupMessage(text)
+      toast.error(text)
+    } finally {
+      setBackupBusy(false)
+    }
+  }
+
+  async function restoreFromFile(): Promise<void> {
+    setBackupBusy(true)
+    setBackupMessage(null)
+    try {
+      const result = await window.api.restoreBackupFromFile()
+      if (!result.ok) {
+        if (result.error !== 'Restore cancelled') {
+          setBackupMessage(result.error)
+          toast.error(result.error)
+        }
+        return
+      }
+      setBackupMessage('Database restored — relaunching…')
+      toast.success('Restored — relaunching')
+    } catch (err) {
+      const text = err instanceof Error ? err.message : 'Restore failed'
+      setBackupMessage(text)
+      toast.error(text)
+    } finally {
+      setBackupBusy(false)
+    }
+  }
+
+  async function restoreFromCloud(): Promise<void> {
+    setBackupBusy(true)
+    setBackupMessage(null)
+    try {
+      const result = await window.api.restoreBackupFromCloud()
+      if (!result.ok) {
+        if (result.error !== 'Restore cancelled') {
+          setBackupMessage(result.error)
+          toast.error(result.error)
+        }
+        return
+      }
+      setBackupMessage('Cloud backup restored — relaunching…')
+      toast.success('Restored — relaunching')
+    } catch (err) {
+      const text = err instanceof Error ? err.message : 'Cloud restore failed'
+      setBackupMessage(text)
+      toast.error(text)
+    } finally {
+      setBackupBusy(false)
     }
   }
 
@@ -925,6 +1030,65 @@ export function SettingsPage({
         ) : aiError ? (
           <p className="form-error">{aiError}</p>
         ) : null}
+      </section>
+
+      <section className="settings-panel settings-bento-wide">
+        <div className="section-header">
+          <h2>Backup &amp; restore</h2>
+        </div>
+        <p className="settings-note">
+          Encrypted database backups go to {backupStatus?.providerLabel ?? 'your backup provider'}.
+          Restore replaces the local database (a safety copy is kept) and relaunches Materiel. AI
+          API keys are not included in backups.
+        </p>
+        <p className="muted settings-note">
+          Provider: <strong>{backupStatus?.providerLabel ?? '…'}</strong>
+          {backupStatus
+            ? ` · ${backupStatus.authenticated ? 'connected' : 'not connected'}${
+                backupStatus.settings.lastBackupTime
+                  ? ` · last backup ${new Date(backupStatus.settings.lastBackupTime).toLocaleString()}`
+                  : ''
+              }`
+            : ''}
+        </p>
+        <div className="row-actions">
+          {!backupStatus?.authenticated ? (
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={backupBusy || backupStatus?.configured === false}
+              onClick={() => void connectBackup()}
+            >
+              {backupBusy ? 'Working…' : 'Connect backup'}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={backupBusy}
+              onClick={() => void runBackupNow()}
+            >
+              {backupBusy ? 'Working…' : 'Back up now'}
+            </button>
+          )}
+          <button
+            type="button"
+            className="btn-ghost"
+            disabled={backupBusy}
+            onClick={() => void restoreFromFile()}
+          >
+            Restore from file…
+          </button>
+          <button
+            type="button"
+            className="btn-ghost"
+            disabled={backupBusy || !backupStatus?.authenticated}
+            onClick={() => void restoreFromCloud()}
+          >
+            Restore latest cloud…
+          </button>
+        </div>
+        {backupMessage ? <p className="settings-note">{backupMessage}</p> : null}
       </section>
 
       <section className="settings-panel">

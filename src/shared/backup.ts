@@ -55,3 +55,7 @@ export type BackupSettingsPatchInfo = {
   lastBackupTime?: string | null
   nextBackupTime?: string | null
 }
+
+export type BackupRestoreResult =
+  | { ok: true; source: 'file' | 'cloud'; relaunching: true }
+  | { ok: false; error: string }
