@@ -368,6 +368,7 @@ export function InventoryPage({
               <tr>
                 <th>Type</th>
                 <th>Part</th>
+                <th>Rounds</th>
                 <th>Maintenance</th>
                 <th>Status</th>
                 <th>Actions</th>
@@ -376,6 +377,7 @@ export function InventoryPage({
             <tbody>
               {filtered.map((part) => {
                 const percent = maintenancePercent(part)
+                const tracksUse = isMaintenanceTracked(part.type) || part.type === 'Lower'
                 return (
                   <tr
                     key={part.id}
@@ -393,6 +395,13 @@ export function InventoryPage({
                       {part.serialNumber ? (
                         <div className="cell-sub">S/N {part.serialNumber}</div>
                       ) : null}
+                    </td>
+                    <td className="rounds-cell">
+                      {tracksUse ? (
+                        <span className="rounds-badge">{part.totalRoundCount.toLocaleString()}</span>
+                      ) : (
+                        <span className="muted">—</span>
+                      )}
                     </td>
                     <td>
                       {percent != null ? (
