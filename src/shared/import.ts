@@ -38,6 +38,8 @@ export type MaterielImportBuild = {
   barrelId: string
   /** Omit to use the shared placeholder chassis (bolt) / auto furniture. */
   chassisId?: string
+  opticId?: string
+  suppressorId?: string
   notes?: string | null
 }
 
@@ -55,6 +57,23 @@ export type MaterielImportLog = {
   velocity?: number | null
   placement?: number | null
   percentOfWinner?: number | null
+  ammoId?: string | null
+  notes?: string | null
+}
+
+export type MaterielImportAmmo = {
+  id?: string
+  name?: string
+  type: 'Factory' | 'Handload'
+  caliber: string
+  quantity: number
+  acquiredDate: string
+  manufacturer?: string | null
+  lotNumber?: string | null
+  bulletManufacturer?: string | null
+  powderManufacturer?: string | null
+  primerManufacturer?: string | null
+  caseManufacturer?: string | null
   notes?: string | null
 }
 
@@ -83,12 +102,14 @@ export type MaterielImportDocument = {
   parts: MaterielImportPart[]
   builds?: MaterielImportBuild[]
   logs?: MaterielImportLog[]
+  ammo?: MaterielImportAmmo[]
 }
 
 export type MaterielImportSummary = {
   partsCreated: number
   buildsCreated: number
   logsCreated: number
+  ammoCreated: number
   placeholderChassisId: string | null
   warnings: string[]
 }

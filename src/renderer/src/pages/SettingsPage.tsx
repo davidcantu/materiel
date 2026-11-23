@@ -121,6 +121,9 @@ export function SettingsPage({
   const [updateMessage, setUpdateMessage] = useState<string | null>(null)
   const [exportBusy, setExportBusy] = useState(false)
   const [exportMessage, setExportMessage] = useState<string | null>(null)
+  const [importBusy, setImportBusy] = useState(false)
+  const [importMessage, setImportMessage] = useState<string | null>(null)
+  const [sampleBusy, setSampleBusy] = useState(false)
   const [aiStatus, setAiStatus] = useState<AiStatusInfo | null>(null)
   const [aiModels, setAiModels] = useState<AiModelInfo[]>([])
   const [aiKeyDraft, setAiKeyDraft] = useState('')
@@ -309,6 +312,64 @@ export function SettingsPage({
       toast.error(text)
     } finally {
       setExportBusy(false)
+    }
+  }
+
+  async function downloadSampleExcel(): Promise<void> {
+    setSampleBusy(true)
+    setImportMessage(null)
+    try {
+      const result = await window.api.exportSampleExcel()
+      if (!result.ok) {
+        if (result.error !== 'Export cancelled') {
+          setImportMessage(result.error)
+          toast.error(result.error)
+        }
+        return
+      }
+      setImportMessage(`Sample workbook saved to ${result.path}`)
+      toast.success('Sample Excel saved')
+    } catch (err) {
+      const text = err instanceof Error ? err.message : 'Sample download failed'
+      setImportMessage(text)
+      toast.error(text)
+    } finally {
+      setSampleBusy(false)
+    }
+  }
+
+  async function importExcelFile(): Promise<void> {
+    setImportBusy(true)
+    setImportMessage(null)
+    try {
+      const result = await window.api.importPickExcelFile()
+      if (!result.ok) {
+        if (result.error !== 'Import cancelled') {
+          setImportMessage(result.error)
+          toast.error(result.error)
+        }
+        return
+      }
+      const { summary } = result
+      const bits = [
+        `${summary.partsCreated} part${summary.partsCreated === 1 ? '' : 's'}`,
+        `${summary.buildsCreated} build${summary.buildsCreated === 1 ? '' : 's'}`,
+        `${summary.logsCreated} log${summary.logsCreated === 1 ? '' : 's'}`,
+        `${summary.ammoCreated} ammo lot${summary.ammoCreated === 1 ? '' : 's'}`
+      ]
+      const warn =
+        summary.warnings.length > 0
+          ? ` · ${summary.warnings.length} warning${summary.warnings.length === 1 ? '' : 's'}`
+          : ''
+      setImportMessage(`Imported ${bits.join(', ')}${warn}`)
+      toast.success('Excel import complete')
+      onRefresh()
+    } catch (err) {
+      const text = err instanceof Error ? err.message : 'Excel import failed'
+      setImportMessage(text)
+      toast.error(text)
+    } finally {
+      setImportBusy(false)
     }
   }
 
@@ -888,29 +949,48 @@ export function SettingsPage({
 
       <section className="settings-panel settings-bento-wide">
         <div className="section-header">
-          <h2>Export</h2>
+          <h2>Import / Export</h2>
         </div>
         <p className="settings-note">
-          Hate this app? Here’s an easy way out. Pack your inventory, builds, logs, and round
-          counts into Excel and go write formulas about your feelings in Sheets. No hard feelings —
-          we even made the Summary tab look decent so your breakup spreadsheet isn’t ugly.
+          <strong>Download sample</strong> gives you a filled workbook (Instructions + Inventory /
+          Builds / Logs / Ammo). Edit it in Excel or Google Sheets (File → Download → .xlsx), then{' '}
+          <strong>Import Excel</strong>. Existing IDs are reused; new rows are added. Summary and
+          Round Counts sheets are ignored on import.
         </p>
         <p className="muted settings-note">
-          <strong>Export Excel</strong> builds a workbook with Summary (lifetime + yearly rounds),
-          Inventory, Builds, Logs, Round Counts, and Ammo. Also works as a normal backup if you’re
-          not actually dumping us.
+          <strong>Export Excel</strong> packs Summary, Inventory, Builds, Logs, Round Counts, and
+          Ammo — same headers the importer expects, so round-tripping works.
         </p>
         <div className="row-actions">
           <button
             type="button"
+            className="btn-ghost btn-with-icon"
+            disabled={sampleBusy || importBusy}
+            onClick={() => void downloadSampleExcel()}
+          >
+            <Icon name="share" size={16} />
+            {sampleBusy ? 'Saving sample…' : 'Download sample Excel…'}
+          </button>
+          <button
+            type="button"
             className="btn-primary btn-with-icon"
+            disabled={importBusy || sampleBusy}
+            onClick={() => void importExcelFile()}
+          >
+            <Icon name="add" size={16} />
+            {importBusy ? 'Importing…' : 'Import Excel…'}
+          </button>
+          <button
+            type="button"
+            className="btn-ghost btn-with-icon"
             disabled={exportBusy}
             onClick={() => void exportExcelFile()}
           >
             <Icon name="share" size={16} />
-            {exportBusy ? 'Packing bags…' : 'Export Excel (escape hatch)…'}
+            {exportBusy ? 'Packing bags…' : 'Export Excel…'}
           </button>
         </div>
+        {importMessage ? <p className="settings-note">{importMessage}</p> : null}
         {exportMessage ? <p className="settings-note">{exportMessage}</p> : null}
       </section>
       </div>

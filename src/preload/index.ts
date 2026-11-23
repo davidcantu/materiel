@@ -115,7 +115,11 @@ const api = {
     ipcRenderer.invoke('import:from-json', document),
   importPickJsonFile: (): Promise<MaterielImportResult> =>
     ipcRenderer.invoke('import:pick-json-file'),
+  importPickExcelFile: (): Promise<MaterielImportResult> =>
+    ipcRenderer.invoke('import:pick-excel-file'),
   exportExcel: (): Promise<MaterielExportResult> => ipcRenderer.invoke('export:excel'),
+  exportSampleExcel: (): Promise<MaterielExportResult> =>
+    ipcRenderer.invoke('export:sample-excel'),
   getAiStatus: (payload?: {
     provider?: AiProviderId
     rememberProvider?: boolean
