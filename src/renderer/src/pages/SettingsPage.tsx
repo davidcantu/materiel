@@ -5,12 +5,19 @@ import { type ProfileInfo, type ProfilePatch } from '../../../shared/profile'
 import type { UpdateCheckResult } from '../../../shared/updates'
 import {
   AI_PROVIDER_IDS,
+  AI_PROVIDER_KEY_HINTS,
   AI_PROVIDER_LABELS,
   type AiCapabilityState,
   type AiModelInfo,
   type AiProviderId,
   type AiStatusInfo
 } from '../../../shared/ai'
+import {
+  AI_PRIVACY_COPY,
+  DEFAULT_AI_PRIVACY_PREFS,
+  type AiPrivacyPrefs
+} from '../../../shared/ai-privacy'
+import { UNLOCK_MIN_LENGTH } from '../../../shared/unlock'
 import { BrandLogo } from '../components/BrandLogo'
 import { Icon } from '../components/icons/Icon'
 import { ImageCropField, type ImageCropValue } from '../components/ImageCropField'
@@ -20,7 +27,10 @@ import { useToast } from '../components/toast-context'
 import { setStoredThemePreference, THEME_OPTIONS, type ThemePreference } from '../lib/theme'
 
 const AI_SUBSCRIPTION_NOTE =
-  'API keys are separate from chat subscriptions (ChatGPT Plus, Claude Pro, Grok, etc.). Materiel talks to the provider API with your key; subscription chat apps do not include API access.'
+  'API keys are separate from chat subscriptions (ChatGPT Plus, Claude Pro, grok.com, etc.). For Grok models pick xAI (Grok) and create a key at console.x.ai — that is not Groq, and a grok.com chat login is not an API key.'
+
+const EXPORT_PLAINTEXT_WARNING =
+  'This export is a plaintext spreadsheet (serial numbers, locations, values, and other inventory detail). Store it only where you trust the file — do not sync it to shared drives or email it casually.'
 
 function capabilityLabel(state: AiCapabilityState): string {
   switch (state) {
@@ -134,6 +144,16 @@ export function SettingsPage({
   const [aiBusy, setAiBusy] = useState(false)
   const [aiMessage, setAiMessage] = useState<string | null>(null)
   const [aiError, setAiError] = useState<string | null>(null)
+  const [aiPrivacy, setAiPrivacy] = useState<AiPrivacyPrefs>({ ...DEFAULT_AI_PRIVACY_PREFS })
+  const [unlockEnabled, setUnlockEnabled] = useState(false)
+  const [unlockBusy, setUnlockBusy] = useState(false)
+  const [unlockError, setUnlockError] = useState<string | null>(null)
+  const [unlockMessage, setUnlockMessage] = useState<string | null>(null)
+  const [unlockPassphrase, setUnlockPassphrase] = useState('')
+  const [unlockConfirm, setUnlockConfirm] = useState('')
+  const [unlockCurrent, setUnlockCurrent] = useState('')
+  const [unlockNext, setUnlockNext] = useState('')
+  const [unlockNextConfirm, setUnlockNextConfirm] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -192,10 +212,28 @@ export function SettingsPage({
           setAiError(err instanceof Error ? err.message : 'Failed to load AI settings')
         }
       })
+    void window.api
+      .getAiPrivacyPrefs()
+      .then((prefs) => {
+        if (!cancelled) setAiPrivacy(prefs)
+      })
+      .catch(() => {
+        /* defaults already set */
+      })
+    void window.api
+      .getUnlockStatus()
+      .then((status) => {
+        if (!cancelled) {
+          setUnlockEnabled(Boolean(status.required || profile?.unlockPinSet))
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setUnlockEnabled(Boolean(profile?.unlockPinSet))
+      })
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [profile?.unlockPinSet])
 
   async function handleAiProviderChange(provider: AiProviderId): Promise<void> {
     setAiError(null)
@@ -305,7 +343,84 @@ export function SettingsPage({
     }
   }
 
+  async function patchAiPrivacy(patch: Partial<AiPrivacyPrefs>): Promise<void> {
+    try {
+      const next = await window.api.setAiPrivacyPrefs(patch)
+      setAiPrivacy(next)
+      toast.success('AI privacy settings saved.')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not save AI privacy settings')
+    }
+  }
+
+  async function handleEnableUnlock(): Promise<void> {
+    setUnlockBusy(true)
+    setUnlockError(null)
+    setUnlockMessage(null)
+    try {
+      await window.api.enableUnlock({
+        passphrase: unlockPassphrase,
+        confirm: unlockConfirm
+      })
+      setUnlockEnabled(true)
+      setUnlockPassphrase('')
+      setUnlockConfirm('')
+      setUnlockMessage(
+        'Unlock passphrase enabled. Materiel will ask for it on launch. Remember it — without it the database cannot open.'
+      )
+      toast.success('Unlock passphrase enabled')
+      onRefresh()
+    } catch (err) {
+      setUnlockError(err instanceof Error ? err.message : 'Could not enable unlock')
+    } finally {
+      setUnlockBusy(false)
+    }
+  }
+
+  async function handleChangeUnlock(): Promise<void> {
+    setUnlockBusy(true)
+    setUnlockError(null)
+    setUnlockMessage(null)
+    try {
+      await window.api.changeUnlock({
+        currentPassphrase: unlockCurrent,
+        nextPassphrase: unlockNext,
+        confirm: unlockNextConfirm
+      })
+      setUnlockCurrent('')
+      setUnlockNext('')
+      setUnlockNextConfirm('')
+      setUnlockMessage('Unlock passphrase updated.')
+      toast.success('Unlock passphrase updated')
+    } catch (err) {
+      setUnlockError(err instanceof Error ? err.message : 'Could not change unlock passphrase')
+    } finally {
+      setUnlockBusy(false)
+    }
+  }
+
+  async function handleDisableUnlock(): Promise<void> {
+    setUnlockBusy(true)
+    setUnlockError(null)
+    setUnlockMessage(null)
+    try {
+      await window.api.disableUnlock({ passphrase: unlockCurrent })
+      setUnlockEnabled(false)
+      setUnlockCurrent('')
+      setUnlockMessage('Unlock passphrase removed. Auto-unlock via OS secure storage is restored.')
+      toast.success('Unlock passphrase disabled')
+      onRefresh()
+    } catch (err) {
+      setUnlockError(err instanceof Error ? err.message : 'Could not disable unlock')
+    } finally {
+      setUnlockBusy(false)
+    }
+  }
+
   async function exportExcelFile(): Promise<void> {
+    if (!window.confirm(`${EXPORT_PLAINTEXT_WARNING}\n\nContinue with Export Excel?`)) {
+      return
+    }
     setExportBusy(true)
     setExportMessage(null)
     try {
@@ -917,11 +1032,12 @@ export function SettingsPage({
           <h2>AI API</h2>
         </div>
         <p className="muted">
-          Bring your own key for Anthropic, OpenAI, xAI, or Groq. Usage is billed to your provider
-          account — Materiel never hosts your data. Keys stay encrypted on this computer and are
-          never sent back to the UI after save. Saving a key unlocks the AI View in the sidebar for
-          armory Q&amp;A, training ideas, and assisted inventory fill-ins.
+          Bring your own key for Anthropic, OpenAI, xAI (Grok), or Groq. Usage is billed to your
+          provider account — Materiel never hosts your data. Keys stay encrypted on this computer
+          and are never sent back to the UI after save. Saving a key unlocks the AI View in the
+          sidebar for armory Q&amp;A, training ideas, and assisted inventory fill-ins.
         </p>
+        <p className="settings-note muted">{AI_PRIVACY_COPY.lead}</p>
         <p className="settings-note muted">{AI_SUBSCRIPTION_NOTE}</p>
 
         {!aiStatus && !aiError ? <p className="muted">Loading AI settings…</p> : null}
@@ -959,6 +1075,7 @@ export function SettingsPage({
                   }
                   onChange={(e) => setAiKeyDraft(e.target.value)}
                 />
+                <span className="field-hint">{AI_PROVIDER_KEY_HINTS[aiStatus.provider]}</span>
               </label>
 
               <label className="field">
@@ -1054,12 +1171,154 @@ export function SettingsPage({
               )}
             </div>
 
+            <div className="ai-privacy-panel">
+              <h3 className="ai-capability-heading">AI data minimization</h3>
+              <p className="muted settings-note">
+                Defaults favor privacy. Serial numbers are never sent. Changes apply to AI View and
+                future coach prompts.
+              </p>
+              <label className="toggle-row">
+                <input
+                  type="checkbox"
+                  checked={aiPrivacy.includeLocations}
+                  onChange={(e) => void patchAiPrivacy({ includeLocations: e.target.checked })}
+                />
+                <span>Include locations / venues in AI prompts</span>
+              </label>
+              <label className="toggle-row">
+                <input
+                  type="checkbox"
+                  checked={aiPrivacy.includeNotes}
+                  onChange={(e) => void patchAiPrivacy({ includeNotes: e.target.checked })}
+                />
+                <span>Include free-text notes in AI prompts</span>
+              </label>
+              <label className="toggle-row">
+                <input
+                  type="checkbox"
+                  checked={aiPrivacy.includeEquipmentDetail}
+                  onChange={(e) =>
+                    void patchAiPrivacy({ includeEquipmentDetail: e.target.checked })
+                  }
+                />
+                <span>Include manufacturer / model / caliber detail</span>
+              </label>
+              <label className="toggle-row">
+                <input
+                  type="checkbox"
+                  checked={aiPrivacy.confirmBeforeSend}
+                  onChange={(e) => void patchAiPrivacy({ confirmBeforeSend: e.target.checked })}
+                />
+                <span>Confirm before each AI request leaves this computer</span>
+              </label>
+            </div>
+
             {aiMessage ? <p className="settings-note">{aiMessage}</p> : null}
             {aiError ? <p className="form-error">{aiError}</p> : null}
           </div>
         ) : aiError ? (
           <p className="form-error">{aiError}</p>
         ) : null}
+      </section>
+
+      <section className="settings-panel settings-bento-wide">
+        <div className="section-header">
+          <h2>App unlock</h2>
+        </div>
+        <p className="muted settings-note">
+          Optional passphrase required each time Materiel launches. The database encryption key is
+          wrapped with your passphrase (scrypt + AES-GCM). If you forget it, this copy of the
+          database cannot be opened — keep a backup you trust.
+        </p>
+        {!unlockEnabled ? (
+          <div className="form-grid">
+            <label className="field">
+              <span className="field-label">New passphrase</span>
+              <input
+                type="password"
+                autoComplete="new-password"
+                value={unlockPassphrase}
+                disabled={unlockBusy}
+                onChange={(e) => setUnlockPassphrase(e.target.value)}
+                placeholder={`At least ${UNLOCK_MIN_LENGTH} characters`}
+              />
+            </label>
+            <label className="field">
+              <span className="field-label">Confirm passphrase</span>
+              <input
+                type="password"
+                autoComplete="new-password"
+                value={unlockConfirm}
+                disabled={unlockBusy}
+                onChange={(e) => setUnlockConfirm(e.target.value)}
+              />
+            </label>
+            <div className="row-actions field-span">
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={unlockBusy || !unlockPassphrase || !unlockConfirm}
+                onClick={() => void handleEnableUnlock()}
+              >
+                {unlockBusy ? 'Working…' : 'Enable unlock passphrase'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="form-grid">
+            <label className="field">
+              <span className="field-label">Current passphrase</span>
+              <input
+                type="password"
+                autoComplete="current-password"
+                value={unlockCurrent}
+                disabled={unlockBusy}
+                onChange={(e) => setUnlockCurrent(e.target.value)}
+              />
+            </label>
+            <label className="field">
+              <span className="field-label">New passphrase</span>
+              <input
+                type="password"
+                autoComplete="new-password"
+                value={unlockNext}
+                disabled={unlockBusy}
+                onChange={(e) => setUnlockNext(e.target.value)}
+                placeholder={`At least ${UNLOCK_MIN_LENGTH} characters`}
+              />
+            </label>
+            <label className="field">
+              <span className="field-label">Confirm new passphrase</span>
+              <input
+                type="password"
+                autoComplete="new-password"
+                value={unlockNextConfirm}
+                disabled={unlockBusy}
+                onChange={(e) => setUnlockNextConfirm(e.target.value)}
+              />
+            </label>
+            <div className="row-actions field-span">
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={unlockBusy || !unlockCurrent || !unlockNext || !unlockNextConfirm}
+                onClick={() => void handleChangeUnlock()}
+              >
+                {unlockBusy ? 'Working…' : 'Change passphrase'}
+              </button>
+              <button
+                type="button"
+                className="btn-ghost"
+                disabled={unlockBusy || !unlockCurrent}
+                onClick={() => void handleDisableUnlock()}
+              >
+                Disable unlock
+              </button>
+            </div>
+          </div>
+        )}
+        {unlockMessage ? <p className="settings-note">{unlockMessage}</p> : null}
+        {unlockError ? <p className="form-error">{unlockError}</p> : null}
       </section>
 
       <section className="settings-panel settings-bento-wide">
@@ -1155,6 +1414,7 @@ export function SettingsPage({
           <strong>Export Excel</strong> packs Summary, Inventory, Builds, Logs, Round Counts, and
           Ammo — same headers the importer expects, so round-tripping works.
         </p>
+        <p className="form-error settings-note">{EXPORT_PLAINTEXT_WARNING}</p>
         <div className="row-actions">
           <button
             type="button"
