@@ -41,6 +41,11 @@ import type {
   AiTestConnectionResult
 } from '../shared/ai'
 import type {
+  AiApplyInventorySuggestionInput,
+  AiAssistantAskInput,
+  AiAssistantAskResult
+} from '../shared/ai-assistant'
+import type {
   AarAttachment,
   AarCompleteValidation,
   AarListItem,
@@ -140,6 +145,10 @@ declare global {
       analyzeWithAiCoach: (input?: AiCoachAnalyzeInput) => Promise<AiCoachAnalyzeResult>
       extractCof: (input: AiExtractCofInput) => Promise<AiExtractCofResult>
       listAiAnalyses: (limit?: number) => Promise<AiAnalysisListItem[]>
+      askAiAssistant: (input: AiAssistantAskInput) => Promise<AiAssistantAskResult>
+      applyAiInventorySuggestion: (
+        input: AiApplyInventorySuggestionInput
+      ) => Promise<{ ok: true } | { ok: false; error: string }>
       listAars: () => Promise<AarListItem[]>
       getAar: (id: string) => Promise<AarRecord | null>
       getAarByLog: (logEntryId: string) => Promise<AarRecord | null>

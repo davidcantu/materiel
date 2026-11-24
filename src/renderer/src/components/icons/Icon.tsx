@@ -25,6 +25,7 @@ export type IconName =
   | 'warning'
   | 'success'
   | 'maintenanceDue'
+  | 'ai'
 
 type IconProps = {
   name: IconName
@@ -229,6 +230,14 @@ function paths(name: IconName): React.ReactNode {
           <path d="M7.5 12h2.2M7.5 14.8h3.5" />
           <circle cx="17.2" cy="16.8" r="3.6" />
           <path d="M17.2 15.2v1.8l1.2.8" />
+        </>
+      )
+    case 'ai':
+      return (
+        <>
+          <path d="M12 3.5 13.4 8.2 18 9.5 13.4 10.8 12 15.5 10.6 10.8 6 9.5 10.6 8.2z" />
+          <path d="M18.2 14.2 18.9 16.2 20.8 16.9 18.9 17.6 18.2 19.6 17.5 17.6 15.6 16.9 17.5 16.2z" />
+          <path d="M6.2 13.5 6.7 15 8.2 15.5 6.7 16 6.2 17.5 5.7 16 4.2 15.5 5.7 15z" />
         </>
       )
     default:

@@ -22,8 +22,13 @@ import {
   partPrimaryTitle,
   typeFilterLabel
 } from '../lib/format'
-
-const DEFAULT_STATUSES: PartStatus[] = ['In Stock', 'In Use']
+import {
+  DEFAULT_INVENTORY_FILTERS,
+  inventoryFiltersEqual,
+  loadInventoryFilterDefaults,
+  saveInventoryFilterDefaults,
+  type InventoryFilterDefaults
+} from '../lib/view-filter-defaults'
 
 /** Always-visible category chips (plus All). Remaining types live under +. */
 const PRIMARY_TYPE_CHIPS: PartType[] = ['Action', 'Barrel', 'Chassis', 'Pistol', 'Optic', 'Misc']
@@ -31,6 +36,14 @@ const PRIMARY_TYPE_CHIPS: PartType[] = ['Action', 'Barrel', 'Chassis', 'Pistol',
 type InventoryPageProps = {
   trackValue: boolean
   trackedPlatforms?: Platform[]
+}
+
+function currentInventoryFilters(
+  platform: Platform | 'All',
+  type: PartType | 'All',
+  statuses: PartStatus[]
+): InventoryFilterDefaults {
+  return { platform, type, statuses }
 }
 
 export function InventoryPage({
@@ -42,14 +55,28 @@ export function InventoryPage({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
-  const [platformFilter, setPlatformFilter] = useState<Platform | 'All'>('All')
-  const [typeFilter, setTypeFilter] = useState<PartType | 'All'>('All')
-  const [statuses, setStatuses] = useState<PartStatus[]>(DEFAULT_STATUSES)
+  const [savedDefaults, setSavedDefaults] = useState<InventoryFilterDefaults>(() =>
+    loadInventoryFilterDefaults()
+  )
+  const [platformFilter, setPlatformFilter] = useState<Platform | 'All'>(
+    () => loadInventoryFilterDefaults().platform
+  )
+  const [typeFilter, setTypeFilter] = useState<PartType | 'All'>(
+    () => loadInventoryFilterDefaults().type
+  )
+  const [statuses, setStatuses] = useState<PartStatus[]>(
+    () => loadInventoryFilterDefaults().statuses
+  )
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<PartInfo | null>(null)
   const [typeMenuOpen, setTypeMenuOpen] = useState(false)
   const [pendingPistolBuild, setPendingPistolBuild] = useState<PartInfo | null>(null)
   const [pistolBuildBusy, setPistolBuildBusy] = useState(false)
+
+  const filtersAreDefault = inventoryFiltersEqual(
+    currentInventoryFilters(platformFilter, typeFilter, statuses),
+    savedDefaults
+  )
 
   const availablePlatforms = useMemo(
     () =>
@@ -369,6 +396,25 @@ export function InventoryPage({
             </button>
           ))}
         </div>
+        <label className="toggle-row filter-default-toggle">
+          <input
+            type="checkbox"
+            checked={filtersAreDefault}
+            onChange={(e) => {
+              if (e.target.checked) {
+                const next = currentInventoryFilters(platformFilter, typeFilter, statuses)
+                saveInventoryFilterDefaults(next)
+                setSavedDefaults(next)
+                toast.success('Inventory filters saved as default.')
+              } else {
+                saveInventoryFilterDefaults(DEFAULT_INVENTORY_FILTERS)
+                setSavedDefaults(DEFAULT_INVENTORY_FILTERS)
+                toast.success('Inventory default filters cleared.')
+              }
+            }}
+          />
+          <span>Remember these filters as default</span>
+        </label>
       </div>
 
       <PageFeedback
@@ -399,7 +445,7 @@ export function InventoryPage({
             setSearch('')
             setPlatformFilter('All')
             setTypeFilter('All')
-            setStatuses(DEFAULT_STATUSES)
+            setStatuses([...DEFAULT_INVENTORY_FILTERS.statuses])
           }}
         />
       ) : null}

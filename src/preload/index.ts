@@ -42,6 +42,11 @@ import type {
   AiTestConnectionResult
 } from '../shared/ai'
 import type {
+  AiApplyInventorySuggestionInput,
+  AiAssistantAskInput,
+  AiAssistantAskResult
+} from '../shared/ai-assistant'
+import type {
   AarListItem,
   AarPatch,
   AarRecord,
@@ -169,6 +174,12 @@ const api = {
     ipcRenderer.invoke('ai:extractCof', input),
   listAiAnalyses: (limit?: number): Promise<AiAnalysisListItem[]> =>
     ipcRenderer.invoke('ai:listAnalyses', limit),
+  askAiAssistant: (input: AiAssistantAskInput): Promise<AiAssistantAskResult> =>
+    ipcRenderer.invoke('ai:ask', input),
+  applyAiInventorySuggestion: (
+    input: AiApplyInventorySuggestionInput
+  ): Promise<{ ok: true } | { ok: false; error: string }> =>
+    ipcRenderer.invoke('ai:applyInventorySuggestion', input),
 
   listAars: (): Promise<AarListItem[]> => ipcRenderer.invoke('aar:list'),
   getAar: (id: string): Promise<AarRecord | null> => ipcRenderer.invoke('aar:get', id),
