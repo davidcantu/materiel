@@ -468,6 +468,13 @@ export function LogSessionModal({
             </div>
           ) : null}
 
+          {editing && initial && !initial.systemId && systems.length > 0 ? (
+            <p className="settings-note field-span" role="status">
+              This session’s build was deleted. Pick a firearm system to reattach it, then save —
+              round counts will apply to that build.
+            </p>
+          ) : null}
+
           {confirming && confirmSummary ? (
             <div className="confirm-summary field-span" role="status">
               <div className="confirm-summary-label">Confirm before save</div>
