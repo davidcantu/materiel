@@ -10,6 +10,11 @@ export type CompleteOptions = {
   prompt: string
   system?: string
   maxTokens?: number
+  /**
+   * xAI Grok reasoning depth. Defaults to "low" for interactive Materiel asks.
+   * Ignored by non-xAI providers.
+   */
+  reasoningEffort?: 'low' | 'medium' | 'high' | 'xhigh'
   images?: CompleteImagePart[]
 }
 

@@ -64,6 +64,100 @@ test('OpenAI-compatible testConnection lists models then completes', async () =>
   assert.equal(step, 2)
 })
 
+test('xAI complete uses max_completion_tokens and low reasoning_effort for Grok 4', async () => {
+  const captured: { body?: Record<string, unknown> } = {}
+  const provider = createOpenAiCompatibleProvider(
+    { id: 'xai', label: 'xAI', baseUrl: 'https://api.x.ai/v1' },
+    {
+      apiKey: 'xai-test-key',
+      fetchImpl: async (_url, init) => {
+        captured.body = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>
+        return new Response(
+          JSON.stringify({
+            choices: [{ finish_reason: 'stop', message: { content: 'pong' } }]
+          }),
+          { status: 200 }
+        )
+      }
+    }
+  )
+
+  const result = await provider.complete({
+    model: 'grok-4.6',
+    prompt: 'Reply with the single word: pong',
+    maxTokens: 8
+  })
+  assert.equal(result.text, 'pong')
+  assert.equal(captured.body?.max_completion_tokens, 8)
+  assert.equal(captured.body?.max_tokens, undefined)
+  assert.equal(captured.body?.reasoning_effort, 'low')
+})
+
+test('OpenAI-compatible complete reads text-part content arrays', async () => {
+  const provider = createOpenAiCompatibleProvider(
+    { id: 'openai', label: 'OpenAI', baseUrl: 'https://api.openai.com/v1' },
+    {
+      apiKey: 'sk-test',
+      fetchImpl: async () =>
+        new Response(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  content: [{ type: 'text', text: 'hello' }, { type: 'text', text: 'world' }]
+                }
+              }
+            ]
+          }),
+          { status: 200 }
+        )
+    }
+  )
+
+  const result = await provider.complete({ model: 'gpt-4.1-mini', prompt: 'hi', maxTokens: 16 })
+  assert.equal(result.text, 'hello\nworld')
+})
+
+test('OpenAI-compatible complete rejects empty assistant content', async () => {
+  const provider = createOpenAiCompatibleProvider(
+    { id: 'xai', label: 'xAI', baseUrl: 'https://api.x.ai/v1' },
+    {
+      apiKey: 'xai-test-key',
+      fetchImpl: async () =>
+        new Response(
+          JSON.stringify({
+            choices: [{ finish_reason: 'length', message: { content: '' } }]
+          }),
+          { status: 200 }
+        )
+    }
+  )
+
+  await assert.rejects(
+    () => provider.complete({ model: 'grok-4.6', prompt: 'hi', maxTokens: 8 }),
+    /empty answer|reasoning/i
+  )
+})
+
+test('xAI complete maps abort to a Grok reasoning timeout message', async () => {
+  const provider = createOpenAiCompatibleProvider(
+    { id: 'xai', label: 'xAI', baseUrl: 'https://api.x.ai/v1' },
+    {
+      apiKey: 'xai-test-key',
+      fetchImpl: async () => {
+        const err = new Error('This operation was aborted')
+        err.name = 'AbortError'
+        throw err
+      }
+    }
+  )
+
+  await assert.rejects(
+    () => provider.complete({ model: 'grok-4.6', prompt: 'hi', maxTokens: 8 }),
+    /timed out while reasoning/i
+  )
+})
+
 test('Anthropic listModels uses x-api-key and maps 401 without leaking key', async () => {
   const key = 'sk-ant-secret-TESTKEYVALUE999'
   const provider = createAnthropicProvider({
