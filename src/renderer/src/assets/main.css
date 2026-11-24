@@ -1533,6 +1533,202 @@ html[data-theme='dark'] .brand-logo-dark {
   padding: 0.5rem 0 0.25rem;
 }
 
+.column-visibility .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.column-visibility-menu {
+  right: 0;
+  left: auto;
+  min-width: 12.5rem;
+}
+
+.column-visibility-hint {
+  margin: 0.15rem 0.4rem 0.35rem;
+  font-size: 0.75rem;
+}
+
+.column-visibility-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--brand-dark);
+}
+
+.column-visibility-option:hover {
+  background: color-mix(in srgb, var(--brand-primary) 10%, transparent);
+}
+
+.column-visibility-option input {
+  width: auto;
+  margin: 0;
+}
+
+.column-visibility-reset {
+  margin: 0.25rem 0.25rem 0.15rem;
+  justify-self: start;
+}
+
+.dash-cadence-grid,
+.dash-platform-grid,
+.dash-gaps-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.dash-cadence-card,
+.dash-platform-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+}
+
+.dash-cadence-card strong,
+.dash-platform-card strong {
+  color: var(--brand-deep);
+  font-size: 1.05rem;
+}
+
+.dash-cadence-nudge {
+  margin: 0.85rem 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.dash-health-list,
+.dash-ppews-list,
+.dash-gap-list,
+.dash-activity-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.dash-health-row,
+.dash-ppews-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(7rem, 1fr);
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.dash-health-copy,
+.dash-ppews-copy,
+.dash-activity-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.dash-health-meter,
+.dash-ppews-meter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.45rem;
+  align-items: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-split-bars {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.dash-split-row {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr) auto;
+  gap: 0.65rem;
+  align-items: center;
+}
+
+.dash-split-track {
+  height: 0.65rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--brand-neutral) 16%, transparent);
+  overflow: hidden;
+}
+
+.dash-split-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--brand-primary);
+}
+
+.dash-split-value,
+.dash-split-label {
+  font-size: 0.85rem;
+}
+
+.dash-gaps-grid h3 {
+  margin: 0 0 0.45rem;
+  font-size: 0.85rem;
+  color: var(--brand-deep);
+}
+
+.dash-gap-link,
+.dash-activity-link {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  padding: 0.45rem 0.55rem;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dash-activity-link {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.65rem;
+  align-items: center;
+}
+
+.dash-gap-link:hover,
+.dash-activity-link:hover {
+  background: color-mix(in srgb, var(--brand-primary) 10%, transparent);
+}
+
+.dash-activity-kind {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--brand-neutral);
+}
+
+@media (max-width: 720px) {
+  .dash-cadence-grid,
+  .dash-platform-grid,
+  .dash-gaps-grid,
+  .dash-health-row,
+  .dash-ppews-list li,
+  .dash-split-row,
+  .dash-activity-link {
+    grid-template-columns: 1fr;
+  }
+}
+
 .activity-chart {
   --activity-cols: 12;
   display: grid;

@@ -8,6 +8,9 @@ export type ColumnOption<T extends string> = {
 
 type ColumnVisibilityMenuProps<T extends string> = {
   label: string
+  /** Menu heading above the checklist. */
+  menuTitle?: string
+  resetLabel?: string
   options: readonly ColumnOption<T>[]
   visible: readonly T[]
   onChange: (next: T[]) => void
@@ -16,6 +19,8 @@ type ColumnVisibilityMenuProps<T extends string> = {
 
 export function ColumnVisibilityMenu<T extends string>({
   label,
+  menuTitle = 'Show columns',
+  resetLabel = 'Reset columns',
   options,
   visible,
   onChange,
@@ -59,7 +64,7 @@ export function ColumnVisibilityMenu<T extends string>({
       </button>
       {open ? (
         <div className="type-chip-menu column-visibility-menu" role="menu" id={menuId}>
-          <p className="column-visibility-hint muted">Show columns</p>
+          <p className="column-visibility-hint muted">{menuTitle}</p>
           {options.map((option) => {
             const checked = visibleSet.has(option.id)
             return (
@@ -91,7 +96,7 @@ export function ColumnVisibilityMenu<T extends string>({
               setOpen(false)
             }}
           >
-            Reset columns
+            {resetLabel}
           </button>
         </div>
       ) : null}
