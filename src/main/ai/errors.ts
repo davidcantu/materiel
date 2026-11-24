@@ -58,7 +58,13 @@ export function mapProviderHttpError(
 export function mapUnknownError(error: unknown, knownKey?: string | null): string {
   if (error instanceof Error) {
     const msg = redactSecrets(error.message, knownKey)
-    if (/fetch failed|ECONNREFUSED|ENOTFOUND|network|offline|timed out|AbortError/i.test(msg)) {
+    if (
+      /AbortError/i.test(msg) ||
+      /timed out while reasoning|timed out waiting for a completion/i.test(msg)
+    ) {
+      return msg
+    }
+    if (/fetch failed|ECONNREFUSED|ENOTFOUND|network|offline|timed out|timeout/i.test(msg)) {
       return 'Could not reach the provider (offline or timed out). Check your network and try again.'
     }
     return msg || 'Unknown error'

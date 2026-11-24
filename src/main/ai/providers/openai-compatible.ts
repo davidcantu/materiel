@@ -22,7 +22,13 @@ export type OpenAiCompatibleConfig = {
   baseUrl: string
 }
 
+/** List-models / quick probes. */
 const DEFAULT_TIMEOUT_MS = 20_000
+/**
+ * Chat completions for reasoning models (esp. xAI Grok) routinely exceed 20s.
+ * xAI's own SDK samples use multi-minute timeouts.
+ */
+const DEFAULT_COMPLETE_TIMEOUT_MS = 120_000
 
 async function readBody(res: Response): Promise<string> {
   try {
@@ -32,17 +38,40 @@ async function readBody(res: Response): Promise<string> {
   }
 }
 
+function extractMessageText(content: unknown): string {
+  if (typeof content === 'string') return content
+  if (!Array.isArray(content)) return ''
+  const parts: string[] = []
+  for (const part of content) {
+    if (!part || typeof part !== 'object') continue
+    const row = part as { type?: unknown; text?: unknown }
+    if (typeof row.text === 'string' && row.text) {
+      parts.push(row.text)
+    }
+  }
+  return parts.join('\n')
+}
+
+function isReasoningModel(model: string): boolean {
+  return /^grok-4/i.test(model.trim())
+}
+
 export function createOpenAiCompatibleProvider(
   config: OpenAiCompatibleConfig,
   options: ProviderFactoryOptions
 ): LLMProvider {
   const fetchImpl: FetchImpl = options.fetchImpl ?? globalThis.fetch
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
+  const completeTimeoutMs = options.timeoutMs ?? DEFAULT_COMPLETE_TIMEOUT_MS
   const apiKey = options.apiKey.trim()
 
-  async function request(path: string, init?: RequestInit): Promise<Response> {
+  async function request(
+    path: string,
+    init?: RequestInit,
+    requestTimeoutMs: number = timeoutMs
+  ): Promise<Response> {
     const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), timeoutMs)
+    const timer = setTimeout(() => controller.abort(), requestTimeoutMs)
     try {
       return await fetchImpl(`${config.baseUrl}${path}`, {
         ...init,
@@ -124,17 +153,46 @@ export function createOpenAiCompatibleProvider(
       messages.push({ role: 'user', content })
     }
 
+    const maxTokens = completeOptions.maxTokens ?? 16
+    const body: Record<string, unknown> = {
+      model: completeOptions.model,
+      messages
+    }
+
+    // xAI prefers max_completion_tokens; other OpenAI-compatible hosts still use max_tokens.
+    if (config.id === 'xai') {
+      body.max_completion_tokens = maxTokens
+      // Grok 4.x reasons by default at "high" — too slow for interactive AI View.
+      if (isReasoningModel(completeOptions.model)) {
+        body.reasoning_effort = completeOptions.reasoningEffort ?? 'low'
+      }
+    } else {
+      body.max_tokens = maxTokens
+    }
+
     let res: Response
     try {
-      res = await request('/chat/completions', {
-        method: 'POST',
-        body: JSON.stringify({
-          model: completeOptions.model,
-          max_tokens: completeOptions.maxTokens ?? 16,
-          messages
-        })
-      })
+      res = await request(
+        '/chat/completions',
+        {
+          method: 'POST',
+          body: JSON.stringify(body)
+        },
+        completeTimeoutMs
+      )
     } catch (error) {
+      if (error instanceof Error && /abort/i.test(error.name + error.message)) {
+        throw new Error(
+          mapUnknownError(
+            new Error(
+              config.id === 'xai'
+                ? 'xAI (Grok) timed out while reasoning. Try again, pick a lighter Grok model, or ask a shorter question.'
+                : `${config.label} timed out waiting for a completion.`
+            ),
+            apiKey
+          )
+        )
+      }
       throw new Error(mapUnknownError(error, apiKey))
     }
 
@@ -159,10 +217,25 @@ export function createOpenAiCompatibleProvider(
       payload &&
       typeof payload === 'object' &&
       Array.isArray((payload as { choices?: unknown }).choices)
-        ? (payload as { choices: Array<{ message?: { content?: unknown } }> }).choices
+        ? (payload as {
+            choices: Array<{
+              finish_reason?: unknown
+              message?: { content?: unknown }
+            }>
+          }).choices
         : []
-    const content = choices[0]?.message?.content
-    const text = typeof content === 'string' ? content : ''
+    const choice = choices[0]
+    const text = extractMessageText(choice?.message?.content).trim()
+    if (!text) {
+      const finish =
+        typeof choice?.finish_reason === 'string' ? choice.finish_reason : 'unknown'
+      throw new Error(
+        `${config.label} returned an empty answer (finish_reason=${finish}). ` +
+          (config.id === 'xai'
+            ? 'Grok may still be budgeting tokens for reasoning — try again or choose a different Grok model in Settings.'
+            : 'Try another model or shorten the prompt.')
+      )
+    }
     const usageRaw =
       payload && typeof payload === 'object'
         ? (payload as { usage?: { prompt_tokens?: number; completion_tokens?: number } }).usage
