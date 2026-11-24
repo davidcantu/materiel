@@ -206,6 +206,7 @@ function AppShell(): React.JSX.Element {
             onNavigateLogs={() => setActive('logs')}
             onNavigateInventory={() => setActive('inventory')}
             onNavigateBuilds={() => setActive('builds')}
+            onNavigateAars={() => setActive('aars')}
           />
         ) : null}
         {view === 'inventory' ? (

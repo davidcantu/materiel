@@ -48,19 +48,19 @@ export function peakActivityBucket<T extends { rounds: number; fullLabel: string
 
 export type RecentActivityItem = {
   id: string
-  systemName: string
-  location: string
+  kind: 'log' | 'aar' | 'part'
+  title: string
+  subtitle: string
   date: string
-  roundsFired: number
-  cartridgeLabel: string
+  navigate: 'logs' | 'aars' | 'inventory'
 }
 
-export type MaintenanceAlertItem = {
+export type BarrelHealthItem = {
   partId: string
   title: string
-  kind: 'Maintenance' | 'Barrel Life'
   percent: number
   tone: 'ok' | 'warn' | 'high'
+  detail: string
 }
 
 export type MatchTrendPoint = {
@@ -71,7 +71,86 @@ export type MatchTrendPoint = {
   percentOfWinner: number | null
 }
 
+export type PlatformMixCounts = {
+  bolt_action: number
+  ar_pattern: number
+  pistol: number
+}
+
+export type SessionSplitBucket = {
+  sessions: number
+  rounds: number
+}
+
+export type PracticeMatchSplit = {
+  windowDays: number
+  practice: SessionSplitBucket
+  match: SessionSplitBucket
+}
+
+export type PpewsPulseItem = {
+  category: string
+  label: string
+  totalPoints: number
+  aarCount: number
+}
+
+export type MatchCadence = {
+  daysSincePractice: number | null
+  daysSinceMatch: number | null
+  lastPracticeDate: string | null
+  lastMatchDate: string | null
+}
+
+export type DashboardGapItem = {
+  id: string
+  label: string
+  missing: string[]
+  navigate: 'inventory' | 'logs'
+}
+
+export type DashboardGaps = {
+  inventory: DashboardGapItem[]
+  matches: DashboardGapItem[]
+}
+
 export type DashboardTrendWindow = 10 | 20 | 50 | 'all'
+
+/** Optional dashboard panels (KPIs / getting-started stay fixed). */
+export const DASHBOARD_PANEL_IDS = [
+  'matchCadence',
+  'maintenanceDue',
+  'barrelLife',
+  'practiceMatch',
+  'ppewsPulse',
+  'platformMix',
+  'gaps',
+  'recentActivity',
+  'shootingActivity',
+  'placementTrend',
+  'percentTrend',
+  'milestones'
+] as const
+
+export type DashboardPanelId = (typeof DASHBOARD_PANEL_IDS)[number]
+
+export const DASHBOARD_PANEL_LABELS: Record<DashboardPanelId, string> = {
+  matchCadence: 'Match cadence',
+  maintenanceDue: 'Maintenance due',
+  barrelLife: 'Barrel life',
+  practiceMatch: 'Practice vs Match',
+  ppewsPulse: 'PPEWS pulse',
+  platformMix: 'Platform mix',
+  gaps: 'Gaps to fill',
+  recentActivity: 'Recent activity',
+  shootingActivity: 'Shooting activity',
+  placementTrend: 'Placement trend',
+  percentTrend: '% of winner trend',
+  milestones: 'Milestones'
+}
+
+/** Default panel order — action / health first, then training, then depth charts. */
+export const DEFAULT_DASHBOARD_PANELS: DashboardPanelId[] = [...DASHBOARD_PANEL_IDS]
 
 export type DashboardSummary = {
   firstName: string
@@ -87,6 +166,16 @@ export type DashboardSummary = {
   monthlyRounds: MonthlyRounds[]
   /** Match sessions newest-first for placement / % winner charts. */
   matchTrends: MatchTrendPoint[]
+  /** Barrels nearest maintenance interval (max 5). */
+  maintenanceDue: BarrelHealthItem[]
+  /** Barrels nearest end of rated life (max 5). */
+  barrelLife: BarrelHealthItem[]
+  platformMix: { parts: PlatformMixCounts; builds: PlatformMixCounts }
+  practiceMatch: PracticeMatchSplit
+  ppewsPulse: PpewsPulseItem[]
+  matchCadence: MatchCadence
+  gaps: DashboardGaps
+  recentActivity: RecentActivityItem[]
 }
 
 const MONTH_SHORT = [
