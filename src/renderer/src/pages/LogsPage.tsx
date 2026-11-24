@@ -437,18 +437,16 @@ export function LogsPage({
                       <td>{log.velocity != null ? `${log.velocity} fps` : '—'}</td>
                       <td>
                         <div className="row-actions">
-                          {log.systemId ? (
-                            <button
-                              type="button"
-                              className="btn-ghost btn-sm"
-                              onClick={() => {
-                                setEditing(log)
-                                setModalOpen(true)
-                              }}
-                            >
-                              Edit
-                            </button>
-                          ) : null}
+                          <button
+                            type="button"
+                            className="btn-ghost btn-sm"
+                            onClick={() => {
+                              setEditing(log)
+                              setModalOpen(true)
+                            }}
+                          >
+                            Edit
+                          </button>
                           <button
                             type="button"
                             className="btn-ghost btn-sm"
