@@ -20,6 +20,7 @@ import { InventoryPage } from './pages/InventoryPage'
 import { LogsPage } from './pages/LogsPage'
 import { OnboardingPage } from './pages/OnboardingPage'
 import { SettingsPage } from './pages/SettingsPage'
+import { UnlockPage } from './pages/UnlockPage'
 import { WelcomePage } from './pages/WelcomePage'
 import { AAR_NAV_LABEL } from '../../shared/aar-template'
 
@@ -32,6 +33,7 @@ function AppShell(): React.JSX.Element {
   const [profile, setProfile] = useState<ProfileInfo | null>(null)
   const [active, setActive] = useState<NavId>('dashboard')
   const [bootstrapped, setBootstrapped] = useState(false)
+  const [needsUnlock, setNeedsUnlock] = useState(false)
   const [openAarId, setOpenAarId] = useState<string | null>(null)
   const [aiUnlocked, setAiUnlocked] = useState(false)
   const [themePreference, setThemePreference] = useState<ThemePreference>(() =>
@@ -79,6 +81,19 @@ function AppShell(): React.JSX.Element {
     }
   }, [])
 
+  const bootstrapApp = useCallback(async () => {
+    const [nextInfo, nextProfile, aiStatus] = await Promise.all([
+      window.api.getAppInfo(),
+      window.api.getProfile(),
+      window.api.getAiStatus().catch(() => null)
+    ])
+    setInfo(nextInfo)
+    setProfile(nextProfile)
+    setAiUnlocked(Boolean(aiStatus?.hasKey))
+    setNeedsUnlock(false)
+    setBootstrapped(true)
+  }, [])
+
   const refresh = useCallback(async () => {
     const [nextInfo, nextProfile] = await Promise.all([
       window.api.getAppInfo(),
@@ -92,34 +107,46 @@ function AppShell(): React.JSX.Element {
   useEffect(() => {
     let cancelled = false
     void window.api
-      .getAppInfo()
-      .then(async (nextInfo) => {
-        const [nextProfile, aiStatus] = await Promise.all([
-          window.api.getProfile(),
-          window.api.getAiStatus().catch(() => null)
-        ])
+      .getUnlockStatus()
+      .then(async (status) => {
         if (cancelled) return
-        setInfo(nextInfo)
-        setProfile(nextProfile)
-        setAiUnlocked(Boolean(aiStatus?.hasKey))
-        setBootstrapped(true)
+        if (status.required && !status.unlocked) {
+          setNeedsUnlock(true)
+          setBootstrapped(true)
+          return
+        }
+        await bootstrapApp()
       })
       .catch((err) => {
         if (!cancelled) {
           console.error(err)
-          setBootstrapped(true)
+          // Fall through to normal boot if unlock status is unavailable.
+          void bootstrapApp().catch((bootErr) => {
+            console.error(bootErr)
+            setBootstrapped(true)
+          })
         }
       })
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [bootstrapApp])
 
   if (!bootstrapped) {
     return (
       <div className="welcome-gate welcome-loading">
         <p className="muted">Opening Materiel…</p>
       </div>
+    )
+  }
+
+  if (needsUnlock) {
+    return (
+      <UnlockPage
+        onUnlocked={() => {
+          void bootstrapApp()
+        }}
+      />
     )
   }
 

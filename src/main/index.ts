@@ -11,6 +11,7 @@ import {
   buildDatabaseInitFailureHtml,
   type DatabaseInitFailure
 } from './db'
+import { isUnlockRequired } from './db/unlock'
 import { promptDatabaseInitFailure } from './db-init-failure'
 import { initBackupSubsystem } from './backup'
 import { registerSystemsIpc } from './systems/ipc'
@@ -24,6 +25,7 @@ import { registerAarIpc } from './aar/ipc'
 import { initUpdateChecker } from './updates'
 import { registerUpdatesIpc } from './updates/ipc'
 import { safeOpenExternal } from './security/open-external'
+import { registerUnlockIpc } from './unlock/ipc'
 
 type CreateWindowOptions = {
   initFailure?: DatabaseInitFailure | null
@@ -90,15 +92,24 @@ function registerDomainIpc(): void {
   registerAarIpc()
 }
 
+function registerOrReplaceHandle(
+  channel: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  listener: (...args: any[]) => unknown
+): void {
+  ipcMain.removeHandler(channel)
+  ipcMain.handle(channel, listener)
+}
+
 function registerMinimalFailureIpc(failure: DatabaseInitFailure): void {
-  ipcMain.handle('app:get-info', () => ({
+  registerOrReplaceHandle('app:get-info', () => ({
     name: 'Materiel',
     version: app.getVersion(),
     env: process.env.MAIN_VITE_APP_ENV ?? import.meta.env.MODE,
     backupProvider: 'unavailable'
   }))
 
-  ipcMain.handle('db:health', () => ({
+  registerOrReplaceHandle('db:health', () => ({
     ready: false,
     path: failure.dbPath,
     cipher: 'sqlcipher' as const,
@@ -116,13 +127,67 @@ app
       optimizer.watchWindowShortcuts(window)
     })
 
+    let booted = false
+    let backupProviderId = 'unavailable'
     let initFailure: DatabaseInitFailure | null = null
 
-    try {
-      initDatabase()
-    } catch (error) {
-      initFailure = toDatabaseInitFailure(error, { dbPath: getDatabasePath() })
-      console.error('[db] init failed — data was not deleted', initFailure)
+    const finishBoot = (options?: { key?: Buffer }): void => {
+      if (booted) return
+      initDatabase(options?.key ? { key: options.key } : {})
+      const backupProvider = initBackupSubsystem()
+      backupProviderId = backupProvider.id
+      registerDomainIpc()
+      registerUpdatesIpc()
+      initUpdateChecker()
+      booted = true
+    }
+
+    registerUnlockIpc({
+      isBooted: () => booted,
+      onUnlockedWithKey: (key) => {
+        try {
+          finishBoot({ key })
+        } catch (error) {
+          initFailure = toDatabaseInitFailure(error, { dbPath: getDatabasePath() })
+          console.error('[db] unlock open failed — data was not deleted', initFailure)
+          throw error instanceof Error ? error : new Error('Could not open database after unlock.')
+        }
+      }
+    })
+
+    ipcMain.handle('app:get-info', () => ({
+      name: 'Materiel',
+      version: app.getVersion(),
+      env: process.env.MAIN_VITE_APP_ENV ?? import.meta.env.MODE,
+      backupProvider: backupProviderId
+    }))
+
+    ipcMain.handle('db:health', () => {
+      if (!booted) {
+        return {
+          ready: false,
+          path: getDatabasePath(),
+          cipher: 'sqlcipher' as const,
+          migrationVersion: 0,
+          encrypted: true as const
+        }
+      }
+      return getHealth()
+    })
+
+    const unlockDeps = {
+      userDataPath: app.getPath('userData'),
+      dbPath: getDatabasePath()
+    }
+    const needsUnlock = isUnlockRequired(unlockDeps)
+
+    if (!needsUnlock) {
+      try {
+        finishBoot()
+      } catch (error) {
+        initFailure = toDatabaseInitFailure(error, { dbPath: getDatabasePath() })
+        console.error('[db] init failed — data was not deleted', initFailure)
+      }
     }
 
     if (initFailure) {
@@ -137,24 +202,7 @@ app
       return
     }
 
-    const backupProvider = initBackupSubsystem()
-    registerDomainIpc()
-
-    ipcMain.handle('app:get-info', () => ({
-      name: 'Materiel',
-      version: app.getVersion(),
-      env: process.env.MAIN_VITE_APP_ENV ?? import.meta.env.MODE,
-      backupProvider: backupProvider.id
-    }))
-
-    ipcMain.handle('db:health', () => getHealth())
-
-    registerUpdatesIpc()
-
     createWindow()
-
-    // Soft GitHub Releases check: prompt when a newer tag exists; no-op offline.
-    initUpdateChecker()
 
     app.on('activate', function () {
       if (BrowserWindow.getAllWindows().length === 0) createWindow()

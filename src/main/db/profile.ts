@@ -51,6 +51,7 @@ export type ProfilePatch = {
   trackedPlatforms?: Platform[]
   onboardingComplete?: boolean
   aarPromptOnPractice?: boolean
+  unlockPinSet?: boolean
 }
 
 const LOCAL_PROFILE_ID = 'local-profile'
@@ -204,6 +205,7 @@ export function updateProfile(db: Database.Database, patch: ProfilePatch): Profi
       tracked_platforms = @trackedPlatforms,
       onboarding_complete = @onboardingComplete,
       aar_prompt_on_practice = @aarPromptOnPractice,
+      unlock_pin_set = @unlockPinSet,
       updated_at = @updatedAt
     WHERE id = @id`
   ).run({
@@ -223,6 +225,7 @@ export function updateProfile(db: Database.Database, patch: ProfilePatch): Profi
     trackedPlatforms: serializeTrackedPlatforms(nextPlatforms),
     onboardingComplete: (patch.onboardingComplete ?? existing.onboardingComplete) ? 1 : 0,
     aarPromptOnPractice: (patch.aarPromptOnPractice ?? existing.aarPromptOnPractice) ? 1 : 0,
+    unlockPinSet: (patch.unlockPinSet ?? existing.unlockPinSet) ? 1 : 0,
     updatedAt
   })
 

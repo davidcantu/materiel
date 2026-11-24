@@ -1,9 +1,14 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   AI_ASSISTANT_SAMPLE_PROMPTS,
   type AiAssistantAskResult,
   type AiInventorySuggestion
 } from '../../../shared/ai-assistant'
+import {
+  AI_PRIVACY_COPY,
+  DEFAULT_AI_PRIVACY_PREFS,
+  type AiPrivacyPrefs
+} from '../../../shared/ai-privacy'
 import { EmptyState } from '../components/EmptyState'
 import { Icon } from '../components/icons/Icon'
 import { PageHeader } from '../components/PageHeader'
@@ -25,10 +30,32 @@ export function AiPage({ onNavigateSettings }: AiPageProps): React.JSX.Element {
   const [busy, setBusy] = useState(false)
   const [turns, setTurns] = useState<ChatTurn[]>([])
   const [applyingId, setApplyingId] = useState<string | null>(null)
+  const [privacy, setPrivacy] = useState<AiPrivacyPrefs>({ ...DEFAULT_AI_PRIVACY_PREFS })
+
+  useEffect(() => {
+    let cancelled = false
+    void window.api
+      .getAiPrivacyPrefs()
+      .then((prefs) => {
+        if (!cancelled) setPrivacy(prefs)
+      })
+      .catch(() => {
+        /* keep defaults */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   async function runAsk(nextPrompt: string, mode?: 'general' | 'inventory'): Promise<void> {
     const trimmed = nextPrompt.trim()
     if (!trimmed || busy) return
+    if (privacy.confirmBeforeSend) {
+      const ok = window.confirm(
+        `${AI_PRIVACY_COPY.confirmTitle}\n\n${AI_PRIVACY_COPY.confirmBody}\n\nLocations: ${privacy.includeLocations ? 'included' : 'redacted'} · Notes: ${privacy.includeNotes ? 'included' : 'redacted'} · Equipment detail: ${privacy.includeEquipmentDetail ? 'included' : 'redacted'}`
+      )
+      if (!ok) return
+    }
     setBusy(true)
     setPrompt(trimmed)
     try {
@@ -94,6 +121,7 @@ export function AiPage({ onNavigateSettings }: AiPageProps): React.JSX.Element {
       />
 
       <section className="ai-prompt-panel">
+        <p className="muted ai-prompt-lead">{AI_PRIVACY_COPY.lead}</p>
         <p className="muted ai-prompt-lead">Spark a useful question, or write your own.</p>
         <div className="ai-prompt-chips" role="list">
           {AI_ASSISTANT_SAMPLE_PROMPTS.map((sample) => (

@@ -26,8 +26,17 @@ export function mapProviderHttpError(
 
   switch (error.status) {
     case 401:
-    case 403:
-      return `${label} rejected the API key (HTTP ${error.status}). Check the key and try again.`
+    case 403: {
+      const xaiHint =
+        /xai|grok/i.test(label) && error.status === 401
+          ? ' Use an API key from console.x.ai (not a grok.com chat login, and not a Groq gsk_ key).'
+          : ''
+      const groqHint =
+        /groq/i.test(label) && !/xai|grok/i.test(label) && error.status === 401
+          ? ' Groq keys start with gsk_ and come from console.groq.com — they are not xAI/Grok keys.'
+          : ''
+      return `${label} rejected the API key (HTTP ${error.status}). Check the key and try again.${xaiHint}${groqHint}`
+    }
     case 402:
       return `${label} reports a billing problem (HTTP 402). Add credits or fix billing on the provider account.`
     case 404:

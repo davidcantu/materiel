@@ -14,12 +14,15 @@ import type {
   AiApplyInventorySuggestionInput,
   AiAssistantAskInput
 } from '../../shared/ai-assistant'
+import type { AiPrivacyPrefs } from '../../shared/ai-privacy'
+import { normalizeAiPrivacyPrefs } from '../../shared/ai-privacy'
 import type { AiCoachAnalyzeInput, AiExtractCofInput } from '../../shared/ai-coach'
 import { listAiAnalyses } from '../db/ai-analysis'
 import { requireDatabase } from '../db/connection'
 import { analyzeWithCoach } from './analyze'
 import { applyInventorySuggestion, askAssistant } from './ask'
 import { extractCofFromAttachment } from './extract-cof'
+import { loadAiPrefs, updateAiPrefs } from './prefs'
 import {
   getAiStatus,
   listAiModels,
@@ -104,4 +107,13 @@ export function registerAiIpc(): void {
   ipcMain.handle('ai:applyInventorySuggestion', (_event, input: AiApplyInventorySuggestionInput) =>
     applyInventorySuggestion(requireDatabase().db, input)
   )
+
+  ipcMain.handle('ai:getPrivacyPrefs', (): AiPrivacyPrefs => loadAiPrefs().privacy)
+
+  ipcMain.handle('ai:setPrivacyPrefs', (_event, patch: Partial<AiPrivacyPrefs>): AiPrivacyPrefs => {
+    const next = updateAiPrefs({
+      privacy: normalizeAiPrivacyPrefs({ ...loadAiPrefs().privacy, ...(patch ?? {}) })
+    })
+    return next.privacy
+  })
 }

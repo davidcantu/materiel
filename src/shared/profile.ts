@@ -53,6 +53,7 @@ export type ProfilePatch = {
   trackedPlatforms?: Platform[]
   onboardingComplete?: boolean
   aarPromptOnPractice?: boolean
+  unlockPinSet?: boolean
 }
 
 export function normalizeEmailIdentity(email: string): string {

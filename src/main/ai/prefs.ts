@@ -7,6 +7,11 @@ import { join } from 'path'
 import { app } from 'electron'
 import type { AiCapabilities, AiProviderId } from '../../shared/ai'
 import { AI_PROVIDER_IDS } from '../../shared/ai'
+import {
+  DEFAULT_AI_PRIVACY_PREFS,
+  normalizeAiPrivacyPrefs,
+  type AiPrivacyPrefs
+} from '../../shared/ai-privacy'
 import { aiKeysDir, type KeyStoreDeps } from './key-store'
 
 export type AiCapabilityCache = {
@@ -20,12 +25,14 @@ export type AiPrefs = {
   provider: AiProviderId
   modelByProvider: Partial<Record<AiProviderId, string | null>>
   capabilityCache: AiCapabilityCache | null
+  privacy: AiPrivacyPrefs
 }
 
 const DEFAULT_PREFS: AiPrefs = {
   provider: 'anthropic',
   modelByProvider: {},
-  capabilityCache: null
+  capabilityCache: null,
+  privacy: { ...DEFAULT_AI_PRIVACY_PREFS }
 }
 
 export type PrefsDeps = KeyStoreDeps & {
@@ -44,7 +51,9 @@ function isProviderId(value: unknown): value is AiProviderId {
 }
 
 function normalizePrefs(raw: unknown): AiPrefs {
-  if (!raw || typeof raw !== 'object') return { ...DEFAULT_PREFS, modelByProvider: {} }
+  if (!raw || typeof raw !== 'object') {
+    return { ...DEFAULT_PREFS, modelByProvider: {}, privacy: { ...DEFAULT_AI_PRIVACY_PREFS } }
+  }
 
   const obj = raw as Record<string, unknown>
   const provider = isProviderId(obj.provider) ? obj.provider : DEFAULT_PREFS.provider
@@ -90,20 +99,25 @@ function normalizePrefs(raw: unknown): AiPrefs {
     }
   }
 
-  return { provider, modelByProvider, capabilityCache }
+  return {
+    provider,
+    modelByProvider,
+    capabilityCache,
+    privacy: normalizeAiPrivacyPrefs(obj.privacy)
+  }
 }
 
 export function loadAiPrefs(deps?: PrefsDeps): AiPrefs {
   const path = prefsPath(deps)
   if (!existsSync(path)) {
-    return { ...DEFAULT_PREFS, modelByProvider: {} }
+    return { ...DEFAULT_PREFS, modelByProvider: {}, privacy: { ...DEFAULT_AI_PRIVACY_PREFS } }
   }
   try {
     const parsed = JSON.parse(readFileSync(path, 'utf8')) as unknown
     return normalizePrefs(parsed)
   } catch (error) {
     console.warn('[ai] failed to read prefs.json:', error)
-    return { ...DEFAULT_PREFS, modelByProvider: {} }
+    return { ...DEFAULT_PREFS, modelByProvider: {}, privacy: { ...DEFAULT_AI_PRIVACY_PREFS } }
   }
 }
 
@@ -122,7 +136,10 @@ export function updateAiPrefs(patch: Partial<AiPrefs>, deps?: PrefsDeps): AiPref
       ...(patch.modelByProvider ?? {})
     },
     capabilityCache:
-      patch.capabilityCache !== undefined ? patch.capabilityCache : current.capabilityCache
+      patch.capabilityCache !== undefined ? patch.capabilityCache : current.capabilityCache,
+    privacy: patch.privacy
+      ? normalizeAiPrivacyPrefs({ ...current.privacy, ...patch.privacy })
+      : current.privacy
   }
   saveAiPrefs(next, deps)
   return next

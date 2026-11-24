@@ -14,6 +14,8 @@ import { listAars } from '../db/aar'
 import { listParts, updatePart, type UpdatePartInput } from '../db/parts'
 import { listShootingLogs } from '../db/shooting-logs'
 import { listSystems } from '../db/systems'
+import type { AiPrivacyPrefs } from '../../shared/ai-privacy'
+import { DEFAULT_AI_PRIVACY_PREFS } from '../../shared/ai-privacy'
 import { mapUnknownError } from './errors'
 import { loadApiKey } from './key-store'
 import { loadAiPrefs } from './prefs'
@@ -100,7 +102,7 @@ function parseSuggestions(raw: unknown): AiInventorySuggestion[] {
   return out.slice(0, 25)
 }
 
-function buildLocalContext(db: Database.Database): string {
+function buildLocalContext(db: Database.Database, privacy: AiPrivacyPrefs): string {
   const parts = listParts(db).slice(0, 80)
   const systems = listSystems(db).slice(0, 40)
   const logs = listShootingLogs(db).slice(0, 30)
@@ -112,18 +114,19 @@ function buildLocalContext(db: Database.Database): string {
       `id=${p.id}`,
       `type=${p.type}`,
       `status=${p.status}`,
-      `mfr=${p.manufacturer}`,
-      p.model ? `model=${p.model}` : null,
-      p.name ? `name=${p.name}` : null,
-      p.caliber ? `caliber=${p.caliber}` : null,
-      p.gunsmith ? `gunsmith=${p.gunsmith}` : null,
+      // Serial numbers are never included (2A minimization).
+      privacy.includeEquipmentDetail ? `mfr=${p.manufacturer}` : null,
+      privacy.includeEquipmentDetail && p.model ? `model=${p.model}` : null,
+      privacy.includeEquipmentDetail && p.name ? `name=${p.name}` : null,
+      privacy.includeEquipmentDetail && p.caliber ? `caliber=${p.caliber}` : null,
+      privacy.includeEquipmentDetail && p.gunsmith ? `gunsmith=${p.gunsmith}` : null,
       p.twistRate != null ? `twist=${p.twistRate}` : 'twist=?',
       p.barrelLife != null ? `life=${p.barrelLife}` : 'life=?',
       p.maintenanceInterval != null ? `maintEvery=${p.maintenanceInterval}` : 'maintEvery=?',
       `rounds=${p.totalRoundCount}`,
       `afterClean=${p.roundsAfterCleaning}`,
       p.muzzleType ? `muzzle=${p.muzzleType}` : null,
-      p.notes ? `notes=${p.notes.slice(0, 80)}` : null,
+      privacy.includeNotes && p.notes ? `notes=${p.notes.slice(0, 80)}` : null,
       `platforms=${p.platforms.join(',')}`
     ]
     return `- ${bits.filter(Boolean).join(' | ')}`
@@ -134,19 +137,35 @@ function buildLocalContext(db: Database.Database): string {
   })
 
   const logLines = logs.map((l) => {
-    return `- ${l.date} | ${l.sessionType} | system=${l.systemId ?? 'n/a'} | rounds=${l.roundsFired} | location=${l.location || 'n/a'} | place=${l.placement ?? 'n/a'} | pctWinner=${l.percentOfWinner ?? 'n/a'}`
+    const location =
+      privacy.includeLocations && l.location ? `location=${l.location}` : 'location=redacted'
+    return `- ${l.date} | ${l.sessionType} | system=${l.systemId ?? 'n/a'} | rounds=${l.roundsFired} | ${location} | place=${l.placement ?? 'n/a'} | pctWinner=${l.percentOfWinner ?? 'n/a'}`
   })
 
   const ammoLines = ammo.map((a) => {
+    if (!privacy.includeEquipmentDetail) {
+      return `- caliber=${a.caliber} | type=${a.type} | onHand=${a.quantity}`
+    }
     return `- ${a.manufacturer ?? 'n/a'} ${a.caliber} (${a.type}) | onHand=${a.quantity} | name=${a.name}`
   })
 
   const aarLines = aars.map((a) => {
-    return `- ${a.matchName ?? a.id} | ${a.matchDateStart ?? 'no-date'} | ${a.status} | place=${a.placement ?? 'n/a'} | level=${a.matchLevel ?? 'n/a'}`
+    const venue =
+      privacy.includeLocations && a.venue ? `venue=${a.venue}` : null
+    return [
+      `- ${a.matchName ?? a.id}`,
+      a.matchDateStart ?? 'no-date',
+      a.status,
+      `place=${a.placement ?? 'n/a'}`,
+      `level=${a.matchLevel ?? 'n/a'}`,
+      venue
+    ]
+      .filter(Boolean)
+      .join(' | ')
   })
 
   return [
-    '## Inventory parts',
+    '## Inventory parts (serial numbers omitted)',
     partLines.join('\n') || '(none)',
     '',
     '## Builds',
@@ -159,7 +178,9 @@ function buildLocalContext(db: Database.Database): string {
     ammoLines.join('\n') || '(none)',
     '',
     '## Recent AARs',
-    aarLines.join('\n') || '(none)'
+    aarLines.join('\n') || '(none)',
+    '',
+    `## Privacy filters applied: locations=${privacy.includeLocations ? 'on' : 'off'}, notes=${privacy.includeNotes ? 'on' : 'off'}, equipmentDetail=${privacy.includeEquipmentDetail ? 'on' : 'off'}`
   ].join('\n')
 }
 
@@ -180,6 +201,7 @@ export async function askAssistant(
   const provider = prefs.provider
   const model = prefs.modelByProvider[provider] ?? null
   const apiKey = loadApiKey(provider, deps)
+  const privacy = prefs.privacy ?? { ...DEFAULT_AI_PRIVACY_PREFS }
 
   if (!apiKey) {
     return { ok: false, error: 'Add an AI API key in Settings to unlock AI View.' }
@@ -188,7 +210,7 @@ export async function askAssistant(
     return { ok: false, error: 'Choose a model in Settings before asking AI View.' }
   }
 
-  const context = buildLocalContext(db)
+  const context = buildLocalContext(db, privacy)
   const modeHint =
     input.mode === 'inventory'
       ? 'Mode: inventory fill. Prefer concrete inventorySuggestions for incomplete fields.'

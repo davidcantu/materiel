@@ -26,6 +26,11 @@ export type DatabaseHandle = {
   migrationVersion: number
   keySource: string
   keyFingerprint: string
+  /**
+   * In-memory SQLCipher key for this session (never log / never IPC).
+   * Used to enable unlock wrapping without reading the auto key file.
+   */
+  keyMaterial: Buffer
   db: Database.Database
   /** Set when a pre-migrate backup was written for this open. */
   preMigrateBackupDir: string | null
@@ -126,6 +131,7 @@ export function openDatabase(options: OpenDatabaseOptions): DatabaseHandle {
       migrationVersion,
       keySource: resolved.source,
       keyFingerprint: keyFingerprint(resolved.key),
+      keyMaterial: Buffer.from(resolved.key),
       db,
       preMigrateBackupDir: backup?.backupDir ?? null
     }
@@ -169,6 +175,9 @@ export function getHealth(): DatabaseHealth {
 }
 
 export function closeDatabase(): void {
+  if (handle?.keyMaterial) {
+    handle.keyMaterial.fill(0)
+  }
   if (handle?.db) {
     try {
       handle.db.close()

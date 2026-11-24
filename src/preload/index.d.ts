@@ -45,6 +45,15 @@ import type {
   AiAssistantAskInput,
   AiAssistantAskResult
 } from '../shared/ai-assistant'
+import type { AiPrivacyPrefs } from '../shared/ai-privacy'
+import type {
+  UnlockAttemptInput,
+  UnlockAttemptResult,
+  UnlockChangeInput,
+  UnlockDisableInput,
+  UnlockEnableInput,
+  UnlockStatusInfo
+} from '../shared/unlock'
 import type {
   AarAttachment,
   AarCompleteValidation,
@@ -149,6 +158,13 @@ declare global {
       applyAiInventorySuggestion: (
         input: AiApplyInventorySuggestionInput
       ) => Promise<{ ok: true } | { ok: false; error: string }>
+      getAiPrivacyPrefs: () => Promise<AiPrivacyPrefs>
+      setAiPrivacyPrefs: (patch: Partial<AiPrivacyPrefs>) => Promise<AiPrivacyPrefs>
+      getUnlockStatus: () => Promise<UnlockStatusInfo>
+      unlockAttempt: (input: UnlockAttemptInput) => Promise<UnlockAttemptResult>
+      enableUnlock: (input: UnlockEnableInput) => Promise<UnlockStatusInfo>
+      changeUnlock: (input: UnlockChangeInput) => Promise<UnlockStatusInfo>
+      disableUnlock: (input: UnlockDisableInput) => Promise<UnlockStatusInfo>
       listAars: () => Promise<AarListItem[]>
       getAar: (id: string) => Promise<AarRecord | null>
       getAarByLog: (logEntryId: string) => Promise<AarRecord | null>

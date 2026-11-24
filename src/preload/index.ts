@@ -46,6 +46,15 @@ import type {
   AiAssistantAskInput,
   AiAssistantAskResult
 } from '../shared/ai-assistant'
+import type { AiPrivacyPrefs } from '../shared/ai-privacy'
+import type {
+  UnlockAttemptInput,
+  UnlockAttemptResult,
+  UnlockChangeInput,
+  UnlockDisableInput,
+  UnlockEnableInput,
+  UnlockStatusInfo
+} from '../shared/unlock'
 import type {
   AarListItem,
   AarPatch,
@@ -180,6 +189,19 @@ const api = {
     input: AiApplyInventorySuggestionInput
   ): Promise<{ ok: true } | { ok: false; error: string }> =>
     ipcRenderer.invoke('ai:applyInventorySuggestion', input),
+  getAiPrivacyPrefs: (): Promise<AiPrivacyPrefs> => ipcRenderer.invoke('ai:getPrivacyPrefs'),
+  setAiPrivacyPrefs: (patch: Partial<AiPrivacyPrefs>): Promise<AiPrivacyPrefs> =>
+    ipcRenderer.invoke('ai:setPrivacyPrefs', patch),
+
+  getUnlockStatus: (): Promise<UnlockStatusInfo> => ipcRenderer.invoke('unlock:getStatus'),
+  unlockAttempt: (input: UnlockAttemptInput): Promise<UnlockAttemptResult> =>
+    ipcRenderer.invoke('unlock:attempt', input),
+  enableUnlock: (input: UnlockEnableInput): Promise<UnlockStatusInfo> =>
+    ipcRenderer.invoke('unlock:enable', input),
+  changeUnlock: (input: UnlockChangeInput): Promise<UnlockStatusInfo> =>
+    ipcRenderer.invoke('unlock:change', input),
+  disableUnlock: (input: UnlockDisableInput): Promise<UnlockStatusInfo> =>
+    ipcRenderer.invoke('unlock:disable', input),
 
   listAars: (): Promise<AarListItem[]> => ipcRenderer.invoke('aar:list'),
   getAar: (id: string): Promise<AarRecord | null> => ipcRenderer.invoke('aar:get', id),
