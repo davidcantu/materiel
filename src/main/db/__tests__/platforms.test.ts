@@ -111,6 +111,7 @@ test('parts list filters by platform; AR/pistol builds use platform core slots',
     type: 'Pistol',
     model: '19 Gen5',
     serialNumber: 'P1',
+    caliber: '9mm',
     platforms: ['pistol']
   })
   const optic = createPart(db, {

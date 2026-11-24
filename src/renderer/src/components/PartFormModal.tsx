@@ -18,6 +18,7 @@ import {
 } from '../../../shared/platforms'
 import {
   CARTRIDGE_OPTIONS,
+  PISTOL_CALIBER_OPTIONS,
   manufacturersForPartType,
   modelsForActionManufacturer
 } from '../../../shared/catalogs'
@@ -242,6 +243,9 @@ export function PartFormModal({
         input.twistRate = Number(form.twistRate) || 8
         input.barrelLife = Number(form.barrelLife) || 2500
         input.maintenanceInterval = Number(form.maintenanceInterval) || 1000
+      } else if (form.type === 'Pistol' || form.type === 'Frame') {
+        input.name = null
+        input.caliber = form.caliber.trim()
       } else {
         input.name = null
       }
@@ -382,20 +386,39 @@ export function PartFormModal({
             </label>
           </>
         ) : (
-          <label className="field">
-            <span className="field-label">Model</span>
-            <input
-              list="model-suggestions"
-              value={form.model}
-              onChange={(e) => setField('model', e.target.value)}
-              required
-            />
-            <datalist id="model-suggestions">
-              {modelSuggestions.map((item) => (
-                <option key={item} value={item} />
-              ))}
-            </datalist>
-          </label>
+          <>
+            <label className="field">
+              <span className="field-label">Model</span>
+              <input
+                list="model-suggestions"
+                value={form.model}
+                onChange={(e) => setField('model', e.target.value)}
+                required
+              />
+              <datalist id="model-suggestions">
+                {modelSuggestions.map((item) => (
+                  <option key={item} value={item} />
+                ))}
+              </datalist>
+            </label>
+            {form.type === 'Pistol' || form.type === 'Frame' ? (
+              <label className="field">
+                <span className="field-label">Cartridge</span>
+                <input
+                  list="pistol-caliber-suggestions"
+                  value={form.caliber}
+                  onChange={(e) => setField('caliber', e.target.value)}
+                  placeholder="e.g. 9mm"
+                  required
+                />
+                <datalist id="pistol-caliber-suggestions">
+                  {PISTOL_CALIBER_OPTIONS.map((item) => (
+                    <option key={item} value={item} />
+                  ))}
+                </datalist>
+              </label>
+            ) : null}
+          </>
         )}
 
         {showSerial ? (

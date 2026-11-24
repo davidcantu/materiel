@@ -17,6 +17,7 @@ export type MaterielImportPart = {
   model?: string | null
   /** Required for Barrel (or synthesized from model/caliber). */
   name?: string | null
+  /** Required for Barrel and Frame/Pistol. */
   caliber?: string | null
   gunsmith?: string | null
   serialNumber?: string | null

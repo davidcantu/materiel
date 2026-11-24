@@ -140,6 +140,13 @@ function validatePartFields(
       if (!String(input.gunsmith ?? '').trim()) throw new Error('Gunsmith is required for Barrel')
     }
   }
+  if (type === 'Pistol' || type === 'Frame') {
+    if (requireCore || input.caliber !== undefined) {
+      if (!String(input.caliber ?? '').trim()) {
+        throw new Error('Cartridge is required for Frame')
+      }
+    }
+  }
   if (input.muzzleType != null) {
     if (input.muzzleType !== 'Suppressor' && input.muzzleType !== 'Brake') {
       throw new Error('Muzzle type must be Suppressor or Brake')

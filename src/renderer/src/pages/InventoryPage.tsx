@@ -435,6 +435,13 @@ export function InventoryPage({
                     </td>
                     <td>
                       <div className="cell-title">{partPrimaryTitle(part)}</div>
+                      {part.type === 'Pistol' || part.type === 'Frame' || part.type === 'Barrel'
+                        ? part.caliber
+                          ? (
+                              <div className="cell-sub">{part.caliber}</div>
+                            )
+                          : null
+                        : null}
                       {part.serialNumber ? (
                         <div className="cell-sub">S/N {part.serialNumber}</div>
                       ) : null}

@@ -91,6 +91,9 @@ function normalizePart(raw: MaterielImportPart, warnings: string[]): MaterielImp
       warnings.push(`Defaulted gunsmith to "Imported" for barrel ${id}`)
     }
   }
+  if ((type === 'Pistol' || type === 'Frame') && !caliber) {
+    throw new Error(`parts[${id}].caliber is required for Frame`)
+  }
 
   const platforms =
     Array.isArray(raw.platforms) && raw.platforms.length > 0
