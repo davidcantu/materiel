@@ -7,6 +7,7 @@ import {
   PLATFORM_PART_TYPES,
   type Platform
 } from '../../../shared/platforms'
+import { ColumnVisibilityMenu } from '../components/ColumnVisibilityMenu'
 import { EmptyState } from '../components/EmptyState'
 import { Icon } from '../components/icons/Icon'
 import { PageFeedback } from '../components/PageFeedback'
@@ -22,6 +23,14 @@ import {
   partPrimaryTitle,
   typeFilterLabel
 } from '../lib/format'
+import {
+  DEFAULT_INVENTORY_COLUMNS,
+  INVENTORY_COLUMN_IDS,
+  INVENTORY_COLUMN_LABELS,
+  loadInventoryVisibleColumns,
+  saveInventoryVisibleColumns,
+  type InventoryColumnId
+} from '../lib/view-column-prefs'
 import {
   DEFAULT_INVENTORY_FILTERS,
   inventoryFiltersEqual,
@@ -70,8 +79,15 @@ export function InventoryPage({
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<PartInfo | null>(null)
   const [typeMenuOpen, setTypeMenuOpen] = useState(false)
+  const [visibleColumns, setVisibleColumns] = useState<InventoryColumnId[]>(() =>
+    loadInventoryVisibleColumns()
+  )
   const [pendingPistolBuild, setPendingPistolBuild] = useState<PartInfo | null>(null)
   const [pistolBuildBusy, setPistolBuildBusy] = useState(false)
+  const columnVisible = useMemo(
+    () => new Set<InventoryColumnId>(visibleColumns),
+    [visibleColumns]
+  )
 
   const filtersAreDefault = inventoryFiltersEqual(
     currentInventoryFilters(platformFilter, typeFilter, statuses),
@@ -396,25 +412,44 @@ export function InventoryPage({
             </button>
           ))}
         </div>
-        <label className="toggle-row filter-default-toggle">
-          <input
-            type="checkbox"
-            checked={filtersAreDefault}
-            onChange={(e) => {
-              if (e.target.checked) {
-                const next = currentInventoryFilters(platformFilter, typeFilter, statuses)
-                saveInventoryFilterDefaults(next)
-                setSavedDefaults(next)
-                toast.success('Inventory filters saved as default.')
-              } else {
-                saveInventoryFilterDefaults(DEFAULT_INVENTORY_FILTERS)
-                setSavedDefaults(DEFAULT_INVENTORY_FILTERS)
-                toast.success('Inventory default filters cleared.')
-              }
+        <div className="toolbar-secondary-row">
+          <label className="toggle-row filter-default-toggle">
+            <input
+              type="checkbox"
+              checked={filtersAreDefault}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  const next = currentInventoryFilters(platformFilter, typeFilter, statuses)
+                  saveInventoryFilterDefaults(next)
+                  setSavedDefaults(next)
+                  toast.success('Inventory filters saved as default.')
+                } else {
+                  saveInventoryFilterDefaults(DEFAULT_INVENTORY_FILTERS)
+                  setSavedDefaults(DEFAULT_INVENTORY_FILTERS)
+                  toast.success('Inventory default filters cleared.')
+                }
+              }}
+            />
+            <span>Remember these filters as default</span>
+          </label>
+          <ColumnVisibilityMenu
+            label="Columns"
+            options={INVENTORY_COLUMN_IDS.map((id) => ({
+              id,
+              label: INVENTORY_COLUMN_LABELS[id]
+            }))}
+            visible={visibleColumns}
+            onChange={(next) => {
+              setVisibleColumns(next)
+              saveInventoryVisibleColumns(next)
+            }}
+            onReset={() => {
+              setVisibleColumns([...DEFAULT_INVENTORY_COLUMNS])
+              saveInventoryVisibleColumns([...DEFAULT_INVENTORY_COLUMNS])
+              toast.success('Inventory columns reset.')
             }}
           />
-          <span>Remember these filters as default</span>
-        </label>
+        </div>
       </div>
 
       <PageFeedback
@@ -455,11 +490,11 @@ export function InventoryPage({
           <table className="data-table">
             <thead>
               <tr>
-                <th>Type</th>
-                <th>Part</th>
-                <th>Rounds</th>
-                <th>Maintenance</th>
-                <th>Status</th>
+                {columnVisible.has('type') ? <th>Type</th> : null}
+                {columnVisible.has('part') ? <th>Part</th> : null}
+                {columnVisible.has('rounds') ? <th>Rounds</th> : null}
+                {columnVisible.has('maintenance') ? <th>Maintenance</th> : null}
+                {columnVisible.has('status') ? <th>Status</th> : null}
                 <th>Actions</th>
               </tr>
             </thead>
@@ -476,56 +511,68 @@ export function InventoryPage({
                     }}
                     style={{ cursor: 'pointer' }}
                   >
-                    <td>
-                      <span className="type-pill">{partTypeLabel(part.type)}</span>
-                    </td>
-                    <td>
-                      <div className="cell-title">{partPrimaryTitle(part)}</div>
-                      {part.type === 'Pistol' || part.type === 'Frame' || part.type === 'Barrel'
-                        ? part.caliber
-                          ? (
-                              <div className="cell-sub">{part.caliber}</div>
-                            )
-                          : null
-                        : null}
-                      {part.serialNumber ? (
-                        <div className="cell-sub">S/N {part.serialNumber}</div>
-                      ) : null}
-                    </td>
-                    <td className="rounds-cell">
-                      {tracksUse ? (
-                        <span className="rounds-badge">{part.totalRoundCount.toLocaleString()}</span>
-                      ) : (
-                        <span className="muted">—</span>
-                      )}
-                    </td>
-                    <td>
-                      {percent != null ? (
-                        <div className="maint-cell">
-                          <div
-                            className={`progress-track tone-${maintenanceTone(percent)}`}
-                            title={`${maintenanceLabel(part)} · ${percent}%`}
-                          >
-                            <div
-                              className="progress-fill"
-                              style={{ width: `${Math.min(percent, 100)}%` }}
-                            />
-                          </div>
-                          <span className="muted">
-                            {maintenanceLabel(part)} · {percent}%
+                    {columnVisible.has('type') ? (
+                      <td>
+                        <span className="type-pill">{partTypeLabel(part.type)}</span>
+                      </td>
+                    ) : null}
+                    {columnVisible.has('part') ? (
+                      <td>
+                        <div className="cell-title">{partPrimaryTitle(part)}</div>
+                        {part.type === 'Pistol' || part.type === 'Frame' || part.type === 'Barrel'
+                          ? part.caliber
+                            ? (
+                                <div className="cell-sub">{part.caliber}</div>
+                              )
+                            : null
+                          : null}
+                        {part.serialNumber ? (
+                          <div className="cell-sub">S/N {part.serialNumber}</div>
+                        ) : null}
+                      </td>
+                    ) : null}
+                    {columnVisible.has('rounds') ? (
+                      <td className="rounds-cell">
+                        {tracksUse ? (
+                          <span className="rounds-badge">
+                            {part.totalRoundCount.toLocaleString()}
                           </span>
-                        </div>
-                      ) : (
-                        <span className="muted">—</span>
-                      )}
-                    </td>
-                    <td>
-                      {isWearStatusTracked(part.type) || part.status === 'Sold' ? (
-                        <StatusBadge status={part.status} />
-                      ) : (
-                        <span className="muted">{part.status}</span>
-                      )}
-                    </td>
+                        ) : (
+                          <span className="muted">—</span>
+                        )}
+                      </td>
+                    ) : null}
+                    {columnVisible.has('maintenance') ? (
+                      <td>
+                        {percent != null ? (
+                          <div className="maint-cell">
+                            <div
+                              className={`progress-track tone-${maintenanceTone(percent)}`}
+                              title={`${maintenanceLabel(part)} · ${percent}%`}
+                            >
+                              <div
+                                className="progress-fill"
+                                style={{ width: `${Math.min(percent, 100)}%` }}
+                              />
+                            </div>
+                            <span className="muted">
+                              {maintenanceLabel(part)} · {percent}%
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="muted">—</span>
+                        )}
+                      </td>
+                    ) : null}
+                    {columnVisible.has('status') ? (
+                      <td>
+                        {isWearStatusTracked(part.type) || part.status === 'Sold' ? (
+                          <StatusBadge status={part.status} />
+                        ) : (
+                          <span className="muted">{part.status}</span>
+                        )}
+                      </td>
+                    ) : null}
                     <td onClick={(e) => e.stopPropagation()}>
                       <div className="row-actions">
                         {isMaintenanceTracked(part.type) ? (
