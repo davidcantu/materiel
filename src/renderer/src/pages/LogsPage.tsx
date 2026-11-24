@@ -13,6 +13,7 @@ import { formatPercentOfWinner, formatPlacement } from '../../../shared/shooting
 import type { CompleteSystemInfo } from '../../../shared/systems'
 import { systemHasDueMaintenance } from '../../../shared/system-maintenance'
 import { AarPromptModal } from '../components/AarPromptModal'
+import { ColumnVisibilityMenu } from '../components/ColumnVisibilityMenu'
 import { EmptyState } from '../components/EmptyState'
 import { Icon } from '../components/icons/Icon'
 import { LogSessionModal } from '../components/LogSessionModal'
@@ -21,6 +22,14 @@ import { PageFeedback } from '../components/PageFeedback'
 import { PageHeader } from '../components/PageHeader'
 import { useToast } from '../components/toast-context'
 import { partPrimaryTitle } from '../lib/format'
+import {
+  DEFAULT_LOGS_COLUMNS,
+  LOGS_COLUMN_IDS,
+  LOGS_COLUMN_LABELS,
+  loadLogsVisibleColumns,
+  saveLogsVisibleColumns,
+  type LogsColumnId
+} from '../lib/view-column-prefs'
 
 type LogsPageProps = {
   onNavigateBuilds?: () => void
@@ -78,6 +87,10 @@ export function LogsPage({
   const [editing, setEditing] = useState<ShootingLogInfo | null>(null)
   const [maintenanceSystemId, setMaintenanceSystemId] = useState<string | null>(null)
   const [visibleCount, setVisibleCount] = useState(10)
+  const [visibleColumns, setVisibleColumns] = useState<LogsColumnId[]>(() =>
+    loadLogsVisibleColumns()
+  )
+  const columnVisible = useMemo(() => new Set<LogsColumnId>(visibleColumns), [visibleColumns])
   const [matchNudge, setMatchNudge] = useState<string | null>(null)
   const [aarPrompt, setAarPrompt] = useState<{
     logId: string
@@ -327,6 +340,23 @@ export function LogsPage({
               </button>
             ))}
           </div>
+          <ColumnVisibilityMenu
+            label="Columns"
+            options={LOGS_COLUMN_IDS.map((id) => ({
+              id,
+              label: LOGS_COLUMN_LABELS[id]
+            }))}
+            visible={visibleColumns}
+            onChange={(next) => {
+              setVisibleColumns(next)
+              saveLogsVisibleColumns(next)
+            }}
+            onReset={() => {
+              setVisibleColumns([...DEFAULT_LOGS_COLUMNS])
+              saveLogsVisibleColumns([...DEFAULT_LOGS_COLUMNS])
+              toast.success('Log columns reset.')
+            }}
+          />
         </div>
       </div>
 
@@ -396,14 +426,14 @@ export function LogsPage({
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Date</th>
-                  <th>Barrel</th>
-                  <th>Location</th>
-                  <th>Rounds</th>
-                  <th>Cartridge</th>
-                  <th>Place</th>
-                  <th>% Of Winner</th>
-                  <th>Velocity</th>
+                  {columnVisible.has('date') ? <th>Date</th> : null}
+                  {columnVisible.has('barrel') ? <th>Barrel</th> : null}
+                  {columnVisible.has('location') ? <th>Location</th> : null}
+                  {columnVisible.has('rounds') ? <th>Rounds</th> : null}
+                  {columnVisible.has('cartridge') ? <th>Cartridge</th> : null}
+                  {columnVisible.has('place') ? <th>Place</th> : null}
+                  {columnVisible.has('percentOfWinner') ? <th>% Of Winner</th> : null}
+                  {columnVisible.has('velocity') ? <th>Velocity</th> : null}
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -412,29 +442,41 @@ export function LogsPage({
                   const barrel = log.barrelId ? partsById.get(log.barrelId) : undefined
                   return (
                     <tr key={log.id}>
-                      <td>
-                        <div className="cell-title">{formatLogDate(log.date)}</div>
-                        <div className="cell-sub">{log.sessionType}</div>
-                      </td>
-                      <td>
-                        {barrel ? partPrimaryTitle(barrel) : '—'}
-                      </td>
-                      <td>{log.location}</td>
-                      <td>
-                        <span className="rounds-badge">{log.roundsFired}</span>
-                      </td>
-                      <td>{cartridgeLabel(log, ammoById)}</td>
-                      <td>
-                        {log.sessionType === 'Match' && log.placement != null
-                          ? formatPlacement(log.placement)
-                          : '—'}
-                      </td>
-                      <td>
-                        {log.sessionType === 'Match' && log.percentOfWinner != null
-                          ? formatPercentOfWinner(log.percentOfWinner)
-                          : '—'}
-                      </td>
-                      <td>{log.velocity != null ? `${log.velocity} fps` : '—'}</td>
+                      {columnVisible.has('date') ? (
+                        <td>
+                          <div className="cell-title">{formatLogDate(log.date)}</div>
+                          <div className="cell-sub">{log.sessionType}</div>
+                        </td>
+                      ) : null}
+                      {columnVisible.has('barrel') ? (
+                        <td>{barrel ? partPrimaryTitle(barrel) : '—'}</td>
+                      ) : null}
+                      {columnVisible.has('location') ? <td>{log.location}</td> : null}
+                      {columnVisible.has('rounds') ? (
+                        <td>
+                          <span className="rounds-badge">{log.roundsFired}</span>
+                        </td>
+                      ) : null}
+                      {columnVisible.has('cartridge') ? (
+                        <td>{cartridgeLabel(log, ammoById)}</td>
+                      ) : null}
+                      {columnVisible.has('place') ? (
+                        <td>
+                          {log.sessionType === 'Match' && log.placement != null
+                            ? formatPlacement(log.placement)
+                            : '—'}
+                        </td>
+                      ) : null}
+                      {columnVisible.has('percentOfWinner') ? (
+                        <td>
+                          {log.sessionType === 'Match' && log.percentOfWinner != null
+                            ? formatPercentOfWinner(log.percentOfWinner)
+                            : '—'}
+                        </td>
+                      ) : null}
+                      {columnVisible.has('velocity') ? (
+                        <td>{log.velocity != null ? `${log.velocity} fps` : '—'}</td>
+                      ) : null}
                       <td>
                         <div className="row-actions">
                           <button
